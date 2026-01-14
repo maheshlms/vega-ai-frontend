@@ -1,0 +1,9 @@
+6️⃣ layouts/ – Office Structure 🏛️
+
+This room decides:
+
+Where sidebar is
+Where header is
+Where content shows
+
+It controls the page structure, not the business.

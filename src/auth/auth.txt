@@ -1,0 +1,9 @@
+2️⃣ auth/ – The Security Room 🔐
+
+This room decides:
+
+Who is logged in
+What they are allowed to see
+When they should be logged out
+
+Like the security guard at office entrance. 

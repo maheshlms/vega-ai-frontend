@@ -1,0 +1,11 @@
+5️⃣ hooks/ – Smart Helpers 🤖
+
+These are tiny helpers that save your time.
+
+Examples:
+
+Check user permission
+Auto refresh token
+Keep checking agent status
+
+Instead of writing same logic everywhere, you keep it here.

@@ -1,0 +1,13 @@
+8️⃣ state/ – Brain of the App 🧠
+
+This stores things the whole app must remember.
+
+Examples:
+
+Logged-in user
+
+Selected agent
+
+Notifications
+
+Only important global memory goes here.

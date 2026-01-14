@@ -1,0 +1,13 @@
+🔟 utils/ – Toolbox 🧰
+
+Small tools used everywhere.
+
+Examples:
+
+Date formatter
+
+Delay helper
+
+ID generator
+
+No UI. No API. Only helpers.

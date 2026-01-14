@@ -1,0 +1,11 @@
+9️⃣ styles/ – Paint & Theme Room 🎨
+
+This decides:
+
+Colors
+
+Fonts
+
+Spacing
+
+No logic. Only beauty rules.

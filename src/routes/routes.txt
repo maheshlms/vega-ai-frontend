@@ -1,0 +1,10 @@
+
+7️⃣ routes/ – Map of the Building 🗺️
+
+This is the navigation map.
+
+It decides:
+Which URL opens which feature
+Which page is protected
+
+Like directions inside the building.

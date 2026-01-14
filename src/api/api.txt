@@ -1,0 +1,11 @@
+1️⃣ api/ – The Phone Room 📞
+
+This room only talks to the backend.
+If the app needs data, it uses the phone room.
+
+Examples:
+Get user list
+Create LDAP user
+Ask AI agent a question
+
+No screen logic here. Only talking to backend.

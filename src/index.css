@@ -1,0 +1,90 @@
+@import "tailwindcss";
+:root {
+  --bg-gradient: linear-gradient(to left, #DBEAFE, #F3E8FF, #FCE7F3);
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --text-main: #0f172a;
+  --text-muted: #6b7280;
+  --glow-color: rgba(59,130,246,0.18);
+  --input-bg: #ffffff;
+  --input-border: #D1D5DB;
+  --input-text: #0f172a;
+  --input-placeholder: #9CA3AF;
+  --username-color : rgba(55, 65, 81, 0.8) ;
+  --text-belowmain:rgba(107, 114, 128, 0.8);
+  --forget-color:#2563EB ;
+  --navbar-bg: #FFFFFF;
+  --navbar-icon : #6B7280 ;
+  --navbar-searchtext:#9CA3AF ;
+  --navbar-searchbg:#F3F4F6 ;
+  --navbar-profilebg:#EFF6FF ;
+  --navbar-profileborder:#BFDBFE ;
+  --navbar-profiletext:#6B7280;
+  --navbar-profileicon :#FFFFFF ;
+  --navbar-profile-gradient : linear-gradient(to right , rgba(59,130,246,0.5) , rgba(147,51,234,0.4)) ;
+  --sidebar-bg: #FFFFFF ;
+  --sidebar-text:#6B7280 ;
+  --sidebar-icon:#6B7280;
+  --sidebar-border:#E5E7EB ;
+  --sidebar-activebg:rgba(59,130,246,0.1);
+  --sidebar-activetext:#2563EB ;
+
+}
+
+[data-theme="dark"] {
+  --bg-gradient: linear-gradient(to left, #0F172A, #1E3A8A, #0F172A);
+  --card-bg: rgba(30, 41, 59, 0.5) ;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-belowmain: rgba(148, 163, 184, 0.8);
+  --input-bg: rgba(15, 23, 42, 0.5) ;
+
+  --glow-color: rgba(99,102,241,0.28);
+   --input-bg: rgba(15, 23, 42, 0.5) ;
+  --input-border: #1E293B;
+  --input-text: rgb(100, 116, 139);
+  --input-placeholder: #64748B;
+  --username-color: rgba(203, 213, 225, 0.8);
+  --forget-color: rgb(96, 165, 250);
+  --navbar-bg: rgba(15, 23, 42, 0.8);
+  --navbar-icon : #CBD5E1 ;
+  --navbar-searchtext:#64748B ;
+  --navbar-searchbg:#1E293B ;
+  --navbar-profilebg:#0F172A ;
+  --navbar-profiletext:#6B7280;
+  --navbar-profileicon :#FFFFFF ;
+  --navbar-profileborder:#BFDBFE ;
+  --navbar-profile-gradient : linear-gradient(to right ,rgba(59, 130, 246, 0.4),rgba(147, 51, 234, 0.4)) ;
+  --sidebar-bg: #0F172A ;
+  --sidebar-text:#94A3B8 ;
+  --sidebar-icon:#94A3B8 ;
+  --sidebar-border:#1E293B ;
+  --sidebar-activebg: rgba(59,130,246,0.2) ;
+  --sidebar-activetext:#60A5FA;
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+
+@layer utilities {
+  .bg-navbar { background: var(--navbar-bg); }
+  .text-navbar-icon { color: var(--navbar-icon); }
+  .bg-navbar-profile { background: var(--navbar-profilebg); }
+  .border-navbar-profile { border-color: var(--navbar-profileborder); }
+  .text-navbar-profile { color: var(--navbar-profiletext); }
+  .bg-navbar-profile-icon { background: var(--navbar-profile-gradient); }
+  .bg-sidebar { background: var(--sidebar-bg); }
+  .text-sidebar { color: var(--sidebar-text); }
+  .text-sidebar-icon { color: var(--sidebar-icon); }
+  .border-sidebar { border-color: var(--sidebar-border); }
+
+  .bg-sidebar-active { background: var(--sidebar-activebg); }
+  .text-sidebar-active { color: var(--sidebar-activetext); }
+}
+
+
+html {
+  scroll-behavior: smooth;
+}

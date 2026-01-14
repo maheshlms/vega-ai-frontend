@@ -1,0 +1,13 @@
+3️⃣ components/ – LEGO Blocks 🧱
+
+These are small building blocks.
+
+Examples:
+
+Button
+Table
+Input box
+Popup
+
+They don’t know what your product does.
+They just show UI pieces.
