@@ -1,14 +1,40 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth0 } from '@auth0/auth0-react';
+import { auth } from '../utils/auth';
 
 const Logout = () => {
+  const navigate = useNavigate();
+  const { logout: auth0Logout, isAuthenticated: isAuth0 } = useAuth0();
+
+  useEffect(() => {
+    // Clear local storage
+    auth.logout();
+
+    // If user was authenticated via Auth0, logout from Auth0
+    if (isAuth0) {
+      auth0Logout({ 
+        logoutParams: { 
+          returnTo: window.location.origin + '/login'
+        } 
+      });
+    } else {
+      // For local admin, just redirect to login
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    }
+  }, [auth0Logout, isAuth0, navigate]);
+
   return (
     <div className="bg-gray-50 min-h-screen p-6 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow p-8 text-center">
         <h1 className="text-2xl font-bold mb-4">Logged Out</h1>
         <p className="text-gray-600">You have been successfully logged out.</p>
-        <button className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Return to Login
-        </button>
+        <div className="mt-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-sm text-gray-500 mt-2">Redirecting...</p>
+        </div>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { MdMonitor, MdSecurity } from "react-icons/md"
 import { PiCertificate } from "react-icons/pi"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { CiServer } from "react-icons/ci"
-import FloatingChat from "../features/FloatingChat" ;
+import FloatingChat from "./FloatingChat" ;
 
 const Dashboard = () => {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -413,7 +413,7 @@ const Dashboard = () => {
       </div>
 
       {/* Minimal Custom CSS */}
-      <style jsx>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         * {

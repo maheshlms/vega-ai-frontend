@@ -39,7 +39,7 @@ const DarkMode = () => {
   }, [dark]);
 
   return (
-    <button onClick={() => setDark(!dark)} className="p-2 rounded-md shadow bg-white">
+    <button onClick={() => setDark(!dark)} className="p-2 rounded-md shadow bg-white cursor-pointer">
       {dark ? <GoSun size={20} /> : <MdOutlineDarkMode size={20} />}
     </button>
   );
@@ -47,6 +47,27 @@ const DarkMode = () => {
 
 /* ---------------- TOP BAR ---------------- */
 const TopBar = () => {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    setDark(localStorage.getItem("darkMode") === "true");
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setDark(localStorage.getItem("darkMode") === "true");
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Poll for changes since localStorage events don't fire in same tab
+    const interval = setInterval(handleStorageChange, 100);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <div className="sticky top-0 z-50 w-full bg-navbar border-b border-navbar-profile">
 
@@ -63,7 +84,7 @@ const TopBar = () => {
 
         {/* LEFT */}
         <div className="flex items-center">
-          <img src="./logo.png" alt="Vega AI" className="h-9" />
+          <img src={dark ? "./logo-dark.png" : "./logo-light.png"} alt="Vega AI" className="h-9" />
         </div>
 
         {/* CENTER SEARCH */}
@@ -73,11 +94,11 @@ const TopBar = () => {
 
         {/* RIGHT */}
         <div className="flex items-center gap-6">
-          <MdOutlineNotificationsNone size={24} className="text-navbar-icon" />
-          <IoMdHelpCircleOutline size={24} className="text-navbar-icon" />
-          <IoSettingsOutline size={24} className="text-navbar-icon" />
+          <MdOutlineNotificationsNone size={24} className="text-navbar-icon cursor-pointer" />
+          <IoMdHelpCircleOutline size={24} className="text-navbar-icon cursor-pointer" />
+          <IoSettingsOutline size={24} className="text-navbar-icon cursor-pointer" />
 
-          <div className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile">
+          <div className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer">
             <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon">
               <FaRegUser className="text-white text-sm" />
             </div>
