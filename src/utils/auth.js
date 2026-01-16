@@ -9,6 +9,9 @@ export const auth = {
   // Store Auth0 data after login
   storeAuth0Data: (accessToken, auth0User) => {
     try {
+      // console.log('🔐 [AUTH UTIL] Storing Auth0 token in localStorage');
+      // console.log('Token:', accessToken);
+      
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('tokenType', 'bearer');
       

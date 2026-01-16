@@ -15,6 +15,13 @@ export default function Callback() {
           // Get Auth0 access token
           const accessToken = await getAccessTokenSilently()
           
+          // Display token in console
+          console.log('='?.repeat(80))
+          console.log('🔐 [FRONTEND] RECEIVED AUTH0 ACCESS TOKEN:')
+          console.log('Token:', accessToken)
+          console.log('User:', user)
+          console.log('='?.repeat(80))
+          
           // Store Auth0 token temporarily
           auth.storeAuth0Data(accessToken, user)
           
