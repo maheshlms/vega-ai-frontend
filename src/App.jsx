@@ -6,11 +6,19 @@ import TopBar from './layouts/TopBar.jsx';
 import Sidebar from './layouts/Sidebar.jsx';
 import Dashboard from './features/Dashboard.jsx';
 import Agents from './features/Agents.jsx';
-import IntegrationBay from "./features/IntegrationBay.jsx"
-import DataUplink from './features/DataUplink.jsx'
-import AuditLogs from './features/AuditLogs.jsx'
-import Settings from './features/Settings.jsx'
-import Logout from './features/Logout.jsx'
+import IntegrationBay from "./features/IntegrationBay.jsx" ;
+import DataUplink from './features/DataUplink.jsx' ;
+import AuditLogs from './features/AuditLogs.jsx' ;
+import Settings from './features/Settings.jsx' ;
+import Logout from './features/Logout.jsx' ;
+import AgentChat from './features/AgentChat.jsx' ; 
+import AiAssist from "./features/AiAssist.jsx" ;
+import TaskExecute from "./features/TaskExecute.jsx" ;
+import CreateAgent from "./features/CreateAgent.jsx" ;
+// import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AdvancedIntegrations from './features/AdvancedIntegrations';
+import AgentTypeSelection from './features/AgentTypeSelection';
+import AgentCreationForm from './features/AgentCreationForm';
 
 function App() {
   return (
@@ -33,6 +41,15 @@ function App() {
               <Route path="/audits" element={<AuditLogs />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/logout" element={<Logout />} />
+              <Route path="/agents/agentchat" element={<AgentChat />}></Route>
+              <Route  path="/agents/agentchat/aiassist" element={<AiAssist/>}/>
+              <Route  path ="/agents/agentchat/execute" element={<TaskExecute/>}/>
+              {/* <Route  path="/agents/createagent" element={<CreateAgent/>}/> */}
+               <Route path="/agents/createagent" element={<AdvancedIntegrations />} />
+              <Route path="/agents/create/:integrationId" element={<AgentTypeSelection />} />
+              <Route path="/agents/create/:integrationId/:agentTypeId" element={<AgentCreationForm />} />
+
+            
             </Routes>
           </div>
         </div>

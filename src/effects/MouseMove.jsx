@@ -19,10 +19,10 @@ function MouseMove() {
 
   return (
    <div
-      className="pointer-events-none fixed inset-0 z-0"
+      className="pointer-events-none fixed inset-0 z-30"
       style={{
-        background: `radial-gradient(30px at ${pos.x}px ${pos.y}px,
-          rgba(99,102,241,0.15),
+        background: `radial-gradient(35px at ${pos.x}px ${pos.y}px,
+          rgba(99,112,241,0.5),
           transparent 80%)`
       }}
     />

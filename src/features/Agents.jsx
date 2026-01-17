@@ -1,11 +1,18 @@
-import React from 'react'
+import {React, useCallback} from 'react'
 import { FaPlus } from "react-icons/fa6";
 import { GoPeople, GoGraph } from "react-icons/go";
 import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
 import { MdOutlineStar } from "react-icons/md";
+import { useNavigate } from 'react-router-dom'
 
 const Agents = () => {
 
+  const navigate = useNavigate() ;
+
+  const handleCreateAgent = useCallback(()=>{
+    navigate('createagent')
+
+  }, [navigate])
   const data = [
     { icon: GoPeople, value: "4", description: "Total Agents", sub: "+1 this month", iconcolor: "#60A5FA" },
     { icon: TiFlashOutline, value: "3", description: "Active Now", sub: "75% uptime", iconcolor: "#22C55E" },
@@ -43,6 +50,10 @@ const Agents = () => {
     }
   ];
 
+  const handleExecute = useCallback(()=>{
+    navigate('/agents/createagent') ;
+  }, [navigate]) ;
+
   return (
     <div className="bg-[#F9FAFB] min-h-screen pb-10">
       <div className="max-w-[1920px] mx-auto px-6">
@@ -55,7 +66,9 @@ const Agents = () => {
               <div className="text-[#9CA3AF]">Manage and monitor your AI-powered IAM agents</div>
             </div>
 
-            <button className="bg-blue-500 px-4 h-10 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors whitespace-nowrap">
+            <button className="bg-blue-500 px-4 h-10 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors whitespace-nowrap"
+            onClick={handleExecute}
+            >
               <FaPlus />
               <span>Create New Agent</span>
             </button>
@@ -111,6 +124,7 @@ const Agents = () => {
               <div 
                 key={index}
                 className="bg-white rounded-2xl p-6 w-50 h-70 shadow-sm border border-gray-200 relative"
+                onClick={()=>  navigate('/agents/agentchat') }
               >
                 {/* Green Active Dot - Top Right */}
                 <div className="absolute top-3 right-3">
