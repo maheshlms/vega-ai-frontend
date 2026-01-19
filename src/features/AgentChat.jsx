@@ -3,13 +3,15 @@ import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline } fro
 import { useNavigate } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
 
-
 const AgentChat = () => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Chat history in the required format: { 'User1': <message>, 'Agent1': <message>, ... }
+  const [chatHistory, setChatHistory] = useState({});
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -21,30 +23,89 @@ const AgentChat = () => {
   }, [messages, isTyping, scrollToBottom]);
 
   // Handle send message
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (inputValue.trim()) {
+      const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
+      const userKey = `User${userMessageIndex}`;
+      
       const userMessage = {
         id: Date.now(),
         text: inputValue,
         sender: 'user',
         timestamp: new Date()
       };
+      
+      // Update messages array for display
       setMessages(prev => [...prev, userMessage]);
+      
+      // Update chat history with new user message
+      const updatedHistory = {
+        ...chatHistory,
+        [userKey]: inputValue
+      };
+      setChatHistory(updatedHistory);
+      
       setInputValue('');
-
       setIsTyping(true);
-      setTimeout(() => {
+
+      // Prepare data to send to backend
+      const formData = {
+        message: inputValue,
+        chatHistory: updatedHistory
+      };
+
+      try {
+        // TODO: Replace with actual backend API call
+        // const response = await fetch('/api/chat', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(formData)
+        // });
+        // const data = await response.json();
+        
+        // Simulate backend response
+        setTimeout(() => {
+          setIsTyping(false);
+          
+          // Backend should return: { script: "...", displayText: "..." }
+          // For now, using mock response
+          const mockResponse = {
+            script: "I'm here to help you with Ping Federate. How can I assist you today?",
+            displayText: "I'm here to help you with Ping Federate. How can I assist you today?"
+          };
+          
+          const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
+          const agentKey = `Agent${agentMessageIndex}`;
+          
+          const aiMessage = {
+            id: Date.now() + 1,
+            text: mockResponse.displayText,
+            sender: 'ai',
+            timestamp: new Date()
+          };
+          
+          setMessages(prev => [...prev, aiMessage]);
+          
+          // Update chat history with agent response
+          setChatHistory(prev => ({
+            ...prev,
+            [agentKey]: mockResponse.displayText
+          }));
+          
+          // TODO: Use mockResponse.script for HeyGen avatar speech
+          console.log('HeyGen Script:', mockResponse.script);
+          console.log('Chat History:', {
+            ...updatedHistory,
+            [agentKey]: mockResponse.displayText
+          });
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Error sending message:', error);
         setIsTyping(false);
-        const aiMessage = {
-          id: Date.now() + 1,
-          text: "I'm here to help you with Ping Federate. How can I assist you today?",
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      }, 1500);
+      }
     }
-  }, [inputValue]);
+  }, [inputValue, chatHistory]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -56,21 +117,21 @@ const AgentChat = () => {
   const handleClearChat = useCallback(() => {
     setMessages([]);
     setInputValue('');
+    setChatHistory({});
   }, []);
 
   const handleBack = useCallback(() => {
     navigate('/agents');
   }, [navigate]);
 
-    const handleExecute = useCallback(()=>{
-      navigate('/agents/createagent') ;
-    }, [navigate]) ;
+  const handleExecute = useCallback(() => {
+    navigate('/agents/agentchat/execute');
+  }, [navigate]);
 
-  
   return (
     <div className="w-full min-h-screen bg-[#F3F4F6]">
-      {/* Header - EXACT as image */}
-      <div className=" px-10 py-5 flex items-center justify-between ">
+      {/* Header */}
+      <div className="px-10 py-5 flex items-center justify-between">
         {/* Left side - Back button and title */}
         <div className="flex items-center gap-2">
           <button
@@ -94,11 +155,11 @@ const AgentChat = () => {
         </button>
       </div>
 
-      {/* Main content - EXACT center alignment */}
+      {/* Main content */}
       <div className="flex justify-center mt-2 px-4">
         <div className="bg-white w-full max-w-4xl rounded-xl shadow-lg relative">
           
-          {/* Avatar - EXACT positioning (overlapping top) */}
+          {/* Avatar */}
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
             <div className="w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
               <img 
@@ -106,33 +167,32 @@ const AgentChat = () => {
                 alt="Astra"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback avatar SVG
                   e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjOTMzM0VBIi8+CjxjaXJjbGUgY3g9IjY0IiBjeT0iNTAiIHI9IjI0IiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMzIgMTEyQzMyIDk1LjQzMTUgNDUuNDMxNSA4MiA2MiA4Mkg2NkM4Mi41Njg1IDgyIDk2IDk1LjQzMTUgOTYgMTEyVjEyOEgzMlYxMTJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K';
                 }}
               />
             </div>
           </div>
 
-          {/* Content area - EXACT spacing */}
+          {/* Content area */}
           <div className="pt-15 pb-6 px-6">
             
-            {/* Agent info - EXACT center alignment */}
+            {/* Agent info */}
             <div className="flex flex-col items-center text-center space-y-2">
-              {/* Name badge - EXACT style */}
-              <div className="bg-blue-100 text-blue-700 px-4  rounded-full text-sm font-medium z-11">
+              {/* Name badge */}
+              <div className="bg-blue-100 text-blue-700 px-4 rounded-full text-sm font-medium z-11">
                 Astra
               </div>
               
-              {/* Role - EXACT style */}
+              {/* Role */}
               <p className="text-sm text-gray-600">Ping Federate Agent</p>
               
-              {/* Welcome message - EXACT style */}
+              {/* Welcome message */}
               <h2 className="text-2xl font-bold text-gray-900 pt-2">
-                How may i help you ?
+                How may I help you?
               </h2>
             </div>
 
-            {/* Messages container - EXACT height and spacing */}
+            {/* Messages container */}
             <div className="mt-8 h-[350px] overflow-y-auto px-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
@@ -173,7 +233,7 @@ const AgentChat = () => {
               )}
             </div>
 
-            {/* Input area - EXACT layout from image */}
+            {/* Input area */}
             <div className="mt-6 border-t border-gray-200 pt-4">
               <div className="flex items-center gap-3">
                 {/* Attach button */}
@@ -184,7 +244,7 @@ const AgentChat = () => {
                   <IoAttachOutline className="text-xl" />
                 </button>
 
-                {/* Input field - EXACT style */}
+                {/* Input field */}
                 <div className="flex-1">
                   <input
                     type="text"
@@ -204,7 +264,7 @@ const AgentChat = () => {
                   <IoMicOutline className="text-xl" />
                 </button>
 
-                {/* Send button - EXACT blue style */}
+                {/* Send button */}
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim()}
@@ -217,18 +277,17 @@ const AgentChat = () => {
                   <span className="text-sm font-medium">Send</span>
                 </button>
 
-                {/* AI Assistance button - EXACT style */}
+                {/* AI Assistance button */}
                 <button
                   className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   aria-label="AI Assistance"
-                  onClick={()=> navigate("/agents/agentchat/aiassist")}
+                  onClick={() => navigate("/agents/agentchat/aiassist")}
                 >
-
                   <HiSparkles className="text-blue-600 text-lg" />
                   <span className="text-sm font-medium text-gray-700">AI Assistance</span>
                 </button>
 
-                {/* Execute button - EXACT style */}
+                {/* Execute button */}
                 <button
                   className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
                   aria-label="Execute"

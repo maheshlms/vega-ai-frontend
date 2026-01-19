@@ -7,43 +7,58 @@ const AgentCreationForm = () => {
   const { integrationId, agentTypeId } = useParams();
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [formData, setFormData] = React.useState({
-    aiAvatar: 'Astra',
     agentName: '',
     environment: '',
-    alertWindow: '30',
-    notification: true,
-    notificationChannel: 'Slack',
-    description: ''
+    notificationWindow: 30,
+    slackChannel: '#alerts'
   });
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: name === 'notificationWindow' ? parseInt(value) || 0 : value
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Save to localStorage so it persists and can be read by Agents page
+    const existingAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+    const newAgent = {
+      id: Date.now(),
+      name: formData.agentName,
+      role: 'License Agent',
+      type: 'License',
+      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
+      tasks: '0',
+      success: '100%',
+      status: 'active',
+      environment: formData.environment,
+      notificationWindow: formData.notificationWindow,
+      slackChannel: formData.slackChannel,
+      createdAt: new Date().toISOString()
+    };
+    
+    existingAgents.push(newAgent);
+    localStorage.setItem('agents', JSON.stringify(existingAgents));
+    
     console.log('Creating agent:', formData);
     setShowSuccess(true);
   };
 
   const handleSuccess = () => {
     setShowSuccess(false);
-    navigate('/agents/createagent');
+    navigate('/agents');
   };
 
   const handleReset = () => {
     setFormData({
-      aiAvatar: 'Astra',
       agentName: '',
       environment: '',
-      alertWindow: '30',
-      notification: true,
-      notificationChannel: 'Slack',
-      description: ''
+      notificationWindow: 30,
+      slackChannel: '#alerts'
     });
   };
 
@@ -66,10 +81,10 @@ const AgentCreationForm = () => {
               </div>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Agent Created Successfully
+              License Agent Created!
             </h2>
             <p className="text-gray-600 mb-8">
-              Your {agentTypeId} agent is now active and monitoring
+              Your license monitoring agent is now active
             </p>
             
             <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 rounded-xl p-5 mb-8 border border-gray-100">
@@ -77,9 +92,13 @@ const AgentCreationForm = () => {
                 <span className="text-sm text-gray-600">Agent Name</span>
                 <span className="font-semibold text-gray-900">{formData.agentName}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
                 <span className="text-sm text-gray-600">Environment</span>
                 <span className="font-semibold text-gray-900">{formData.environment}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Notification Window</span>
+                <span className="font-semibold text-gray-900">{formData.notificationWindow} days</span>
               </div>
             </div>
 
@@ -95,7 +114,7 @@ const AgentCreationForm = () => {
 
       {/* Main Content */}
       <div className="relative z-10 flex items-start justify-center min-h-screen p-8 pt-20">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-2xl">
           {/* Back Button */}
           <button
             onClick={() => navigate(-1)}
@@ -129,25 +148,23 @@ const AgentCreationForm = () => {
             {/* Form */}
             <form onSubmit={handleSubmit} className="px-8 py-6">
               <div className="space-y-5">
-                {/* AI Avatar */}
+                {/* Agent Name */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    AI Avatar <span className="text-red-500">*</span>
+                    Agent Name <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="aiAvatar"
-                    value={formData.aiAvatar}
+                  <input
+                    type="text"
+                    name="agentName"
+                    value={formData.agentName}
                     onChange={handleInputChange}
+                    placeholder="e.g., Production License Monitor"
                     required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  >
-                    <option value="Astra">Astra</option>
-                    <option value="Nova">Nova</option>
-                    <option value="Zenith">Zenith</option>
-                  </select>
+                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                  />
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Choose an AI personality that will represent this agent</span>
+                    <span>Give your license agent a descriptive name</span>
                   </p>
                 </div>
 
@@ -171,96 +188,49 @@ const AgentCreationForm = () => {
                   </p>
                 </div>
 
-                {/* Alert Window */}
+                {/* Notification Window (Number Input) */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Alert Window <span className="text-red-500">*</span>
+                    Notification Window (days) <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="alertWindow"
-                    value={formData.alertWindow}
+                  <input
+                    type="number"
+                    name="notificationWindow"
+                    value={formData.notificationWindow}
                     onChange={handleInputChange}
+                    min="1"
+                    max="365"
                     required
                     className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  >
-                    <option value="30">30 days, 60 days, etc</option>
-                    <option value="7">7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="60">60 days</option>
-                    <option value="90">90 days</option>
-                  </select>
+                  />
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Define how far ahead this agent should schedule tasks</span>
+                    <span>Number of days before license expiry to send notifications</span>
                   </p>
                 </div>
 
-                {/* Notification */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Notification <span className="text-red-500">*</span>
+                {/* Slack Channel (Read-only, only option) */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Notification Channel
                   </label>
-                  <div className="flex gap-4">
-                    <label className="flex-1">
-                      <input
-                        type="radio"
-                        name="notification"
-                        checked={formData.notification === true}
-                        onChange={() => setFormData(prev => ({ ...prev, notification: true }))}
-                        className="sr-only peer"
-                      />
-                      <div className="flex items-center justify-center gap-2 px-5 py-3 text-sm border-2 rounded-xl cursor-pointer transition-all duration-300 peer-checked:border-blue-500 peer-checked:bg-gradient-to-br peer-checked:from-blue-50 peer-checked:to-blue-100/50 peer-checked:text-blue-700 peer-checked:shadow-lg border-gray-200 text-gray-700 hover:border-gray-300 bg-white/70 backdrop-blur-sm">
-                        <span className="w-5 h-5 rounded-full border-2 flex items-center justify-center peer-checked:border-blue-500 border-gray-300 transition-all duration-300">
-                          {formData.notification === true && <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>}
-                        </span>
-                        <span className="font-semibold">Yes</span>
-                      </div>
-                    </label>
-                    <label className="flex-1">
-                      <input
-                        type="radio"
-                        name="notification"
-                        checked={formData.notification === false}
-                        onChange={() => setFormData(prev => ({ ...prev, notification: false }))}
-                        className="sr-only peer"
-                      />
-                      <div className="flex items-center justify-center gap-2 px-5 py-3 text-sm border-2 rounded-xl cursor-pointer transition-all duration-300 peer-checked:border-blue-500 peer-checked:bg-gradient-to-br peer-checked:from-blue-50 peer-checked:to-blue-100/50 peer-checked:text-blue-700 peer-checked:shadow-lg border-gray-200 text-gray-700 hover:border-gray-300 bg-white/70 backdrop-blur-sm">
-                        <span className="w-5 h-5 rounded-full border-2 flex items-center justify-center peer-checked:border-blue-500 border-gray-300 transition-all duration-300">
-                          {formData.notification === false && <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>}
-                        </span>
-                        <span className="font-semibold">No</span>
-                      </div>
-                    </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="slackChannel"
+                      value="Slack"
+                      readOnly
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600 cursor-not-allowed"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <span className="text-2xl">💬</span>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Enable notifications for agent activities and alerts</span>
+                    <span>Alerts will be sent to your configured Slack channel: {formData.slackChannel}</span>
                   </p>
                 </div>
-
-                {/* Notification Channel */}
-                {formData.notification && (
-                  <div className="animate-fadeIn">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Notification Channel <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="notificationChannel"
-                      value={formData.notificationChannel}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                    >
-                      <option value="Slack">Slack</option>
-                      <option value="Email">Email</option>
-                      <option value="SMS">SMS</option>
-                      <option value="Teams">Teams</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                      <span>💡</span>
-                      <span>Choose where you want to receive notifications</span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Action Buttons */}
