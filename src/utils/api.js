@@ -66,10 +66,13 @@ export const api = {
   },
 
   // Chat with backend
-  sendChatMessage: async (message) => {
-    const response = await api.fetchWithAuth('/chat', {
+  sendChatMessage: async (message, chatHistory = {}) => {
+    const response = await api.fetchWithAuth('/test/license-chat', {
       method: 'POST',
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ 
+        message,
+        chat_history: chatHistory  // Include conversation context
+      })
     });
     
     if (!response.ok) {

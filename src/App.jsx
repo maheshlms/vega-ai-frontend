@@ -8,6 +8,7 @@ import TopBar from './layouts/TopBar.jsx';
 import Sidebar from './layouts/Sidebar.jsx';
 import Dashboard from './features/Dashboard.jsx';
 import Agents from './features/Agents.jsx';
+import ChatPage from './features/ChatPage.jsx';
 import IntegrationBay from "./features/IntegrationBay.jsx";
 import DataUplink from './features/DataUplink.jsx';
 import AuditLogs from './features/AuditLogs.jsx';
@@ -67,6 +68,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Agents />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
                 </ProtectedRoute>
               } 
             />

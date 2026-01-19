@@ -5,6 +5,7 @@ import { MdOutlineVerifiedUser } from "react-icons/md";
 import { TbWaveSawTool } from "react-icons/tb";
 import { IoSettingsOutline, IoLogOutOutline } from "react-icons/io5";
 import { AiOutlineHome } from "react-icons/ai";
+import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -12,6 +13,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: AiOutlineHome, value: "Dashboard", path: "/dashboard" },
     { icon: GoPeople, value: "AI Agent", path: "/agents" },
+    { icon: IoChatbubbleEllipsesOutline, value: "Chat", path: "/chat" },
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     { icon: GoDatabase, value: "Data Uplink", path: "/data" },
     { icon: TbWaveSawTool, value: "Audits Log", path: "/audits" },
