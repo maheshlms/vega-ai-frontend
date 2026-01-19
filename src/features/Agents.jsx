@@ -240,11 +240,11 @@ const Agents = () => {
           </div>
 
           {/* AGENT CARDS */}
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6">
             {agents.map((agent, index) => (
               <div 
                 key={agent.id || index}
-                className="bg-white w-60 h-85 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
+                className="bg-white w-55 h-82 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
                 onClick={()=> navigate('/agents/agentchat')}
               >
                 {/* Delete Button - Top Left (only for non-default agents) */}

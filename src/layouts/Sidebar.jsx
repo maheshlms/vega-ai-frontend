@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation , useNavigate } from "react-router-dom";
 import { GoPeople, GoDatabase } from "react-icons/go";
 import { MdOutlineVerifiedUser } from "react-icons/md";
 import { TbWaveSawTool } from "react-icons/tb";
@@ -9,12 +9,15 @@ import { AiOutlineHome } from "react-icons/ai";
 const Sidebar = () => {
   const location = useLocation();
 
+
+
+
   const menuItems = [
     { icon: AiOutlineHome, value: "Dashboard", path: "/dashboard" },
     { icon: GoPeople, value: "AI Agent", path: "/agents" },
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     { icon: GoDatabase, value: "Data Uplink", path: "/data" },
-    { icon: TbWaveSawTool, value: "Audits Log", path: "/audits" },
+    { icon: TbWaveSawTool, value: "Audits Log", path: "/auditlogs" },
     { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
   ];

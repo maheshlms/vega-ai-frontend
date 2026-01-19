@@ -8,8 +8,11 @@ import { GoClock } from "react-icons/go";
 import { CiPause1 } from "react-icons/ci";
 import { BsChatLeftText } from "react-icons/bs";
 import { SiSimpleanalytics } from "react-icons/si";
+import {useNavigate} from "react-router-dom" ;
 
 const TaskExecute = () => {
+
+    const navigate = useNavigate() ;
   // Processing state for task execution
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -138,7 +141,7 @@ const TaskExecute = () => {
   };
 
   const handleGoBack = () => {
-    console.log('Go back clicked');
+    navigate("/agents/agentchat") ;
   };
 
   const handleResetTask = () => {

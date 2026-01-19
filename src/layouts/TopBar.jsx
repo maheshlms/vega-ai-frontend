@@ -6,26 +6,76 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { FaRegUser } from "react-icons/fa6";
 import { GoSun } from "react-icons/go";
 
+/* ===================== SEARCH BOX ===================== */
+const SearchBox = ({ icon: Icon }) => {
+  const WORDS = [
+    "Search Users",
+    "Search Roles",
+    "Search Permissions",
+    "And more..."
+  ];
 
+  const [inputValue, setInputValue] = useState("");
+  const [typingText, setTypingText] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isDone, setIsDone] = useState(false);
 
-/* ---------------- SEARCH BOX ---------------- */
-const SearchBox = ({ text, placeholder, className = "", icon: Icon }) => (
-  <div className="relative w-[420px]  max-w-full">
-    <input
-      type={text || "text"}
-      placeholder={placeholder}
-      className={`w-full h-10 pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
-        focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 ${className}`}
-    />
-    {Icon && (
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
-        <Icon size={18} />
-      </span>
-    )}
-  </div>
-);
+  /* Typing effect – runs ONCE through all words */
+  useEffect(() => {
+    if (isFocused || inputValue || isDone) return;
 
-/* ---------------- DARK MODE ---------------- */
+    const currentWord = WORDS[wordIndex];
+
+    if (charIndex < currentWord.length) {
+      const timeout = setTimeout(() => {
+        setTypingText((prev) => prev + currentWord[charIndex]);
+        setCharIndex((prev) => prev + 1);
+      }, 80);
+
+      return () => clearTimeout(timeout);
+    } else {
+      const timeout = setTimeout(() => {
+        setTypingText("");
+        setCharIndex(0);
+
+        if (wordIndex === WORDS.length - 1) {
+          setIsDone(true); // stop forever
+        } else {
+          setWordIndex((prev) => prev + 1);
+        }
+      }, 900);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [charIndex, wordIndex, isFocused, inputValue, isDone]);
+
+  return (
+    <div className="relative w-[420px] max-w-full">
+      <input
+        type="text"
+        value={inputValue || typingText}
+        onChange={(e) => setInputValue(e.target.value)}
+        onFocus={() => {
+          setIsFocused(true);
+          setTypingText("");
+        }}
+        onBlur={() => setIsFocused(false)}
+        className="w-full h-10 pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
+          focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 text-slate-900"
+      />
+
+      {Icon && (
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
+          <Icon size={18} />
+        </span>
+      )}
+    </div>
+  );
+};
+
+/* ===================== DARK MODE ===================== */
 const DarkMode = () => {
   const [dark, setDark] = useState(false);
 
@@ -39,13 +89,16 @@ const DarkMode = () => {
   }, [dark]);
 
   return (
-    <button onClick={() => setDark(!dark)} className="p-2 rounded-md shadow bg-white">
+    <button
+      onClick={() => setDark(!dark)}
+      className="p-2 rounded-md shadow bg-white"
+    >
       {dark ? <GoSun size={20} /> : <MdOutlineDarkMode size={20} />}
     </button>
   );
 };
 
-/* ---------------- TOP BAR ---------------- */
+/* ===================== TOP BAR ===================== */
 const TopBar = () => {
   return (
     <div className="sticky top-0 z-50 w-full bg-navbar border-b border-navbar-profile">
@@ -67,9 +120,7 @@ const TopBar = () => {
         </div>
 
         {/* CENTER SEARCH */}
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <SearchBox placeholder="Search users, roles, permissions and more" icon={IoIosSearch} />
-        </div>
+        <SearchBox icon={IoIosSearch} />
 
         {/* RIGHT */}
         <div className="flex items-center gap-6">
@@ -81,7 +132,9 @@ const TopBar = () => {
             <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon">
               <FaRegUser className="text-white text-sm" />
             </div>
-            <span className="text-sm font-semibold text-navbar-profile">Profile</span>
+            <span className="text-sm font-semibold text-navbar-profile">
+              Profile
+            </span>
           </div>
 
           <DarkMode />

@@ -7,6 +7,7 @@ import { PiCertificate } from "react-icons/pi";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CiServer } from "react-icons/ci";
 import FloatingChat from "../features/FloatingChat";
+import {Typewriter } from "react-simple-typewriter" ;
 
 const Dashboard = () => {
   const [isLoaded, setIsLoaded] = useState(false);

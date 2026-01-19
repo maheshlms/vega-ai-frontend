@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline } from "react-icons/io5";
 import { useNavigate } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
+import {Typewriter} from "react-simple-typewriter" ;    
 
 const AgentChat = () => {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ const AgentChat = () => {
   // Chat history in the required format: { 'User1': <message>, 'Agent1': <message>, ... }
   const [chatHistory, setChatHistory] = useState({});
 
+  // HeyGen state - to be passed to AI Assist page
+  const [heygenScript, setHeygenScript] = useState('');
+
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,6 +25,26 @@ const AgentChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
+
+  // Simple AI response generator (frontend only)
+  const generateAIResponse = (userMessage) => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Simple keyword-based responses
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+      return "Hello! I'm Astra, your Ping Federate assistant. I can help you with authentication, OAuth, SAML, and more. What would you like to know?";
+    } else if (lowerMessage.includes('oauth')) {
+      return "Ping Federate provides comprehensive OAuth 2.0 support. You can configure authorization servers, manage clients, and set up various grant types including authorization code, client credentials, and PKCE.";
+    } else if (lowerMessage.includes('saml')) {
+      return "SAML 2.0 integration in Ping Federate allows you to set up identity provider and service provider connections. You can configure assertions, bindings, and metadata exchange.";
+    } else if (lowerMessage.includes('help')) {
+      return "I can assist you with Ping Federate configuration, troubleshooting, OAuth flows, SAML setup, user authentication, and federation best practices. What specific topic would you like help with?";
+    } else if (lowerMessage.includes('configure') || lowerMessage.includes('setup')) {
+      return "To configure Ping Federate, you'll need to access the admin console, set up your connections, define authentication policies, and configure adapters. Would you like detailed steps for a specific component?";
+    } else {
+      return `You asked about "${userMessage}". As Astra, your Ping Federate assistant, I'm here to help with authentication, federation, OAuth, SAML, and identity management. Could you provide more details about what you need?`;
+    }
+  };
 
   // Handle send message
   const handleSend = useCallback(async () => {
@@ -45,65 +69,42 @@ const AgentChat = () => {
       };
       setChatHistory(updatedHistory);
       
+      const currentInput = inputValue;
       setInputValue('');
       setIsTyping(true);
 
-      // Prepare data to send to backend
-      const formData = {
-        message: inputValue,
-        chatHistory: updatedHistory
-      };
-
-      try {
-        // TODO: Replace with actual backend API call
-        // const response = await fetch('/api/chat', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(formData)
-        // });
-        // const data = await response.json();
-        
-        // Simulate backend response
-        setTimeout(() => {
-          setIsTyping(false);
-          
-          // Backend should return: { script: "...", displayText: "..." }
-          // For now, using mock response
-          const mockResponse = {
-            script: "I'm here to help you with Ping Federate. How can I assist you today?",
-            displayText: "I'm here to help you with Ping Federate. How can I assist you today?"
-          };
-          
-          const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
-          const agentKey = `Agent${agentMessageIndex}`;
-          
-          const aiMessage = {
-            id: Date.now() + 1,
-            text: mockResponse.displayText,
-            sender: 'ai',
-            timestamp: new Date()
-          };
-          
-          setMessages(prev => [...prev, aiMessage]);
-          
-          // Update chat history with agent response
-          setChatHistory(prev => ({
-            ...prev,
-            [agentKey]: mockResponse.displayText
-          }));
-          
-          // TODO: Use mockResponse.script for HeyGen avatar speech
-          console.log('HeyGen Script:', mockResponse.script);
-          console.log('Chat History:', {
-            ...updatedHistory,
-            [agentKey]: mockResponse.displayText
-          });
-        }, 1500);
-        
-      } catch (error) {
-        console.error('Error sending message:', error);
+      // Simulate typing delay
+      setTimeout(() => {
         setIsTyping(false);
-      }
+        
+        // Generate AI response
+        const aiResponseText = generateAIResponse(currentInput);
+        
+        const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
+        const agentKey = `Agent${agentMessageIndex}`;
+        
+        const aiMessage = {
+          id: Date.now() + 1,
+          text: aiResponseText,
+          sender: 'ai',
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // Update chat history with agent response
+        const newHistory = {
+          ...updatedHistory,
+          [agentKey]: aiResponseText
+        };
+        setChatHistory(newHistory);
+        
+        // Store the script for HeyGen
+        setHeygenScript(aiResponseText);
+        
+        console.log('HeyGen Script:', aiResponseText);
+        console.log('Chat History:', newHistory);
+      }, 1000);
     }
   }, [inputValue, chatHistory]);
 
@@ -118,6 +119,7 @@ const AgentChat = () => {
     setMessages([]);
     setInputValue('');
     setChatHistory({});
+    setHeygenScript('');
   }, []);
 
   const handleBack = useCallback(() => {
@@ -128,8 +130,18 @@ const AgentChat = () => {
     navigate('/agents/agentchat/execute');
   }, [navigate]);
 
+  const handleAIAssistance = useCallback(() => {
+    // Navigate to AI Assist page with the latest script
+    navigate('/agents/agentchat/aiassist', { 
+      state: { 
+        script: heygenScript,
+        chatHistory: chatHistory 
+      } 
+    });
+  }, [navigate, heygenScript, chatHistory]);
+
   return (
-    <div className="w-full min-h-screen bg-[#F3F4F6]">
+    <div className="w-full  bg-[#F3F4F6]">
       {/* Header */}
       <div className="px-10 py-5 flex items-center justify-between">
         {/* Left side - Back button and title */}
@@ -156,12 +168,12 @@ const AgentChat = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex justify-center mt-2 px-4">
+      <div className="flex justify-center   px-4">
         <div className="bg-white w-full max-w-4xl rounded-xl shadow-lg relative">
           
           {/* Avatar */}
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-30 h-30 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
               <img 
                 src="/avatar.png" 
                 alt="Astra"
@@ -174,10 +186,10 @@ const AgentChat = () => {
           </div>
 
           {/* Content area */}
-          <div className="pt-15 pb-6 px-6">
+          <div className="pt-1 pb-6 px-6">
             
             {/* Agent info */}
-            <div className="flex flex-col items-center text-center space-y-2">
+            <div className="flex flex-col items-center text-center space-y-2 pt-8">
               {/* Name badge */}
               <div className="bg-blue-100 text-blue-700 px-4 rounded-full text-sm font-medium z-11">
                 Astra
@@ -187,13 +199,21 @@ const AgentChat = () => {
               <p className="text-sm text-gray-600">Ping Federate Agent</p>
               
               {/* Welcome message */}
-              <h2 className="text-2xl font-bold text-gray-900 pt-2">
-                How may I help you?
+              <h2 className="text-2xl font-bold text-gray-900 ">
+                <Typewriter
+                 words ={["How May I Help You ?"]}
+                 cursor
+                 cursorStyle="|"
+                 typeSpeed={70}
+                 deleteSpeed={30}
+                 delaySpeed={1200}
+
+                />
               </h2>
             </div>
 
             {/* Messages container */}
-            <div className="mt-8 h-[350px] overflow-y-auto px-4">
+            <div className=" h-[250px] overflow-y-auto px-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-gray-400 text-sm">Start a conversation...</p>
@@ -281,7 +301,7 @@ const AgentChat = () => {
                 <button
                   className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   aria-label="AI Assistance"
-                  onClick={() => navigate("/agents/agentchat/aiassist")}
+                  onClick={handleAIAssistance}
                 >
                   <HiSparkles className="text-blue-600 text-lg" />
                   <span className="text-sm font-medium text-gray-700">AI Assistance</span>

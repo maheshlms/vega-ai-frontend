@@ -15,6 +15,7 @@ import AgentChat from './features/AgentChat.jsx' ;
 import AiAssist from "./features/AiAssist.jsx" ;
 import TaskExecute from "./features/TaskExecute.jsx" ;
 
+
 // import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AdvancedIntegrations from './features/AdvancedIntegrations';
 import AgentTypeSelection from './features/AgentTypeSelection';
@@ -48,6 +49,7 @@ function App() {
                <Route path="/agents/createagent" element={<AdvancedIntegrations />} />
               <Route path="/agents/create/:integrationId" element={<AgentTypeSelection />} />
               <Route path="/agents/create/:integrationId/:agentTypeId" element={<AgentCreationForm />} />
+              <Route path="/auditlogs" element={<AuditLogs />} />
 
             
             </Routes>
