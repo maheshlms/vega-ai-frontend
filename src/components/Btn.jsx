@@ -1,10 +1,14 @@
-function Btn({ value, className = "" }) {
+function Btn({ value, className = "", onClick, disabled = false }) {
   return (
     <button
+      onClick={onClick}
+      disabled={disabled}
       className={`
         text-white font-semibold relative overflow-hidden
         transition-all duration-200
         hover:scale-[1.04] active:scale-[0.96]
+        cursor-pointer
+        disabled:opacity-50 disabled:cursor-not-allowed
         ${className}
       `}
     >
