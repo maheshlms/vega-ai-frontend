@@ -28,22 +28,47 @@ const AiAssist = () => {
 
   const avatar = useRef(null);
   const videoRef = useRef(null);
+  const hasSpokenInitialScript = useRef(false);
+  const mediaStreamRef = useRef(null);
 
   // Automatically start avatar session when component mounts
   useEffect(() => {
     startSession();
+    
+    // Cleanup on unmount
+    return () => {
+      if (avatar.current) {
+        avatar.current.stopAvatar().catch(console.error);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Speak the script once avatar is ready
   useEffect(() => {
-    if (isAvatarActive && scriptFromChat && !isPlaying) {
-      handleSpeak(scriptFromChat);
+    if (isAvatarActive && scriptFromChat && !hasSpokenInitialScript.current) {
+      hasSpokenInitialScript.current = true;
+      setTimeout(() => {
+        handleSpeak(scriptFromChat);
+      }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAvatarActive]);
 
-  // Fetch HeyGen access token - FRONTEND ONLY VERSION
+  // Handle video stream when it's set
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      console.log('Setting video stream:', stream);
+      videoRef.current.srcObject = stream;
+      mediaStreamRef.current = stream;
+      
+      videoRef.current.play().catch(error => {
+        console.error('Error playing video:', error);
+      });
+    }
+  }, [stream]);
+
+  // Fetch HeyGen access token
   const fetchAccessToken = async () => {
     try {
       const HEYGEN_API_KEY = import.meta.env.VITE_HEYGEN_API_KEY;
@@ -116,29 +141,17 @@ const AiAssist = () => {
       avatar.current.on(StreamingEvents.STREAM_READY, (event) => {
         console.log('Stream ready:', event.detail);
         setStream(event.detail);
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = event.detail;
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current.play();
-            setDebug('Avatar ready');
-          };
-        }
+        setDebug('Stream connected');
       });
 
       console.log('🎭 Starting avatar session...');
 
-      // Start avatar with configuration
-      // NOTE: Remove avatarName and voice.voiceId to use account defaults
-      // Or specify valid IDs from your HeyGen account
+      // Start avatar with MINIMAL configuration - uses account defaults
       const res = await avatar.current.createStartAvatar({
         quality: AvatarQuality.High,
-        // avatarName: 'Angela-inblackskirt-20220820', // Use a valid avatar ID from your account
-        // OR omit avatarName to use your account's default avatar
         voice: {
-          rate: 1.0, // Speech rate (0.5 to 2.0)
+          rate: 1.0,
           emotion: VoiceEmotion.FRIENDLY,
-          // voiceId: '1bd001e7e50f421d891986aad5158bc8', // Optional: specify voice ID
         },
         language: 'en',
         disableIdleTimeout: false,
@@ -146,18 +159,22 @@ const AiAssist = () => {
 
       console.log('✅ Avatar session started:', res);
       setIsAvatarActive(true);
-      setDebug('Avatar session started');
+      setDebug('Avatar ready');
       
     } catch (error) {
       console.error('❌ Error starting avatar session:', error);
       setDebug(`Error: ${error.message}`);
       
-      // Show user-friendly error message
-      let errorMessage = 'Failed to start avatar session.';
+      let errorMessage = 'Failed to start avatar session. ';
+      
       if (error.message.includes('400')) {
-        errorMessage = 'Configuration error. Please check your avatar settings or use default avatar.';
+        errorMessage += 'Configuration error. Please check your avatar settings or use default avatar.';
       } else if (error.message.includes('API key')) {
-        errorMessage = 'Invalid API key. Please check your .env file.';
+        errorMessage += 'Invalid API key. Please check your .env file.';
+      } else if (error.message.includes('401')) {
+        errorMessage += 'Authentication failed. Your API key may be invalid or expired.';
+      } else if (error.message.includes('403')) {
+        errorMessage += 'Access forbidden. Your account may not have permission for streaming avatars.';
       }
       
       alert(errorMessage);
@@ -175,12 +192,23 @@ const AiAssist = () => {
 
     try {
       await avatar.current.stopAvatar();
+      
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+      }
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      
       setStream(null);
       setIsAvatarActive(false);
       setIsPlaying(false);
       setIsPaused(false);
       setCaption('');
       setDebug('Avatar session ended');
+      hasSpokenInitialScript.current = false;
     } catch (error) {
       console.error('Error ending avatar session:', error);
       setDebug(`Error ending session: ${error.message}`);
@@ -188,10 +216,16 @@ const AiAssist = () => {
   };
 
   // Make avatar speak
-  const handleSpeak = async (textToSpeak) => {
+  const handleSpeak = useCallback(async (textToSpeak) => {
     if (!avatar.current || !isAvatarActive) {
       console.error('Avatar not initialized');
       setDebug('Avatar not initialized');
+      alert('Avatar is not initialized yet. Please wait for the avatar to load.');
+      return;
+    }
+
+    if (!textToSpeak || textToSpeak.trim() === '') {
+      console.warn('Empty text provided');
       return;
     }
 
@@ -205,15 +239,15 @@ const AiAssist = () => {
         taskType: TaskType.REPEAT,
         taskMode: 'sync',
       });
+      console.log('✅ Speaking command sent');
       setDebug('Speaking...');
     } catch (error) {
       console.error('Error making avatar speak:', error);
       setDebug(`Error: ${error.message}`);
     }
-  };
+  }, [isAvatarActive]);
 
   const handleBack = useCallback(() => {
-    // Clean up before navigating back
     if (avatar.current && isAvatarActive) {
       endSession();
     }
@@ -227,6 +261,7 @@ const AiAssist = () => {
         setIsPlaying(false);
         setIsPaused(false);
         setCaption('');
+        setShowCaption(false);
         setDebug('Stopped');
       } catch (error) {
         console.error('Error stopping avatar:', error);
@@ -235,10 +270,13 @@ const AiAssist = () => {
   }, [isAvatarActive]);
 
   const handlePause = useCallback(async () => {
-    if (!avatar.current || !isPlaying) return;
+    if (!avatar.current || !isPlaying) {
+      console.log('Cannot pause - avatar not playing');
+      return;
+    }
     
     try {
-      await avatar.current.pauseAvatar();
+      await avatar.current.interrupt();
       setIsPaused(true);
       setIsPlaying(false);
       setDebug('Paused');
@@ -249,33 +287,50 @@ const AiAssist = () => {
   }, [isPlaying]);
 
   const handlePlay = useCallback(async () => {
-    if (!avatar.current) return;
+    console.log('Play clicked. Avatar state:', { 
+      avatarExists: !!avatar.current, 
+      isAvatarActive, 
+      isPaused, 
+      isPlaying 
+    });
+
+    if (!avatar.current) {
+      console.error('Avatar reference is null');
+      alert('Avatar is not initialized. Please wait for the avatar to load.');
+      return;
+    }
+
+    if (!isAvatarActive) {
+      console.error('Avatar session not active');
+      alert('Avatar session is not active. Please wait for initialization to complete.');
+      return;
+    }
     
     try {
-      if (isPaused) {
-        // Resume if paused
-        await avatar.current.resumeAvatar();
-        setIsPaused(false);
-        setIsPlaying(true);
-        setDebug('Resumed');
-      } else if (scriptFromChat) {
-        // Start speaking again if not paused
+      if (!isPlaying && scriptFromChat) {
+        console.log('Starting to speak script...');
         await handleSpeak(scriptFromChat);
+      } else {
+        console.log('Avatar is already playing or no script available');
       }
     } catch (error) {
-      console.error('Error resuming avatar:', error);
-      setDebug(`Error resuming: ${error.message}`);
+      console.error('Error in handlePlay:', error);
+      setDebug(`Error: ${error.message}`);
     }
-  }, [isPaused, scriptFromChat]);
+  }, [isPaused, isPlaying, scriptFromChat, isAvatarActive, handleSpeak]);
 
   const handleStop = useCallback(async () => {
-    if (!avatar.current) return;
+    if (!avatar.current) {
+      console.log('No avatar to stop');
+      return;
+    }
     
     try {
       await avatar.current.interrupt();
       setIsPlaying(false);
       setIsPaused(false);
       setCaption('');
+      setShowCaption(false);
       setDebug('Stopped');
     } catch (error) {
       console.error('Error stopping avatar:', error);
@@ -291,7 +346,7 @@ const AiAssist = () => {
   const handleRestartSession = useCallback(() => {
     if (isAvatarActive) {
       endSession().then(() => {
-        setTimeout(() => startSession(), 500);
+        setTimeout(() => startSession(), 1000);
       });
     } else {
       startSession();
@@ -333,7 +388,7 @@ const AiAssist = () => {
         </div>
       </div>
 
-      {/* Main Content - Fills remaining space, centers content vertically */}
+      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-4 sm:py-6 overflow-hidden">
         <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-3 sm:gap-4 md:gap-5">
           
@@ -361,20 +416,27 @@ const AiAssist = () => {
                   )}
                 </div>
               ) : (
-                // HeyGen Video Stream
-                <div className="w-35 h-35 xs:w-48 xs:h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-white bg-gray-200">
+                // HeyGen Video Stream - NO TRANSFORM to show complete avatar
+                <div className="w-35 h-35 xs:w-48 xs:h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-white bg-gray-900">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     className="w-full h-full object-cover"
+                    onLoadedMetadata={(e) => {
+                      console.log('Video metadata loaded');
+                      e.target.play().catch(err => console.error('Play error:', err));
+                    }}
+                    onError={(e) => {
+                      console.error('Video error:', e);
+                    }}
                   />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Caption Box - Responsive sizing and max height */}
+          {/* Caption Box */}
           {showCaption && caption && (
             <div className="relative w-full max-w-xl lg:max-w-2xl flex-shrink-0">
               <div className="bg-white rounded-lg shadow-md border border-gray-200 p-3 sm:p-4 md:p-5 relative">
@@ -393,7 +455,7 @@ const AiAssist = () => {
             </div>
           )}
 
-          {/* Control Buttons - Responsive sizing */}
+          {/* Control Buttons */}
           <div className="flex justify-center items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
             <button
               onClick={handlePause}
@@ -426,7 +488,7 @@ const AiAssist = () => {
             </button>
           </div>
 
-          {/* Debug Info (only in development) */}
+          {/* Debug Info */}
           {import.meta.env.DEV && debug && (
             <div className="mt-2 px-4 py-2 bg-gray-800 text-white text-xs rounded-lg max-w-lg text-center">
               {debug}

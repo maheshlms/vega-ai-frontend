@@ -157,7 +157,7 @@ const Dashboard = () => {
         {/* Header Section */}
         <div className={`pt-4 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl 2xl:text-3xl font-bold text-slate-800">IAM Command Center</h1>
+            <h1 className="text-2xl 2xl:text-3xl font-bold text-slate-800 ">IAM Command Center</h1>
             <TfiReload 
               className={`text-[#16A34A] cursor-pointer hover:rotate-180 transition-transform duration-500 hover:scale-110 ${isRefreshing ? 'animate-spin' : ''}`}
               onClick={handleRefresh}
@@ -495,5 +495,6 @@ const Dashboard = () => {
     </div>
   );
 };
+
 
 export default Dashboard;
