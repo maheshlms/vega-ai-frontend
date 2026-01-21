@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-// import { useAuth0 } from '@auth0/auth0-react';  // Later - Auth0 disabled for development
+import { useAuth0 } from '@auth0/auth0-react';  
 import LoginPage from './features/LoginPage.jsx';
 import Callback from './features/Callback.jsx';
 import MouseMove from './effects/MouseMove.jsx';
@@ -21,28 +21,28 @@ import AuditLogs from './features/AuditLogs.jsx';
 import Settings from './features/Settings.jsx';
 import Logout from './features/Logout.jsx';
 import TopBarNotification from './features/NotificationDropdown.jsx';
-// import { auth } from './utils/auth'; // Later - Auth0 disabled for development
+import { auth } from './utils/auth'; 
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
   // Later - Auth0 authentication
-  // const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading } = useAuth0();
-  // const isLocalAuthenticated = auth.isAuthenticated();
-  // const isAuth = auth0Authenticated || isLocalAuthenticated;
+  const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading } = useAuth0();
+  const isLocalAuthenticated = auth.isAuthenticated();
+  const isAuth = auth0Authenticated || isLocalAuthenticated;
 
   // Later - Auth0 loading state
-  // if (auth0Loading) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen">
-  //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
+  if (auth0Loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   // Later - Auth0 authentication check
-  // if (!isAuth) {
-  //   return <Navigate to="/login" replace />;
-  //}
+  if (!isAuth) {
+    return <Navigate to="/login" replace />;
+  }
 
   // Temporary: Allow access without authentication for development
   return <>{children}</>;
