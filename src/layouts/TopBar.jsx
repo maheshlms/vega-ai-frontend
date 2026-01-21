@@ -1,79 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { IoIosSearch } from "react-icons/io";
-import { IoMdHelpCircleOutline } from "react-icons/io";
-import { MdOutlineNotificationsNone, MdOutlineDarkMode } from "react-icons/md";
-import { IoSettingsOutline } from "react-icons/io5";
-import { FaRegUser } from "react-icons/fa6";
+import { MdOutlineDarkMode } from "react-icons/md";
 import { GoSun } from "react-icons/go";
 
-/* ===================== SEARCH BOX ===================== */
-const SearchBox = ({ icon: Icon }) => {
-  const WORDS = [
-    "Search Users",
-    "Search Roles",
-    "Search Permissions",
-    "And more..."
-  ];
-
-  const [inputValue, setInputValue] = useState("");
-  const [typingText, setTypingText] = useState("");
-  const [wordIndex, setWordIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [isFocused, setIsFocused] = useState(false);
-  const [isDone, setIsDone] = useState(false);
-
-  /* Typing effect – runs ONCE through all words */
-  useEffect(() => {
-    if (isFocused || inputValue || isDone) return;
-
-    const currentWord = WORDS[wordIndex];
-
-    if (charIndex < currentWord.length) {
-      const timeout = setTimeout(() => {
-        setTypingText((prev) => prev + currentWord[charIndex]);
-        setCharIndex((prev) => prev + 1);
-      }, 80);
-
-      return () => clearTimeout(timeout);
-    } else {
-      const timeout = setTimeout(() => {
-        setTypingText("");
-        setCharIndex(0);
-
-        if (wordIndex === WORDS.length - 1) {
-          setIsDone(true); // stop forever
-        } else {
-          setWordIndex((prev) => prev + 1);
-        }
-      }, 900);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [charIndex, wordIndex, isFocused, inputValue, isDone]);
-
-  return (
-    <div className="relative w-[420px] max-w-full">
-      <input
-        type="text"
-        value={inputValue || typingText}
-        onChange={(e) => setInputValue(e.target.value)}
-        onFocus={() => {
-          setIsFocused(true);
-          setTypingText("");
-        }}
-        onBlur={() => setIsFocused(false)}
-        className="w-full h-10 pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
-          focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 text-slate-900"
-      />
-
-      {Icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
-          <Icon size={18} />
-        </span>
-      )}
-    </div>
-  );
-};
+// Import all dropdown components
+import NotificationDropdown from '../features/NotificationDropdown';
+import HelpDropdown from '../features/HelpDropdown';
+import SettingsDropdown from '../features/SettingsDropdown';
+import ProfileDropdown from '../features/ProfileDropdown';
+import SearchBox from '../features/SearchBox';
 
 /* ===================== DARK MODE ===================== */
 const DarkMode = () => {
@@ -112,7 +47,6 @@ const TopBar = () => {
     };
     window.addEventListener('storage', handleStorageChange);
     
-    // Poll for changes since localStorage events don't fire in same tab
     const interval = setInterval(handleStorageChange, 100);
     
     return () => {
@@ -135,32 +69,51 @@ const TopBar = () => {
       {/* DESKTOP NAVBAR */}
       <div className="hidden md:flex h-18 items-center justify-between px-6 min-w-[1024px]">
 
-        {/* LEFT */}
+        {/* LEFT - Logo */}
         <div className="flex items-center">
-          <img src={dark ? "./logo-dark.png" : "./logo-light.png"} alt="Vega AI" className="h-9" />
+          <img 
+            src={dark ? "./logo-dark.png" : "./logo-light.png"} 
+            alt="Vega AI" 
+            className="h-9" 
+          />
         </div>
 
-        {/* CENTER SEARCH */}
+        {/* CENTER - Search */}
         <SearchBox icon={IoIosSearch} />
 
-        {/* RIGHT */}
+        {/* RIGHT - Actions */}
         <div className="flex items-center gap-6">
-          <MdOutlineNotificationsNone size={24} className="text-navbar-icon cursor-pointer" />
-          <IoMdHelpCircleOutline size={24} className="text-navbar-icon cursor-pointer" />
-          <IoSettingsOutline size={24} className="text-navbar-icon cursor-pointer" />
-
-          <div className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer">
-            <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon">
-              <FaRegUser className="text-white text-sm" />
-            </div>
-            <span className="text-sm font-semibold text-navbar-profile">
-              Profile
-            </span>
-          </div>
-
+          <NotificationDropdown />
+          <HelpDropdown />
+          <SettingsDropdown />
+          <ProfileDropdown />
           <DarkMode />
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-slideDown {
+          animation: slideDown 0.2s ease-out;
+        }
+
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 };

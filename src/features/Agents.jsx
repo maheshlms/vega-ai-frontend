@@ -5,7 +5,7 @@ import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
 import { MdOutlineStar } from "react-icons/md";
 import { useNavigate } from 'react-router-dom'
 
-const Agents = () => {
+const Agents = ({}) => {
   const navigate = useNavigate();
   const [agents, setAgents] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -245,7 +245,13 @@ const Agents = () => {
               <div 
                 key={agent.id || index}
                 className="bg-white w-55 h-82 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
-                onClick={()=> navigate('/agents/agentchat')}
+                onClick={()=> navigate('/agents/agentchat' , {
+                  state: {
+                          agentName: agent.name,
+                          agentRole: agent.role,
+                          agentImage: agent.image
+                  }
+                })}
               >
                 {/* Delete Button - Top Left (only for non-default agents) */}
                 {!agent.isDefault && (
@@ -287,7 +293,7 @@ const Agents = () => {
                 </div>
 
                 {/* Agent Name - Centered */}
-                <h3 className="text-center text-xl font-bold text-black mb-1">{agent.name}</h3>
+                <h3 className="text-center text-xl font-bold text-black mb-1" >{agent.name}</h3>
                 
                 {/* Agent Role - Centered */}
                 <p className="text-center text-sm text-gray-600 mb-4">{agent.role}</p>

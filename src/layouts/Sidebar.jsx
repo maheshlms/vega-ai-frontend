@@ -19,7 +19,7 @@ const Sidebar = () => {
     { icon: IoChatbubbleEllipsesOutline, value: "Chat", path: "/chat" },
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     { icon: GoDatabase, value: "Data Uplink", path: "/data" },
-    { icon: TbWaveSawTool, value: "Audits Log", path: "/auditlogs" },
+    { icon: TbWaveSawTool, value: "Audits Log", path: "/audits" },
     { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
   ];

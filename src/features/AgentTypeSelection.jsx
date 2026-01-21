@@ -10,7 +10,7 @@ const AgentTypeSelection = () => {
       title: 'Ping Federate',
       subtitle: 'Select the type of agent you want to create',
       agents: [
-        { id: 'ptmaster', name: 'PT Master', description: 'Primary authentication master', icon: '🔐' },
+        { id: 'pfmaster', name: 'PF Master', description: 'Primary authentication master', icon: '🔐' },
         { id: 'certificate', name: 'Certificate', description: 'SSL/TLS certificate management', icon: '📄' },
         { id: 'license', name: 'License', description: 'License monitoring & renewal', icon: '🎫' },
         { id: 'adapter', name: 'Adapter Config', description: 'Configure authentication adapters', icon: '🔧' },
@@ -114,4 +114,4 @@ const AgentTypeSelection = () => {
   );
 };
 
-export default AgentTypeSelection;
+export default AgentTypeSelection;  

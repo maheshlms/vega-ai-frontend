@@ -1,15 +1,24 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline } from "react-icons/io5";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate , useLocation } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
 import {Typewriter} from "react-simple-typewriter" ;    
 
 const AgentChat = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+
+  const { agentName, agentRole, agentImage } = location.state || {
+  agentName: "Astra",
+  agentRole: "Ping Federate Agent",
+  agentImage: "/avatar.png"
+};
+
 
   // Chat history in the required format: { 'User1': <message>, 'Agent1': <message>, ... }
   const [chatHistory, setChatHistory] = useState({});
@@ -192,7 +201,7 @@ const AgentChat = () => {
             <div className="flex flex-col items-center text-center space-y-2 pt-8">
               {/* Name badge */}
               <div className="bg-blue-100 text-blue-700 px-4 rounded-full text-sm font-medium z-11">
-                Astra
+                  {agentName}
               </div>
               
               {/* Role */}
@@ -213,7 +222,7 @@ const AgentChat = () => {
             </div>
 
             {/* Messages container */}
-            <div className=" h-[250px] overflow-y-auto px-4">
+            <div className=" h-[250px] overflow-y-auto px-4 pt-10">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-gray-400 text-sm">Start a conversation...</p>
