@@ -24,7 +24,14 @@ const AgentChat = () => {
   // HeyGen state - to be passed to AI Assist page
   const [heygenScript, setHeygenScript] = useState('');
 
-  // Auto-scroll to bottom
+  // File upload state
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+  
+  // Approval state
+  const [pendingApproval, setPendingApproval] = useState(null);
+  const [approvalProcessing, setApprovalProcessing] = useState(false);
+  
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -81,6 +88,120 @@ const AgentChat = () => {
     }
   };
 
+  // Handle file attachment
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setAttachedFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const handleRemoveFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Handle approval button click
+  const handleApprovalButtonClick = async (action) => {
+    if (!pendingApproval) return;
+    
+    setApprovalProcessing(true);
+    try {
+      const endpoint = action === 'approve' 
+        ? '/api/v1/approvals/button-approve'
+        : '/api/v1/approvals/button-reject';
+      
+      const response = await api.fetchWithAuth(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          approval_id: pendingApproval.approval_id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Approval request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Add system message indicating approval action
+      const actionMessage = {
+        id: Date.now(),
+        text: action === 'approve' 
+          ? `✓ License approval confirmed. Proceeding with installation...` 
+          : `✗ License approval rejected.`,
+        sender: 'system',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, actionMessage]);
+      
+      // If approved, execute the license installation
+      if (action === 'approve') {
+        try {
+          const executeResponse = await api.fetchWithAuth(
+            `/api/v1/approvals/${pendingApproval.approval_id}/execute?session_id=${pendingApproval.session_id}`,
+            {
+              method: 'POST'
+            }
+          );
+          
+          if (executeResponse.ok) {
+            const executeData = await executeResponse.json();
+            const resultMessage = {
+              id: Date.now() + 1,
+              text: executeData.message || '✓ License installation completed!',
+              sender: 'system',
+              timestamp: new Date(),
+              isSuccess: executeData.success
+            };
+            setMessages(prev => [...prev, resultMessage]);
+            console.log('License execution result:', executeData);
+          } else {
+            const errorData = await executeResponse.json();
+            const errorMessage = {
+              id: Date.now() + 1,
+              text: errorData.message || '✗ License installation failed',
+              sender: 'system',
+              timestamp: new Date(),
+              isError: true
+            };
+            setMessages(prev => [...prev, errorMessage]);
+          }
+        } catch (executeError) {
+          console.error('Error executing license installation:', executeError);
+          const errorMessage = {
+            id: Date.now() + 1,
+            text: `Error during installation: ${executeError.message}`,
+            sender: 'system',
+            timestamp: new Date(),
+            isError: true
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      }
+      
+      setPendingApproval(null);
+      
+      console.log(`Approval ${action}ed:`, data);
+    } catch (error) {
+      console.error(`Error processing approval ${action}:`, error);
+      const errorMessage = {
+        id: Date.now(),
+        text: `Error processing approval: ${error.message}`,
+        sender: 'system',
+        isError: true,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setApprovalProcessing(false);
+    }
+  };
+
   // Handle send message
   const handleSend = useCallback(async () => {
     if (inputValue.trim()) {
@@ -91,7 +212,8 @@ const AgentChat = () => {
         id: Date.now(),
         text: inputValue,
         sender: 'user',
-        timestamp: new Date()
+        timestamp: new Date(),
+        files: attachedFiles.length > 0 ? attachedFiles.map(f => f.name) : null
       };
       
       // Update messages array for display
@@ -105,12 +227,71 @@ const AgentChat = () => {
       setChatHistory(updatedHistory);
       
       const currentInput = inputValue;
+      const filesToSend = [...attachedFiles];
       setInputValue('');
+      setAttachedFiles([]);
       setIsTyping(true);
 
       try {
-        // Call backend API
-        const aiResponseText = await callAgentAPI(currentInput);
+        // Convert files to base64 and include in request
+        const filesData = [];
+        for (const file of filesToSend) {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          filesData.push({
+            name: file.name,
+            type: file.type,
+            data: base64
+          });
+        }
+
+        // Call backend API with file data
+        const response = await api.fetchWithAuth('/api/v1/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: 'current-user',
+            session_id: Date.now().toString(),
+            agent_id: agent?.id,
+            agent_type: agent?.type || 'license',
+            message: currentInput,
+            files: filesData.length > 0 ? filesData : null,
+            access_token: ''
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const aiResponseText = data.message || 'I could not generate a response. Please try again.';
+        
+        console.log('Full response data:', data);
+        
+        // Check if approval is required - more lenient check
+        if (data.requires_approval && data.approval_id) {
+          console.log('Approval triggered with approval_id:', data.approval_id);
+          console.log('Metadata approval data:', data.metadata?.approval);
+          
+          const approvalData = data.metadata?.approval || {};
+          setPendingApproval({
+            approval_id: data.approval_id,
+            filename: approvalData.filename || 'license file',
+            expires_at: approvalData.expires_at,
+            session_id: data.session_id
+          });
+        } else {
+          console.log('No approval required:', {
+            requires_approval: data.requires_approval,
+            approval_id: data.approval_id,
+            has_metadata: !!data.metadata,
+            has_approval_in_metadata: !!data.metadata?.approval
+          });
+        }
         
         setIsTyping(false);
         
@@ -123,7 +304,7 @@ const AgentChat = () => {
           sender: 'ai',
           timestamp: new Date()
         };
-        
+
         setMessages(prev => [...prev, aiMessage]);
         
         // Update chat history with agent response
@@ -141,9 +322,17 @@ const AgentChat = () => {
       } catch (error) {
         console.error('Error in chat:', error);
         setIsTyping(false);
+        const errorMessage = {
+          id: Date.now() + 2,
+          text: `Error: ${error.message}`,
+          sender: 'ai',
+          timestamp: new Date(),
+          isError: true
+        };
+        setMessages(prev => [...prev, errorMessage]);
       }
     }
-  }, [inputValue, chatHistory, agent]);
+  }, [inputValue, chatHistory, agent, attachedFiles]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -272,6 +461,8 @@ const AgentChat = () => {
                         className={`max-w-[75%] rounded-2xl px-4 py-3 ${
                           message.sender === 'user'
                             ? 'bg-blue-600 text-white rounded-br-sm'
+                            : message.sender === 'system'
+                            ? 'bg-yellow-50 text-gray-800 rounded-bl-sm border border-yellow-200'
                             : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                         }`}
                       >
@@ -279,6 +470,60 @@ const AgentChat = () => {
                       </div>
                     </div>
                   ))}
+                  
+                  {/* Approval Buttons */}
+                  {pendingApproval && (
+                    <div className="flex justify-start">
+                      <div className="bg-green-50 border-2 border-green-300 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[75%]">
+                        <p className="text-sm font-semibold text-green-800 mb-3">Approve license installation?</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprovalButtonClick('approve')}
+                            disabled={approvalProcessing}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {approvalProcessing ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Approve
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleApprovalButtonClick('reject')}
+                            disabled={approvalProcessing}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {approvalProcessing ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Reject
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        {pendingApproval.expires_at && (
+                          <p className="text-xs text-gray-600 mt-2">
+                            Approval expires at: {new Date(pendingApproval.expires_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   {isTyping && (
                     <div className="flex justify-start">
@@ -298,9 +543,42 @@ const AgentChat = () => {
 
             {/* Input area */}
             <div className="mt-6 border-t border-gray-200 pt-4">
+              {/* Attached Files Display */}
+              {attachedFiles.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2 pb-3 border-b border-gray-200">
+                  {attachedFiles.map((file, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 text-sm"
+                    >
+                      <span className="text-blue-600">📎</span>
+                      <span className="text-gray-700 truncate max-w-[150px]">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(index)}
+                        className="text-gray-400 hover:text-gray-600 ml-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                multiple
+                accept=".lic,.txt,.pem,.crt,.key,.license"
+                style={{ display: 'none' }}
+              />
+
               <div className="flex items-center gap-3">
                 {/* Attach button */}
                 <button
+                  onClick={handleAttachClick}
                   className="text-gray-500 hover:text-gray-700 transition-colors"
                   aria-label="Attach file"
                 >
