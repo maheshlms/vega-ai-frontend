@@ -153,6 +153,8 @@ const Dashboard = () => {
   return (
     <div className="bg-[#F9FAFB] min-h-screen pb-10">
       <div className="max-w-[1920px] mx-auto px-6">
+
+        
         
         {/* Header Section */}
         <div className={`pt-4 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>

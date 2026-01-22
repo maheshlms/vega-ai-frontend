@@ -1,24 +1,22 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline } from "react-icons/io5";
-import { useNavigate , useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
 import {Typewriter} from "react-simple-typewriter" ;    
+import api from '../utils/api';
 
 const AgentChat = () => {
   const navigate = useNavigate();
+  const { agentId } = useParams();
   const location = useLocation();
-
+  const preloadedAgent = location.state?.agent;
+  const [agent, setAgent] = useState(preloadedAgent || null);
+  const [agentError, setAgentError] = useState('');
+  const [loadingAgent, setLoadingAgent] = useState(!preloadedAgent);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
-
-  const { agentName, agentRole, agentImage } = location.state || {
-  agentName: "Astra",
-  agentRole: "Ping Federate Agent",
-  agentImage: "/avatar.png"
-};
-
 
   // Chat history in the required format: { 'User1': <message>, 'Agent1': <message>, ... }
   const [chatHistory, setChatHistory] = useState({});
@@ -35,23 +33,51 @@ const AgentChat = () => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  // Simple AI response generator (frontend only)
-  const generateAIResponse = (userMessage) => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Simple keyword-based responses
-    if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-      return "Hello! I'm Astra, your Ping Federate assistant. I can help you with authentication, OAuth, SAML, and more. What would you like to know?";
-    } else if (lowerMessage.includes('oauth')) {
-      return "Ping Federate provides comprehensive OAuth 2.0 support. You can configure authorization servers, manage clients, and set up various grant types including authorization code, client credentials, and PKCE.";
-    } else if (lowerMessage.includes('saml')) {
-      return "SAML 2.0 integration in Ping Federate allows you to set up identity provider and service provider connections. You can configure assertions, bindings, and metadata exchange.";
-    } else if (lowerMessage.includes('help')) {
-      return "I can assist you with Ping Federate configuration, troubleshooting, OAuth flows, SAML setup, user authentication, and federation best practices. What specific topic would you like help with?";
-    } else if (lowerMessage.includes('configure') || lowerMessage.includes('setup')) {
-      return "To configure Ping Federate, you'll need to access the admin console, set up your connections, define authentication policies, and configure adapters. Would you like detailed steps for a specific component?";
-    } else {
-      return `You asked about "${userMessage}". As Astra, your Ping Federate assistant, I'm here to help with authentication, federation, OAuth, SAML, and identity management. Could you provide more details about what you need?`;
+  useEffect(() => {
+    const fetchAgent = async () => {
+      if (!agentId || (agentId && agentId.startsWith('default-')) || preloadedAgent) {
+        setLoadingAgent(false);
+        return;
+      }
+
+      try {
+        const data = await api.llmRuntime.getAgent(agentId);
+        setAgent(data);
+      } catch (err) {
+        console.error('Failed to load agent details', err);
+        setAgentError('Unable to load agent details');
+      } finally {
+        setLoadingAgent(false);
+      }
+    };
+
+    fetchAgent();
+  }, [agentId, preloadedAgent]);
+
+  // Call backend API to get AI response
+  const callAgentAPI = async (userMessage) => {
+    try {
+      const response = await api.fetchWithAuth('/api/v1/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: 'current-user',
+          session_id: Date.now().toString(),
+          agent_id: agent?.id,
+          agent_type: agent?.type || 'license',
+          message: userMessage,
+          access_token: ''
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.message || 'I could not generate a response. Please try again.';
+    } catch (error) {
+      console.error('Error calling agent API:', error);
+      return `Error: ${error.message}. Please check your connection and try again.`;
     }
   };
 
@@ -82,12 +108,11 @@ const AgentChat = () => {
       setInputValue('');
       setIsTyping(true);
 
-      // Simulate typing delay
-      setTimeout(() => {
-        setIsTyping(false);
+      try {
+        // Call backend API
+        const aiResponseText = await callAgentAPI(currentInput);
         
-        // Generate AI response
-        const aiResponseText = generateAIResponse(currentInput);
+        setIsTyping(false);
         
         const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
         const agentKey = `Agent${agentMessageIndex}`;
@@ -111,11 +136,14 @@ const AgentChat = () => {
         // Store the script for HeyGen
         setHeygenScript(aiResponseText);
         
-        console.log('HeyGen Script:', aiResponseText);
+        console.log('Agent Response:', aiResponseText);
         console.log('Chat History:', newHistory);
-      }, 1000);
+      } catch (error) {
+        console.error('Error in chat:', error);
+        setIsTyping(false);
+      }
     }
-  }, [inputValue, chatHistory]);
+  }, [inputValue, chatHistory, agent]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -201,28 +229,34 @@ const AgentChat = () => {
             <div className="flex flex-col items-center text-center space-y-2 pt-8">
               {/* Name badge */}
               <div className="bg-blue-100 text-blue-700 px-4 rounded-full text-sm font-medium z-11">
-                  {agentName}
+                {agent?.name || 'Agent'}
               </div>
               
               {/* Role */}
-              <p className="text-sm text-gray-600">Ping Federate Agent</p>
+              <p className="text-sm text-gray-600">{agent?.description || agent?.role || 'License Agent'}</p>
               
               {/* Welcome message */}
               <h2 className="text-2xl font-bold text-gray-900 ">
-                <Typewriter
-                 words ={["How May I Help You ?"]}
-                 cursor
-                 cursorStyle="|"
-                 typeSpeed={70}
-                 deleteSpeed={30}
-                 delaySpeed={1200}
-
-                />
+                {loadingAgent ? (
+                  'Loading agent...'
+                ) : (
+                  <Typewriter
+                    words ={["How May I Help You ?"]}
+                    cursor
+                    cursorStyle="|"
+                    typeSpeed={70}
+                    deleteSpeed={30}
+                    delaySpeed={1200}
+                  />
+                )}
               </h2>
+              {agentError && (
+                <p className="text-xs text-red-500">{agentError}</p>
+              )}
             </div>
 
             {/* Messages container */}
-            <div className=" h-[250px] overflow-y-auto px-4 pt-10">
+            <div className=" h-[250px] overflow-y-auto px-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-gray-400 text-sm">Start a conversation...</p>

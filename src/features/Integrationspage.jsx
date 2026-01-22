@@ -1,7 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaStar, FaPlug, FaShieldAlt, FaServer } from 'react-icons/fa';
 
 const IntegrationsPage = () => {
+  const navigate = useNavigate();
+
   // Integration categories and data
   const integrations = [
     {
@@ -126,37 +129,34 @@ const IntegrationsPage = () => {
     return colors[badge] || 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
+  const handleIntegrationSelect = (integrationId, integrationName) => {
+    // Navigate to target systems page filtered by integration
+    navigate(`/integration/target-systems/${integrationId}`, { 
+      state: { integrationName } 
+    });
+  };
+
   const IntegrationCard = ({ item }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl">
-            {item.logo}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900">{item.name}</h3>
-              {item.verified && (
-                <FaCheckCircle className="text-green-500 text-sm" />
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
-          </div>
+    <div 
+      onClick={() => handleIntegrationSelect(item.id, item.name)}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+    >
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl">
+          {item.logo}
         </div>
-        
-        {item.status === 'connected' ? (
-          <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-xs font-medium text-green-700">Connected</span>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900">{item.name}</h3>
+            {item.verified && (
+              <FaCheckCircle className="text-green-500 text-sm" />
+            )}
           </div>
-        ) : (
-          <button className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-xs font-medium border border-blue-200 transition-colors">
-            Connect
-          </button>
-        )}
+          <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2">
         {item.badges.map((badge, index) => (
           <span
             key={index}
@@ -166,16 +166,6 @@ const IntegrationsPage = () => {
           </span>
         ))}
       </div>
-
-      {item.connectedSince && (
-        <div className="text-xs text-gray-500 pt-3 border-t border-gray-100">
-          Connected since {new Date(item.connectedSince).toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-          })}
-        </div>
-      )}
     </div>
   );
 
@@ -194,28 +184,8 @@ const IntegrationsPage = () => {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Integration Categories */}
       <div className="px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">12</div>
-            <div className="text-xs text-gray-500 mt-1">Total Integrations</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-green-600">4</div>
-            <div className="text-xs text-gray-500 mt-1">Connected</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-blue-600">8</div>
-            <div className="text-xs text-gray-500 mt-1">Available</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-purple-600">98.5%</div>
-            <div className="text-xs text-gray-500 mt-1">Uptime</div>
-          </div>
-        </div>
-
-        {/* Integration Categories */}
         <div className="space-y-8">
           {integrations.map((category, index) => {
             const CategoryIcon = category.icon;

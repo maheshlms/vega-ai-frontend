@@ -1,5 +1,34 @@
 // Authentication utility functions for Auth0 token management
 
+const ROLE_CLAIM = 'https://vega.ai/roles';
+
+const normalizeRoles = (roles) => {
+  if (!roles) return [];
+  if (typeof roles === 'string') return [roles.trim().toLowerCase()].filter(Boolean);
+  if (Array.isArray(roles)) return roles.map(r => (r || '').toString().trim().toLowerCase()).filter(Boolean);
+  return [];
+};
+
+const decodePayload = (token) => {
+  try {
+    const parts = token?.split?.('.');
+    if (!parts || parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch (e) {
+    console.warn('Failed to decode token payload', e);
+    return null;
+  }
+};
+
+const extractRolesFromToken = (token) => {
+  const payload = decodePayload(token);
+  if (!payload) return [];
+  const claim = payload[ROLE_CLAIM] || payload.roles || payload.permissions || [];
+  return normalizeRoles(claim);
+};
+
 export const auth = {
   // Get authentication token (Auth0 access token)
   getToken: () => {
@@ -17,17 +46,25 @@ export const auth = {
       
       // Extract username from email (admin@vega.ai -> admin)
       const username = auth0User.email?.split('@')[0] || auth0User.nickname || 'user';
+
+      // Roles from token (namespaced claim) or fallback to auth0User
+      const rolesFromToken = extractRolesFromToken(accessToken);
+      const rolesFromProfile = normalizeRoles(auth0User?.[ROLE_CLAIM] || auth0User?.roles || auth0User?.permissions);
+      const allRoles = [...new Set([...rolesFromToken, ...rolesFromProfile])];
+      const role = allRoles.includes('admin') ? 'admin' : (auth0User.role || 'user');
       
-      // Store user info (will be enriched by backend)
+      // Store user info including roles array
       const user = {
         username: username,
         email: auth0User.email,
-        role: auth0User.role || 'user', // Default role, backend will update this
+        role: role,
+        roles: allRoles,  // Store the full roles array with permissions
         is_active: true,
       };
       
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userRoles', JSON.stringify(allRoles));
       
       // Auth0 tokens typically expire in 24 hours, but we'll refresh as needed
       const expiryDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
@@ -126,10 +163,17 @@ export const auth = {
   // Store login data (for local fallback admin)
   storeLoginData: (loginResponse) => {
     try {
+      const rolesFromToken = extractRolesFromToken(loginResponse.access_token);
+      const rolesFromProfile = normalizeRoles(loginResponse.user?.[ROLE_CLAIM] || loginResponse.user?.roles || loginResponse.user?.permissions);
+      const allRoles = [...new Set([...rolesFromToken, ...rolesFromProfile])];
+      const role = allRoles.includes('admin') ? 'admin' : (loginResponse.user?.role || 'user');
+
       localStorage.setItem('authToken', loginResponse.access_token);
       localStorage.setItem('tokenType', loginResponse.token_type);
-      localStorage.setItem('user', JSON.stringify(loginResponse.user));
-      localStorage.setItem('userRole', loginResponse.user.role);
+      const userPayload = { ...(loginResponse.user || {}), role, roles: allRoles };
+      localStorage.setItem('user', JSON.stringify(userPayload));
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userRoles', JSON.stringify(allRoles));
       localStorage.setItem('tokenExpiry', new Date(Date.now() + (loginResponse.expires_in * 1000)).toISOString());
     } catch (error) {
       console.error('Failed to store login data:', error);
@@ -144,6 +188,7 @@ export const auth = {
       localStorage.removeItem('tokenType');
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('userRoles');
       localStorage.removeItem('tokenExpiry');
     } catch (error) {
       console.error('Error during logout:', error);

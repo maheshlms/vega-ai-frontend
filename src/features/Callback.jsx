@@ -2,14 +2,18 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { auth } from '../utils/auth'
-import { api } from '../utils/api'
 
 export default function Callback() {
-  const { isAuthenticated, getAccessTokenSilently, user } = useAuth0()
+  const { isAuthenticated, getAccessTokenSilently, user, isLoading } = useAuth0()
   const navigate = useNavigate()
 
   useEffect(() => {
     const handleCallback = async () => {
+      // Wait for Auth0 to finish loading
+      if (isLoading) {
+        return
+      }
+
       if (isAuthenticated && user) {
         try {
           // Get Auth0 access token
@@ -18,34 +22,32 @@ export default function Callback() {
           // Display token in console
           console.log('='?.repeat(80))
           console.log('🔐 [FRONTEND] RECEIVED AUTH0 ACCESS TOKEN:')
-          console.log('Token:', accessToken)
-          console.log('User:', user)
+          console.log('Token:', accessToken.substring(0, 50) + '...')
+          console.log('User:', user.email)
           console.log('='?.repeat(80))
           
-          // Store Auth0 token temporarily
+          // Store Auth0 token and user data locally
+          // This is sufficient for frontend auth - backend can verify token independently
           auth.storeAuth0Data(accessToken, user)
           
-          // Validate token with backend and get user profile
-          try {
-            const userProfile = await api.getProfile()
-            // Update stored user with backend profile (includes role)
-            auth.storeAuth0Data(accessToken, { ...user, ...userProfile })
-          } catch (error) {
-            console.error('Error fetching user profile:', error)
-            // Continue anyway with Auth0 user data
-          }
+          console.log('✅ Auth0 token stored in localStorage, redirecting to dashboard...')
           
           // Redirect to dashboard
-          navigate('/dashboard')
+          // Don't wait for backend profile call - just proceed with Auth0 user data
+          navigate('/dashboard', { replace: true })
         } catch (error) {
           console.error('Error handling Auth0 callback:', error)
-          navigate('/login')
+          navigate('/login', { replace: true })
         }
+      } else if (!isLoading && !isAuthenticated) {
+        // Not authenticated after callback completion
+        console.warn('Auth0 callback completed but not authenticated')
+        navigate('/login', { replace: true })
       }
     }
 
     handleCallback()
-  }, [isAuthenticated, user, getAccessTokenSilently, navigate])
+  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, navigate])
 
   return (
     <div className="flex items-center justify-center min-h-screen">

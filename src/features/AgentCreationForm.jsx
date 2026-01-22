@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../utils/api';
 import { FaCheckCircle, FaTimes } from 'react-icons/fa';
 
 const AgentCreationForm = () => {
   const navigate = useNavigate();
-  const { integrationId, agentTypeId } = useParams();
+  const { targetId, agentTypeId } = useParams();
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [formData, setFormData] = React.useState({
     agentName: '',
@@ -12,6 +13,8 @@ const AgentCreationForm = () => {
     notificationWindow: 30,
     slackChannel: '#alerts'
   });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -21,31 +24,34 @@ const AgentCreationForm = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Save to localStorage so it persists and can be read by Agents page
-    const existingAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-    const newAgent = {
-      id: Date.now(),
-      name: formData.agentName,
-      role: 'License Agent',
-      type: 'License',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-      tasks: '0',
-      success: '100%',
-      status: 'active',
-      environment: formData.environment,
-      notificationWindow: formData.notificationWindow,
-      slackChannel: formData.slackChannel,
-      createdAt: new Date().toISOString()
-    };
-    
-    existingAgents.push(newAgent);
-    localStorage.setItem('agents', JSON.stringify(existingAgents));
-    
-    console.log('Creating agent:', formData);
-    setShowSuccess(true);
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const payload = {
+        name: formData.agentName,
+        type: agentTypeId || 'license',
+        description: `License agent for ${formData.environment || 'environment'} (target ${targetId})`,
+        checkInterval: 3600,
+        config: {
+          environment: formData.environment,
+          notificationWindow: formData.notificationWindow,
+          slackChannel: formData.slackChannel,
+          targetId: targetId,
+          agentTypeId: agentTypeId
+        }
+      };
+
+      await api.llmRuntime.createAgent(payload);
+      setShowSuccess(true);
+    } catch (err) {
+      console.error('Failed to create agent', err);
+      setError(err?.message || 'Failed to create agent');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSuccess = () => {
@@ -147,6 +153,11 @@ const AgentCreationForm = () => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="px-8 py-6">
+              {error && (
+                <div className="mb-4 rounded-lg bg-red-50 border border-red-100 text-red-700 px-4 py-3 text-sm">
+                  {error}
+                </div>
+              )}
               <div className="space-y-5">
                 {/* Agent Name */}
                 <div className="group">
@@ -245,9 +256,10 @@ const AgentCreationForm = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  disabled={submitting}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Create Agent
+                  {submitting ? 'Creating...' : 'Create Agent'}
                 </button>
               </div>
             </form>
@@ -255,7 +267,7 @@ const AgentCreationForm = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes blob {
           0%, 100% { transform: translate(0, 0) scale(1); }
           33% { transform: translate(30px, -50px) scale(1.1); }

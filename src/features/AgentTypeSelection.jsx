@@ -1,16 +1,40 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../utils/api';
+import { useEffect, useState } from 'react';
 
 const AgentTypeSelection = () => {
   const navigate = useNavigate();
-  const { integrationId } = useParams();
+  const { targetId } = useParams();
+  const [integrationId, setIntegrationId] = useState('pingfederate');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadTarget = async () => {
+      try {
+        if (!targetId) return;
+        const target = await api.targetSystems.get(targetId);
+        // Map target.type to integration key used below
+        const type = (target?.type || '').toLowerCase();
+        let key = 'pingfederate';
+        if (type.includes('directory')) key = 'pingdirectory';
+        else if (type.includes('ping one') || type.includes('pingone') || type.includes('one')) key = 'pingone';
+        if (mounted) setIntegrationId(key);
+      } catch (e) {
+        // Default fallback
+        if (mounted) setIntegrationId('pingfederate');
+      }
+    };
+    loadTarget();
+    return () => { mounted = false; };
+  }, [targetId]);
 
   const agentTypesData = {
     pingfederate: {
       title: 'Ping Federate',
       subtitle: 'Select the type of agent you want to create',
       agents: [
-        { id: 'pfmaster', name: 'PF Master', description: 'Primary authentication master', icon: '🔐' },
+        { id: 'ptmaster', name: 'PT Master', description: 'Primary authentication master', icon: '🔐' },
         { id: 'certificate', name: 'Certificate', description: 'SSL/TLS certificate management', icon: '📄' },
         { id: 'license', name: 'License', description: 'License monitoring & renewal', icon: '🎫' },
         { id: 'adapter', name: 'Adapter Config', description: 'Configure authentication adapters', icon: '🔧' },
@@ -54,7 +78,7 @@ const AgentTypeSelection = () => {
       <div className=" border-gray-100">
         <div className="max-w-7xl mx-auto px-8 py-8">
           <button
-            onClick={() => navigate('/agents/createagent')}
+            onClick={() => navigate('/agents/select-target')}
             className="group text-sm text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-2 transition-colors"
           >
             <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
@@ -73,7 +97,7 @@ const AgentTypeSelection = () => {
           {currentIntegration.agents.map((agent) => (
             <div
               key={agent.id}
-              onClick={() => navigate(`/agents/create/${integrationId}/${agent.id}`)}
+              onClick={() => navigate(`/agents/create/${targetId}/${agent.id}`)}
               className="group bg-white rounded-lg border border-gray-200 hover:border-gray-900 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-lg"
             >
               {/* Card Content */}
@@ -114,4 +138,4 @@ const AgentTypeSelection = () => {
   );
 };
 
-export default AgentTypeSelection;  
+export default AgentTypeSelection;

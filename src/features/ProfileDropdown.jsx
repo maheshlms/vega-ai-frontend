@@ -3,19 +3,36 @@ import { IoIosClose } from 'react-icons/io';
 import { IoLogOut } from 'react-icons/io5';
 import { FaUser, FaCog, FaCreditCard, FaChartBar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../utils/auth';
 
 const ProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [userData, setUserData] = useState(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const userData = {
-    name: 'John Doe',
-    email: 'john.doe@company.com',
-    role: 'Admin',
-    plan: 'Pro Plan',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
-  };
+  // Load user data from Auth0 on component mount
+  useEffect(() => {
+    const currentUser = auth.getCurrentUser();
+    if (currentUser) {
+      setUserData({
+        name: currentUser.username || 'User',
+        email: currentUser.email || 'user@example.com',
+        role: (currentUser.role || 'user').charAt(0).toUpperCase() + (currentUser.role || 'user').slice(1),
+        plan: 'Pro Plan',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.email)}&background=3B82F6&color=fff`
+      });
+    } else {
+      // Fallback if no user data
+      setUserData({
+        name: 'User',
+        email: 'user@example.com',
+        role: 'User',
+        plan: 'Pro Plan',
+        avatar: 'https://ui-avatars.com/api/?name=User&background=3B82F6&color=fff'
+      });
+    }
+  }, []);
 
   const menuItems = [
     {
@@ -68,25 +85,27 @@ const ProfileDropdown = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer"
-        aria-label="Profile menu"
-      >
-        <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon overflow-hidden">
-          <img 
-            src={userData.avatar} 
-            alt={userData.name}
-            className="w-full h-full object-cover rounded-md"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
-          />
-        </div>
-        <span className="text-sm font-semibold text-navbar-profile">
-          {userData.name}
-        </span>
-      </button>
+      {userData && (
+        <>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer"
+            aria-label="Profile menu"
+          >
+            <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon overflow-hidden">
+              <img 
+                src={userData.avatar} 
+                alt={userData.name}
+                className="w-full h-full object-cover rounded-md"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+            <span className="text-sm font-semibold text-navbar-profile">
+              {userData.name}
+            </span>
+          </button>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown">
@@ -158,6 +177,8 @@ const ProfileDropdown = () => {
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
 
       <style jsx>{`

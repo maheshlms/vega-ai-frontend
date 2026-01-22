@@ -4,18 +4,21 @@ import { GoPeople, GoGraph } from "react-icons/go";
 import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
 import { MdOutlineStar } from "react-icons/md";
 import { useNavigate } from 'react-router-dom'
+import api from '../utils/api';
 
-const Agents = ({}) => {
+const Agents = () => {
   const navigate = useNavigate();
   const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState(null);
 
-  // Load agents from localStorage and merge with default agents
+  // Load agents from LLM Runtime and merge with defaults for UX
   useEffect(() => {
     const defaultAgents = [
       {
-        id: 1,
+        id: 'default-1',
         name: "Astra",
         role: "Ping Federate Agent",
         type: "Authentication",
@@ -23,10 +26,10 @@ const Agents = ({}) => {
         tasks: "100",
         success: "98.5%",
         status: "active",
-        isDefault: true // Mark as default (can't be deleted)
+        isDefault: true
       },
       {
-        id: 2,
+        id: 'default-2',
         name: "Nexa",
         role: "Ping Directory Agent",
         type: "User Mgmt",
@@ -37,7 +40,7 @@ const Agents = ({}) => {
         isDefault: true
       },
       {
-        id: 3,
+        id: 'default-3',
         name: "Orion",
         role: "Ping One Agent",
         type: "Access Control",
@@ -49,16 +52,75 @@ const Agents = ({}) => {
       }
     ];
 
-    // Get agents from localStorage
-    const savedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-    
-    // Merge default agents with saved agents
-    const allAgents = [...defaultAgents, ...savedAgents];
-    setAgents(allAgents);
+    // Helper function to convert system type from snake_case to Title Case
+    const formatSystemTypeName = (systemType) => {
+      if (!systemType) return 'System';
+      return systemType
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+
+    const fetchAgents = async () => {
+      try {
+        // Fetch target systems to create ID->Type mapping
+        let targetSystemMap = {};
+        try {
+          const targetSystems = await api.targetSystems.list();
+          if (Array.isArray(targetSystems)) {
+            targetSystems.forEach(system => {
+              targetSystemMap[system.id] = system.type;
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to fetch target systems for mapping:', err);
+        }
+
+        const remoteAgents = await api.llmRuntime.listAgents();
+        const normalized = (remoteAgents || []).map((agent) => {
+          // Extract target ID from description
+          let systemTypeName = `${agent.type} Agent`;
+          
+          // Try to extract target ID from description (format: "...agent (target <UUID>)")
+          const targetMatch = (agent.description || '').match(/\(target\s+([a-f0-9\-]+)\)/);
+          if (targetMatch) {
+            const targetId = targetMatch[1];
+            const systemType = targetSystemMap[targetId];
+            if (systemType) {
+              // Format the system type name
+              systemTypeName = `${formatSystemTypeName(systemType)} Agent`;
+            }
+          }
+
+          return {
+            id: agent.id,
+            name: agent.name,
+            role: systemTypeName,
+            type: agent.type,
+            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+            tasks: agent.checkInterval ? Math.max(1, Math.floor(86400 / agent.checkInterval)).toString() : '0',
+            success: agent.status === 'active' ? '100%' : '0%',
+            status: agent.status || 'active',
+            environment: agent.config?.environment,
+            isDefault: false
+          };
+        });
+
+        setAgents([...defaultAgents, ...normalized]);
+      } catch (err) {
+        console.error('Failed to fetch agents', err);
+        setError('Unable to load agents from runtime');
+        setAgents(defaultAgents);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAgents();
   }, []);
 
   const handleCreateAgent = useCallback(()=>{
-    navigate('/agents/createagent')
+    navigate('/agents/select-target')
   }, [navigate]);
 
   // Recalculate stats based on actual agents
@@ -95,16 +157,22 @@ const Agents = ({}) => {
   const confirmDelete = useCallback(() => {
     if (agentToDelete) {
       // Remove from localStorage
-      const savedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-      const updatedAgents = savedAgents.filter(a => a.id !== agentToDelete.id);
-      localStorage.setItem('agents', JSON.stringify(updatedAgents));
-      
-      // Update state
-      setAgents(prev => prev.filter(a => a.id !== agentToDelete.id));
-      
-      // Close modal
-      setShowDeleteModal(false);
-      setAgentToDelete(null);
+      const removeAgent = async () => {
+        try {
+          if (!agentToDelete.isDefault) {
+            await api.llmRuntime.deleteAgent(agentToDelete.id);
+          }
+          setAgents(prev => prev.filter(a => a.id !== agentToDelete.id));
+        } catch (err) {
+          console.error('Failed to delete agent', err);
+          alert('Failed to delete agent');
+        } finally {
+          setShowDeleteModal(false);
+          setAgentToDelete(null);
+        }
+      };
+
+      removeAgent();
     }
   }, [agentToDelete]);
 
@@ -233,8 +301,7 @@ const Agents = ({}) => {
               </div>
               {/* Text Content */}
               <div>
-                <h2 className="font-bold text-2xl text-black">Expert Mode</h2>
-                <p className="text-[#9CA3AF] text-sm">Fully autonomous AI agents with advanced capabilities</p>
+                <h2 className="font-bold text-2xl text-black">Available Agents</h2>
               </div>
             </div>
           </div>
@@ -245,13 +312,7 @@ const Agents = ({}) => {
               <div 
                 key={agent.id || index}
                 className="bg-white w-55 h-82 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
-                onClick={()=> navigate('/agents/agentchat' , {
-                  state: {
-                          agentName: agent.name,
-                          agentRole: agent.role,
-                          agentImage: agent.image
-                  }
-                })}
+                onClick={()=> navigate(`/agents/${agent.id}/chat`, { state: { agent } })}
               >
                 {/* Delete Button - Top Left (only for non-default agents) */}
                 {!agent.isDefault && (
@@ -293,7 +354,7 @@ const Agents = ({}) => {
                 </div>
 
                 {/* Agent Name - Centered */}
-                <h3 className="text-center text-xl font-bold text-black mb-1" >{agent.name}</h3>
+                <h3 className="text-center text-xl font-bold text-black mb-1">{agent.name}</h3>
                 
                 {/* Agent Role - Centered */}
                 <p className="text-center text-sm text-gray-600 mb-4">{agent.role}</p>
@@ -334,7 +395,7 @@ const Agents = ({}) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

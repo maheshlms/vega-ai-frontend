@@ -52,7 +52,7 @@ const AdvancedIntegrations = () => {
 
   const IntegrationCard = ({ item }) => (
     <div 
-      onClick={() => navigate(`/agents/createagent/${item.id}`)}  // FIXED: Changed from /agents/create/ to /agents/createagent/
+      onClick={() => navigate(`/agents/create/${item.id}`)}
       className="bg-white rounded-lg shadow-md border border-gray-200 p-5 hover:shadow-xl hover:border-blue-400 hover:scale-105 transition-all cursor-pointer"
     >
       <div className="flex items-center justify-center h-12 mb-4">
@@ -122,4 +122,5 @@ const AdvancedIntegrations = () => {
   );
 };
 
-export default AdvancedIntegrations;
+
+export default AdvancedIntegrations ;

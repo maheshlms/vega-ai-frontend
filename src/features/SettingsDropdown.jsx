@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IoClose, IoSettings } from 'react-icons/io5';
 import { FaUser, FaPalette, FaBell, FaGlobe, FaPlug, FaKey, FaCog } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { IoSettingsOutline, IoCheckmarkDone, IoLogOut } from "react-icons/io5";
+import { IoSettingsOutline } from "react-icons/io5";
 
 const SettingsDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
