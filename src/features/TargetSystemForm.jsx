@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaSave } from 'react-icons/fa';
 
-const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel }) => {
+const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethods = [], integrationValue = null, integrationName = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
+    type: integrationValue || '',
     environment: 'production',
+    auth_method: 'BasicAuth',
     host: '',
     port: 443,
     username: '',
@@ -22,6 +23,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel 
         name: system.name || '',
         type: system.type || '',
         environment: system.environment || 'production',
+        auth_method: system.auth_method || 'BasicAuth',
         host: system.host || '',
         port: system.port || 443,
         username: system.username || '',
@@ -46,13 +48,60 @@ const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel 
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.type || !formData.host) {
-        setError('Please fill in all required fields');
+      if (!formData.name || !formData.type || !formData.host || !formData.username || !formData.password) {
+        setError('Please fill in all required fields (Name, Type, Host, Username, Password)');
         setLoading(false);
         return;
       }
 
-      await onSubmit(formData);
+      // Convert type to snake_case for API
+      const typeToSnakeCase = (type) => {
+        const mapping = {
+          'PingFederate': 'ping_federate',
+          'PingDirectory': 'ping_directory',
+          'PingOne': 'ping_one',
+          'Okta': 'okta',
+          'AzureAD': 'azure_ad',
+          'Auth0': 'auth0',
+          'LDAP': 'ldap',
+          'Custom': 'custom'
+        };
+        return mapping[type] || type.toLowerCase().replace(/\s+/g, '_');
+      };
+
+      // Convert auth_method to snake_case for API
+      const authMethodToSnakeCase = (method) => {
+        const mapping = {
+          'BasicAuth': 'basic_auth',
+          'APIKey': 'api_key',
+          'OAuth2': 'oauth2',
+          'ClientCredentials': 'client_credentials',
+          'BearerToken': 'bearer_token',
+          'Certificate': 'certificate'
+        };
+        return mapping[method] || method.toLowerCase().replace(/\s+/g, '_');
+      };
+
+      // Construct base_url from host and port
+      const protocol = formData.host.startsWith('https://') || formData.host.startsWith('http://') ? '' : 'https://';
+      const host = formData.host.replace(/^https?:\/\//, ''); // Remove protocol if present
+      const base_url = `${protocol}${host}:${formData.port}`;
+
+      // Build submit data in the format expected by API
+      const submitData = {
+        name: formData.name,
+        type: typeToSnakeCase(formData.type),  // Convert to snake_case
+        base_url: base_url,
+        auth_method: authMethodToSnakeCase(formData.auth_method),  // Convert to snake_case
+        credentials: {
+          username: formData.username,
+          password: formData.password
+        },
+        environment: formData.environment,
+        description: formData.description
+      };
+
+      await onSubmit(submitData);
     } catch (err) {
       setError(err.message || 'Failed to save target system');
       setLoading(false);
@@ -60,13 +109,39 @@ const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel 
   };
 
   const defaultTypeOptions = typeOptions.length > 0 ? typeOptions : [
-    'PingFederate',
-    'Okta',
-    'Azure AD',
-    'Auth0',
-    'LDAP',
-    'Custom'
+    { value: 'PingFederate', label: 'PingFederate' },
+    { value: 'PingDirectory', label: 'PingDirectory' },
+    { value: 'PingOne', label: 'PingOne' },
+    { value: 'Okta', label: 'Okta' },
+    { value: 'AzureAD', label: 'Azure AD' },
+    { value: 'Auth0', label: 'Auth0' },
+    { value: 'LDAP', label: 'LDAP' },
+    { value: 'Custom', label: 'Custom' }
   ];
+
+  // Helper function to convert snake_case to readable format
+  const capitalizeSnakeCase = (str) => {
+    return str
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+  };
+
+  // Convert available auth methods to display format
+  const authMethodOptions = availableAuthMethods.length > 0 
+    ? availableAuthMethods.map(method => ({
+        value: capitalizeSnakeCase(method),
+        label: capitalizeSnakeCase(method),
+        snakeCase: method
+      }))
+    : [
+        { value: 'BasicAuth', label: 'Basic Auth', snakeCase: 'basic_auth' },
+        { value: 'APIKey', label: 'API Key', snakeCase: 'api_key' },
+        { value: 'OAuth2', label: 'OAuth2', snakeCase: 'oauth2' },
+        { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials' },
+        { value: 'BearerToken', label: 'Bearer Token', snakeCase: 'bearer_token' },
+        { value: 'Certificate', label: 'Certificate', snakeCase: 'certificate' }
+      ];
 
   return (
     <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-screen overflow-y-auto">
@@ -114,20 +189,28 @@ const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel 
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             System Type *
           </label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select a type...</option>
-            {defaultTypeOptions.map(type => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+          {integrationName ? (
+            // Read-only display when integration is selected
+            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 font-semibold">
+              {integrationName}
+            </div>
+          ) : (
+            // Editable dropdown when no integration is selected
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select a type...</option>
+              {defaultTypeOptions.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Environment */}
@@ -144,6 +227,26 @@ const TargetSystemForm = ({ system = null, typeOptions = [], onSubmit, onCancel 
             <option value="development">Development</option>
             <option value="staging">Staging</option>
             <option value="production">Production</option>
+          </select>
+        </div>
+
+        {/* Auth Method */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Auth Method
+          </label>
+          <select
+            name="auth_method"
+            value={formData.auth_method}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select auth method...</option>
+            {authMethodOptions.map(method => (
+              <option key={method.snakeCase} value={method.value}>
+                {method.label}
+              </option>
+            ))}
           </select>
         </div>
 

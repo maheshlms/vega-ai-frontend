@@ -11,6 +11,7 @@ const TargetSystems = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const integrationName = location.state?.integrationName;
+  const authMethodsFromState = location.state?.authMethods || [];
   
   const [systems, setSystems] = useState([]);
   const [stats, setStats] = useState(null);
@@ -20,6 +21,7 @@ const TargetSystems = () => {
   const [editingSystem, setEditingSystem] = useState(null);
   const [testingId, setTestingId] = useState(null);
   const [typeOptions, setTypeOptions] = useState([]);
+  const [availableAuthMethods, setAvailableAuthMethods] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRoles, setUserRoles] = useState([]);
   const [canAdd, setCanAdd] = useState(false);
@@ -47,6 +49,13 @@ const TargetSystems = () => {
     
     fetchData();
   }, [filters]);
+
+  // Use auth methods from route state (passed from IntegrationsPage)
+  useEffect(() => {
+    if (authMethodsFromState && authMethodsFromState.length > 0) {
+      setAvailableAuthMethods(authMethodsFromState);
+    }
+  }, [authMethodsFromState]);
 
   // Map integration ID to system type (handle naming differences)
   const getSystemTypeFromIntegration = (integId) => {
@@ -80,6 +89,13 @@ const TargetSystems = () => {
 
       let systemsList = Array.isArray(systemsData) ? systemsData : systemsData.systems || [];
       
+      // Log to see what fields are available
+      console.log('[fetchData] Raw systems data:', systemsData);
+      if (systemsList.length > 0) {
+        console.log('[fetchData] First system object keys:', Object.keys(systemsList[0]));
+        console.log('[fetchData] First system object:', systemsList[0]);
+      }
+      
       // Filter by integration type on the frontend if integrationId is provided
       if (integrationId) {
         const systemType = getSystemTypeFromIntegration(integrationId);
@@ -87,7 +103,7 @@ const TargetSystems = () => {
           s.type && s.type.toLowerCase() === systemType.toLowerCase()
         );
       }
-      
+  
       setSystems(systemsList);
       setTypeOptions(Array.isArray(typesData) ? typesData : typesData.types || []);
       
@@ -148,11 +164,12 @@ const TargetSystems = () => {
   };
 
   const handleTestConnection = async (id) => {
-    console.log('Test connection called with id:', id);
     setTestingId(id);
     try {
       const result = await api.targetSystems.testConnection(id);
-      alert(`Connection test result: ${result.status}\n${result.message || ''}`);
+      console.log('[handleTestConnection] Result:', result);
+      const message = result.message || result.detail || 'Connection test completed';
+      alert(`Connection test: ${message}`);
       fetchData();
     } catch (err) {
       console.error('Connection test failed:', err);
@@ -338,7 +355,10 @@ const TargetSystems = () => {
           <TargetSystemForm
             system={editingSystem}
             typeOptions={typeOptions}
-            onSubmit={editingSystem ? (data) => handleUpdate(editingSystem.id, data) : handleCreate}
+            availableAuthMethods={availableAuthMethods}
+            integrationValue={integrationId}
+            integrationName={integrationName}
+            onSubmit={editingSystem ? (data) => handleUpdate(editingSystem._id, data) : handleCreate}
             onCancel={() => {
               setShowForm(false);
               setEditingSystem(null);
@@ -381,7 +401,7 @@ const TargetSystems = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {systems.map((system) => (
-              <div key={system.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                 <div className="mb-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{system.name}</h3>
@@ -430,8 +450,8 @@ const TargetSystems = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => handleTestConnection(system.id)}
-                    disabled={testingId === system.id}
+                    onClick={() => handleTestConnection(system._id)}
+                    disabled={testingId === system._id}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 text-sm font-medium disabled:opacity-50"
                   >
                     <FaCheckCircle className="text-sm" />
@@ -439,7 +459,7 @@ const TargetSystems = () => {
                   </button>
                   {canDelete ? (
                     <button
-                      onClick={() => handleDelete(system.id)}
+                      onClick={() => handleDelete(system._id)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded text-sm font-medium"
                       title="Delete this target system"
                     >

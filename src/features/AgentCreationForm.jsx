@@ -16,6 +16,25 @@ const AgentCreationForm = () => {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
 
+  // Fetch target system and load environment
+  React.useEffect(() => {
+    const loadTargetEnvironment = async () => {
+      try {
+        if (!targetId) return;
+        const target = await api.targetSystems.get(targetId);
+        if (target?.environment) {
+          setFormData(prev => ({
+            ...prev,
+            environment: target.environment
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load target environment:', err);
+      }
+    };
+    loadTargetEnvironment();
+  }, [targetId]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -33,7 +52,7 @@ const AgentCreationForm = () => {
       const payload = {
         name: formData.agentName,
         type: agentTypeId || 'license',
-        description: `License agent for ${formData.environment || 'environment'} (target ${targetId})`,
+        description: `${agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} agent for ${formData.environment || 'environment'} (target ${targetId})`,
         checkInterval: 3600,
         config: {
           environment: formData.environment,
@@ -175,7 +194,7 @@ const AgentCreationForm = () => {
                   />
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Give your license agent a descriptive name</span>
+                    <span>Give your agent a descriptive name</span>
                   </p>
                 </div>
 

@@ -22,7 +22,7 @@ const AuditLogs = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState('current'); // 'current' or 'all'
-  const [hasAuditReadPermission, setHasAuditReadPermission] = useState(true);
+  const [hasAuditReadPermission, setHasAuditReadPermission] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
@@ -37,12 +37,15 @@ const AuditLogs = () => {
       const userRolesStr = localStorage.getItem('userRoles');
       const userRoles = userRolesStr ? JSON.parse(userRolesStr) : [];
       
+      console.log('User roles:', userRoles);
+      
       // Check if user has read:audit_logs permission
       const hasPermission = userRoles.some(role => 
         role.toLowerCase().includes('read:audit_logs') || 
         role.toLowerCase() === 'admin'
       );
       
+      console.log('Has audit read permission:', hasPermission);
       setHasAuditReadPermission(hasPermission);
       
       // If user doesn't have permission, auto-apply their email filter
@@ -52,6 +55,9 @@ const AuditLogs = () => {
           user_email: currentUser.email
         }));
       }
+    } else {
+      // If no current user, deny access
+      setHasAuditReadPermission(false);
     }
     
     fetchData();

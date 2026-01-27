@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
 import {Typewriter} from "react-simple-typewriter" ;    
 import api from '../utils/api';
+import { auth } from '../utils/auth';
 
 const AgentChat = () => {
   const navigate = useNavigate();
@@ -72,7 +73,7 @@ const AgentChat = () => {
           agent_id: agent?.id,
           agent_type: agent?.type || 'license',
           message: userMessage,
-          access_token: ''
+          access_token: auth.getToken() || ''
         })
       });
 
@@ -143,9 +144,12 @@ const AgentChat = () => {
       if (action === 'approve') {
         try {
           const executeResponse = await api.fetchWithAuth(
-            `/api/v1/approvals/${pendingApproval.approval_id}/execute?session_id=${pendingApproval.session_id}`,
+            `/api/v1/approvals/${pendingApproval.approval_id}`,
             {
-              method: 'POST'
+              method: 'POST',
+              body: JSON.stringify({
+                session_id: pendingApproval.session_id
+              })
             }
           );
           
@@ -259,7 +263,7 @@ const AgentChat = () => {
             agent_type: agent?.type || 'license',
             message: currentInput,
             files: filesData.length > 0 ? filesData : null,
-            access_token: ''
+            access_token: auth.getToken() || ''
           })
         });
 
@@ -272,24 +276,21 @@ const AgentChat = () => {
         
         console.log('Full response data:', data);
         
-        // Check if approval is required - more lenient check
-        if (data.requires_approval && data.approval_id) {
-          console.log('Approval triggered with approval_id:', data.approval_id);
-          console.log('Metadata approval data:', data.metadata?.approval);
+        // Check if approval is required - check for approval_metadata from backend
+        if (data.approval_metadata && data.approval_metadata.approval_id) {
+          console.log('Approval triggered with approval_id:', data.approval_metadata.approval_id);
+          console.log('Approval metadata:', data.approval_metadata);
           
-          const approvalData = data.metadata?.approval || {};
           setPendingApproval({
-            approval_id: data.approval_id,
-            filename: approvalData.filename || 'license file',
-            expires_at: approvalData.expires_at,
+            approval_id: data.approval_metadata.approval_id,
+            filename: data.approval_metadata.filename || 'license file',
+            expires_at: data.approval_metadata.expires_at,
             session_id: data.session_id
           });
         } else {
           console.log('No approval required:', {
-            requires_approval: data.requires_approval,
-            approval_id: data.approval_id,
-            has_metadata: !!data.metadata,
-            has_approval_in_metadata: !!data.metadata?.approval
+            has_approval_metadata: !!data.approval_metadata,
+            approval_metadata: data.approval_metadata
           });
         }
         

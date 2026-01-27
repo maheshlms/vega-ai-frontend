@@ -1,9 +1,9 @@
 import { auth } from './auth';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
-const AUDIT_SERVICE = import.meta.env.VITE_AUDIT_SERVICE_URL || "http://localhost:8004";
-const TARGET_SYSTEMS_SERVICE = import.meta.env.VITE_TARGET_SYSTEMS_URL || "http://localhost:8005";
-const LLM_RUNTIME_SERVICE = import.meta.env.VITE_LLM_RUNTIME_URL || "http://localhost:8002";
+const AUDIT_SERVICE = import.meta.env.VITE_AUDIT_SERVICE_URL || "http://localhost:8002";
+const TARGET_SYSTEMS_SERVICE = import.meta.env.VITE_TARGET_SYSTEMS_URL || "http://localhost:8000";
+const LLM_RUNTIME_SERVICE = import.meta.env.VITE_LLM_RUNTIME_URL || "http://localhost:8000";
 
 // Helper function to make authenticated requests to different services
 const fetchWithAuthToService = async (serviceUrl, endpoint, options = {}) => {
@@ -95,7 +95,7 @@ export const api = {
   // ============================================================
   llmRuntime: {
     listAgents: async () => {
-      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, '/agents', {
+      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, '/api/v1/agents', {
         method: 'GET'
       });
 
@@ -108,7 +108,7 @@ export const api = {
     },
 
     createAgent: async (data) => {
-      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, '/agents', {
+      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, '/api/v1/agents', {
         method: 'POST',
         body: JSON.stringify(data)
       });
@@ -122,7 +122,7 @@ export const api = {
     },
 
     getAgent: async (id) => {
-      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/agents/${id}`, {
+      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/api/v1/agents/${id}`, {
         method: 'GET'
       });
 
@@ -135,7 +135,7 @@ export const api = {
     },
 
     deleteAgent: async (id) => {
-      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/agents/${id}`, {
+      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/api/v1/agents/${id}`, {
         method: 'DELETE'
       });
 
@@ -148,7 +148,7 @@ export const api = {
     },
 
     updateAgent: async (id, data) => {
-      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/agents/${id}`, {
+      const response = await fetchWithAuthToService(LLM_RUNTIME_SERVICE, `/api/v1/agents/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
       });
@@ -378,17 +378,31 @@ export const api = {
 
     // Test connection to target system
     testConnection: async (id) => {
-      const response = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems/test-connection', {
+      // Validate ID before proceeding
+      if (!id || id === 'undefined' || typeof id === 'undefined') {
+        throw new Error('Target system ID is required for connection testing');
+      }
+
+      // Send test request with target_system_id in the body
+      const testUrl = '/api/v1/target-systems/test-connection';
+      console.log('[testConnection] Sending test request for ID:', id);
+      
+      const response = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, testUrl, {
         method: 'POST',
-        body: JSON.stringify({ target_id: id })
+        body: JSON.stringify({ target_system_id: id })
       });
+      
+      console.log('[testConnection] Test response status:', response.status);
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
+        console.error('[testConnection] Test failed with error:', error);
         throw new Error(error.detail || 'Connection test failed');
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('[testConnection] Test result:', result);
+      return result;
     },
 
     // Get target systems statistics
@@ -404,14 +418,97 @@ export const api = {
       return await response.json();
     },
 
-    // Get available target types
+    // Get available target types (maps to integrations)
     getTypes: async () => {
-      const response = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems/types', {
+      const response = await fetchWithAuthToService(API_BASE, '/api/v1/integrations', {
         method: 'GET'
       });
       
       if (!response.ok) {
         throw new Error('Failed to fetch target types');
+      }
+      
+      const data = await response.json();
+      // Return integrations as types (value and name are the same)
+      return {
+        types: data.integrations.map(integration => ({
+          value: integration.value,
+          name: integration.name,
+          description: integration.description
+        }))
+      };
+    }
+  },
+
+  // ============================================================
+  // INTEGRATIONS ENDPOINTS
+  // ============================================================
+  integrations: {
+    // Get all integrations
+    list: async () => {
+      const response = await fetchWithAuthToService(API_BASE, '/api/v1/integrations', {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch integrations');
+      }
+      
+      return await response.json();
+    },
+
+    // Get specific integration
+    get: async (integrationId) => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/integrations/${integrationId}`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch integration');
+      }
+      
+      return await response.json();
+    },
+
+    // Create new integration (admin only)
+    create: async (data) => {
+      const response = await fetchWithAuthToService(API_BASE, '/api/v1/integrations', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to create integration');
+      }
+      
+      return await response.json();
+    },
+
+    // Update integration (admin only)
+    update: async (integrationId, data) => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/integrations/${integrationId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to update integration');
+      }
+      
+      return await response.json();
+    },
+
+    // Delete integration (admin only)
+    delete: async (integrationId) => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/integrations/${integrationId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to delete integration');
       }
       
       return await response.json();

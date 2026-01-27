@@ -1,113 +1,99 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaStar, FaPlug, FaShieldAlt, FaServer } from 'react-icons/fa';
+import api from '../utils/api';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
+  const [integrationsData, setIntegrationsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Integration categories and data
-  const integrations = [
-    {
-      category: 'OIDC Provider',
-      icon: FaShieldAlt,
-      items: [
-        {
-          id: 'pingfederate',
-          name: 'Ping Federate',
-          description: 'Enterprise federation and SSO platform',
-          logo: '🔐',
-          verified: true,
-          status: 'connected',
-          badges: ['SSO', 'Enterprise', 'SAML'],
-          connectedSince: '2024-12-01'
+  // Fetch integrations from backend
+  useEffect(() => {
+    const fetchIntegrations = async () => {
+      try {
+        setLoading(true);
+        const response = await api.integrations.list();
+        
+        console.log('Full integrations response:', response);
+        console.log('Integrations array:', response.integrations);
+        
+        // Create a map of integrations by value for quick lookup of full data with _id
+        const integrationsMap = {};
+        if (response.integrations && Array.isArray(response.integrations)) {
+          response.integrations.forEach(integration => {
+            console.log(`Integration "${integration.name}" _id:`, integration._id);
+            integrationsMap[integration.value] = integration;
+          });
         }
-      ]
-    },
-    {
-      category: 'Identity Datastores / Directories',
-      icon: FaServer,
-      items: [
-        {
-          id: 'pingdirectory',
-          name: 'Ping Directory',
-          description: 'High-performance LDAP directory service',
-          logo: '📚',
-          verified: true,
-          status: 'connected',
-          badges: ['LDAP', 'Directory', 'Sync'],
-          connectedSince: '2024-12-05'
-        },
-        {
-          id: 'activedirectory',
-          name: 'Active Directory',
-          description: 'Microsoft directory services',
-          logo: '🏢',
-          verified: true,
-          status: 'available',
-          badges: ['Windows', 'Enterprise']
+        
+        // Transform response to organized categories structure
+        const categorized = {};
+        if (response.categories) {
+          Object.entries(response.categories).forEach(([category, items]) => {
+            console.log(`Category "${category}" items:`, items);
+            categorized[category] = {
+              category,
+              icon: getCategoryIcon(category),
+              items: items.map(item => {
+                // Get the full integration data from the integrations array for complete _id
+                const fullIntegration = integrationsMap[item.value];
+                const itemId = fullIntegration?._id || item._id || item.id;
+                console.log(`Item "${item.name}" (value: ${item.value}) ID:`, itemId);
+                return {
+                  id: itemId,
+                  value: item.value,
+                  name: item.name,
+                  description: item.description,
+                  logo: item.icon || getDefaultIcon(item.value),
+                  verified: true,
+                  status: 'connected',
+                  badges: item.tags || [],
+                  auth_methods: item.auth_methods || []
+                };
+              })
+            };
+          });
         }
-      ]
-    },
-    {
-      category: 'Cloud Identity',
-      icon: FaPlug,
-      items: [
-        {
-          id: 'pingone',
-          name: 'Ping One',
-          description: 'Cloud-native identity platform',
-          logo: '☁️',
-          verified: true,
-          status: 'connected',
-          badges: ['SaaS', 'IDaaS', 'Cloud'],
-          connectedSince: '2024-12-10'
-        },
-        {
-          id: 'okta',
-          name: 'Okta',
-          description: 'Identity and access management platform',
-          logo: '⭕',
-          verified: true,
-          status: 'available',
-          badges: ['Cloud', 'SSO']
-        },
-        {
-          id: 'auth0',
-          name: 'Auth0',
-          description: 'Authentication and authorization platform',
-          logo: '🔒',
-          verified: true,
-          status: 'available',
-          badges: ['OAuth', 'OIDC']
-        }
-      ]
-    },
-    {
-      category: 'Messaging & Notifications',
-      icon: FaPlug,
-      items: [
-        {
-          id: 'slack',
-          name: 'Slack',
-          description: 'Team collaboration and messaging',
-          logo: '💬',
-          verified: true,
-          status: 'connected',
-          badges: ['Chat', 'Notifications'],
-          connectedSince: '2024-11-20'
-        },
-        {
-          id: 'teams',
-          name: 'Microsoft Teams',
-          description: 'Enterprise communication platform',
-          logo: '👥',
-          verified: true,
-          status: 'available',
-          badges: ['Chat', 'Enterprise']
-        }
-      ]
-    }
-  ];
+        
+        setIntegrationsData(categorized);
+      } catch (err) {
+        console.error('Failed to fetch integrations:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchIntegrations();
+  }, []);
+
+  // Map category names to icons
+  const getCategoryIcon = (category) => {
+    const iconMap = {
+      'OIDC Provider': FaShieldAlt,
+      'Identity Datastores / Directories': FaServer,
+      'Cloud Identity': FaPlug,
+      'Messaging & Notifications': FaPlug
+    };
+    return iconMap[category] || FaPlug;
+  };
+
+  // Get default icon emoji based on integration value
+  const getDefaultIcon = (value) => {
+    const iconMap = {
+      'ping_federate': '🔐',
+      'ping_directory': '📚',
+      'activedirectory': '🏢',
+      'ping_one': '☁️',
+      'okta': '⭕',
+      'auth0': '🔒',
+      'slack': '💬',
+      'teams': '👥'
+    };
+    return iconMap[value] || '🔌';
+  };
 
   const getBadgeColors = (badge) => {
     const colors = {
@@ -129,16 +115,16 @@ const IntegrationsPage = () => {
     return colors[badge] || 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
-  const handleIntegrationSelect = (integrationId, integrationName) => {
+  const handleIntegrationSelect = (integrationId, integrationName, integrationValue, authMethods) => {
     // Navigate to target systems page filtered by integration
     navigate(`/integration/target-systems/${integrationId}`, { 
-      state: { integrationName } 
+      state: { integrationName, integrationValue, authMethods } 
     });
   };
 
   const IntegrationCard = ({ item }) => (
     <div 
-      onClick={() => handleIntegrationSelect(item.id, item.name)}
+      onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}
       className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
     >
       <div className="flex items-start gap-3 mb-4">
@@ -184,32 +170,56 @@ const IntegrationsPage = () => {
         </div>
       </div>
 
-      {/* Integration Categories */}
-      <div className="px-6 py-6">
-        <div className="space-y-8">
-          {integrations.map((category, index) => {
-            const CategoryIcon = category.icon;
-            return (
-              <div key={index}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <CategoryIcon className="text-gray-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">{category.category}</h2>
-                    <p className="text-xs text-gray-500">{category.items.length} integration{category.items.length !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {category.items.map((item) => (
-                    <IntegrationCard key={item.id} item={item} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {/* Loading State */}
+      {loading && (
+        <div className="px-6 py-12 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="px-6 py-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+            Failed to load integrations: {error}
+          </div>
+        </div>
+      )}
+
+      {/* Integration Categories */}
+      {!loading && !error && (
+        <div className="px-6 py-6">
+          {Object.keys(integrationsData).length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <p className="text-gray-500">No integrations available</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {Object.values(integrationsData).map((category, index) => {
+                const CategoryIcon = category.icon;
+                return (
+                  <div key={index}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <CategoryIcon className="text-gray-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{category.category}</h2>
+                        <p className="text-xs text-gray-500">{category.items.length} integration{category.items.length !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {category.items.map((item) => (
+                        <IntegrationCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
