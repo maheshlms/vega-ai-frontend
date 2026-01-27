@@ -467,7 +467,7 @@ const AgentChat = () => {
                             : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                         }`}
                       >
-                        <p className="text-sm leading-relaxed">{message.text}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
                       </div>
                     </div>
                   ))}
