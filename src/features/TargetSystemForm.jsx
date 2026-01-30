@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaSave } from 'react-icons/fa';
 
-const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethods = [], integrationValue = null, integrationName = null, onSubmit, onCancel }) => {
+const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethods = [], integrationValue = null, integrationId = null, integrationName = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     type: integrationValue || '',
+    integration_id: integrationId || '',
     environment: 'production',
     auth_method: 'BasicAuth',
     host: '',
@@ -22,6 +23,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
       setFormData({
         name: system.name || '',
         type: system.type || '',
+        integration_id: system.integration_id || '',
         environment: system.environment || 'production',
         auth_method: system.auth_method || 'BasicAuth',
         host: system.host || '',
@@ -91,6 +93,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
       const submitData = {
         name: formData.name,
         type: typeToSnakeCase(formData.type),  // Convert to snake_case
+        integration_id: formData.integration_id,  // UUID reference to integration
         base_url: base_url,
         auth_method: authMethodToSnakeCase(formData.auth_method),  // Convert to snake_case
         credentials: {

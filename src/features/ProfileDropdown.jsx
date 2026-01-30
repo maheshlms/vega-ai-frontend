@@ -181,7 +181,7 @@ const ProfileDropdown = () => {
         </>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideDown {
           from {
             opacity: 0;

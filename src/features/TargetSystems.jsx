@@ -11,6 +11,7 @@ const TargetSystems = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const integrationName = location.state?.integrationName;
+  const integrationValue = location.state?.integrationValue;
   const authMethodsFromState = location.state?.authMethods || [];
   
   const [systems, setSystems] = useState([]);
@@ -43,7 +44,7 @@ const TargetSystems = () => {
     setUserRoles(roles);
     
     // Check specific permissions
-    setCanAdd(roles.includes('add:target_systems'));
+    setCanAdd(roles.includes('create:target_systems'));
     setCanEdit(roles.includes('edit:target_systems'));
     setCanDelete(roles.includes('delete:target_systems'));
     
@@ -56,26 +57,6 @@ const TargetSystems = () => {
       setAvailableAuthMethods(authMethodsFromState);
     }
   }, [authMethodsFromState]);
-
-  // Map integration ID to system type (handle naming differences)
-  const getSystemTypeFromIntegration = (integId) => {
-    if (!integId) return null;
-    const mapping = {
-      'pingfederate': 'ping_federate',
-      'ping_federate': 'ping_federate',
-      'pingdirectory': 'ping_directory',
-      'ping_directory': 'ping_directory',
-      'activedirectory': 'active_directory',
-      'active_directory': 'active_directory',
-      'pingone': 'ping_one',
-      'ping_one': 'ping_one',
-      'okta': 'okta',
-      'auth0': 'auth0',
-      'slack': 'slack',
-      'teams': 'microsoft_teams'
-    };
-    return mapping[integId.toLowerCase()] || integId;
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -96,12 +77,13 @@ const TargetSystems = () => {
         console.log('[fetchData] First system object:', systemsList[0]);
       }
       
-      // Filter by integration type on the frontend if integrationId is provided
+      // Filter by integration_id on the frontend if integrationId is provided
       if (integrationId) {
-        const systemType = getSystemTypeFromIntegration(integrationId);
-        systemsList = systemsList.filter(s => 
-          s.type && s.type.toLowerCase() === systemType.toLowerCase()
-        );
+        console.log('[fetchData] Filtering by integrationId:', integrationId);
+        systemsList = systemsList.filter(s => {
+          console.log('[fetchData] System:', s.name, 'integration_id:', s.integration_id, 'matches:', s.integration_id === integrationId);
+          return s.integration_id === integrationId;
+        });
       }
   
       setSystems(systemsList);
@@ -356,7 +338,8 @@ const TargetSystems = () => {
             system={editingSystem}
             typeOptions={typeOptions}
             availableAuthMethods={availableAuthMethods}
-            integrationValue={integrationId}
+            integrationValue={integrationValue}
+            integrationId={integrationId}
             integrationName={integrationName}
             onSubmit={editingSystem ? (data) => handleUpdate(editingSystem._id, data) : handleCreate}
             onCancel={() => {
@@ -401,7 +384,7 @@ const TargetSystems = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {systems.map((system) => (
-              <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow w-fit min-w-[400px] max-w-full">
                 <div className="mb-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{system.name}</h3>
@@ -417,7 +400,7 @@ const TargetSystems = () => {
                   </div>
                   <div>
                     <span className="text-gray-600">Host:</span>
-                    <span className="ml-2 font-medium text-gray-900 truncate">{system.base_url || system.host}</span>
+                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.host}</span>
                   </div>
                   <div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(system.status)}`}>
