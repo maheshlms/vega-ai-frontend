@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
+import { UserProvider } from './utils/UserContext'; // Import UserProvider
 import LoginPage from './features/LoginPage.jsx';
 import Callback from './features/Callback.jsx';
 import MouseMove from './effects/MouseMove.jsx';
@@ -19,6 +20,19 @@ import SelectTargetSystem from './features/SelectTargetSystem.jsx';
 import AgentTypeSelection from './features/AgentTypeSelection.jsx';
 import AgentCreationForm from './features/AgentCreationForm.jsx';
 import AgentChat from './features/AgentChat.jsx';
+import AuthenticationSetting from './features/AuthenticationSetting.jsx';
+import IdentityProviderSetting from './features/IdentityProviderSetting.jsx';
+import ProvisioningSetting from './features/ProvisioningSetting.jsx';
+import AiAgentSetting from './features/AiAgentSetting.jsx';
+import SecuritySetting from './features/SecuritySetting.jsx';
+import UserGroupSetting from './features/UserGroupSetting.jsx';
+import NotificationSetting from './features/NotificationSetting.jsx';
+import AuditLogsSetting from './features/AuditLogsSetting.jsx';
+import ApiIntegrationSetting from './features/ApiIntigrationSetting.jsx';
+import GeneralSetting from './features/GeneralSetting.jsx';
+import Plans from './features/Plans.jsx';
+import Rename from './features/Rename.jsx';
+import ScrollToTop from "./components/ScrollToTop";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -52,6 +66,7 @@ function AppContent() {
   return (
     <div className="h-screen overflow-hidden flex flex-col">
       <MouseMove />
+     
       {!hideLayout && <TopBar />}
       
       <div className="flex flex-1 overflow-hidden">
@@ -59,7 +74,10 @@ function AppContent() {
         
         {/* Main Content Area with left margin for fixed sidebar and its own scroll */}
         <div className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}>
+          
+             <ScrollToTop />
           <Routes>
+
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/callback" element={<Callback />} />
@@ -161,8 +179,116 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+
+            <Route 
+              path="/settings/authentication" 
+              element={
+                <ProtectedRoute>
+                  <AuthenticationSetting />
+                </ProtectedRoute>
+              } 
+            /> 
+            <Route 
+              path="/settings/identity-providers" 
+              element={
+                <ProtectedRoute>
+                  <IdentityProviderSetting />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/settings/provisioning" 
+              element={
+                <ProtectedRoute>
+                  <ProvisioningSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/ai-agents" 
+              element={
+                <ProtectedRoute>
+                  <AiAgentSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/security" 
+              element={
+                <ProtectedRoute>
+                  <SecuritySetting />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings/users-groups" 
+              element={
+                <ProtectedRoute>
+                  <UserGroupSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/notifications" 
+              element={
+                <ProtectedRoute>
+                  <NotificationSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/audit-logs" 
+              element={
+                <ProtectedRoute>
+                  <AuditLogsSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/api-integrations" 
+              element={
+                <ProtectedRoute>
+                  <ApiIntegrationSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings/general" 
+              element={
+                <ProtectedRoute>
+                  <GeneralSetting />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/setting/plans"
+              element={
+                <ProtectedRoute>
+                  <Plans/>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route 
+              path="/settings/rename" 
+              element={
+                <ProtectedRoute>
+                  <Rename/>
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/logout" element={<Logout />} />
           </Routes>
+          
         </div>
       </div>
     </div>
@@ -171,9 +297,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <UserProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </UserProvider>
   );
 }
 
