@@ -58,8 +58,8 @@ const AgentCreationForm = () => {
           environment: formData.environment,
           notificationWindow: formData.notificationWindow,
           slackChannel: formData.slackChannel,
-          target_system_id: targetId,
-          agent_type_id: agentTypeId
+          targetId: targetId,
+          agentTypeId: agentTypeId
         }
       };
 
