@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+// import { useAuth0 } from '@auth0/auth0-react';
 import { UserProvider } from './utils/UserContext'; // Import UserProvider
 import LoginPage from './features/LoginPage.jsx';
 import Callback from './features/Callback.jsx';
@@ -36,25 +36,25 @@ import ScrollToTop from "./components/ScrollToTop";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
-  const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading } = useAuth0();
-  const isLocalAuthenticated = auth.isAuthenticated();
+  // const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading } = useAuth0(); //mk
+  // const isLocalAuthenticated = auth.isAuthenticated();mk
   
-  // User is authenticated if either:
-  // 1. Auth0 confirms authentication, OR
-  // 2. We have a valid stored token (from previous Auth0 login)
-  const isAuth = auth0Authenticated || isLocalAuthenticated;
+  // User is authenticated if either:     sw
+  // 1. Auth0 confirms authentication, OR   sw
+  // 2. We have a valid stored token (from previous Auth0 login)  sw
+  // const isAuth = auth0Authenticated || isLocalAuthenticated;  mk   sw
 
-  if (auth0Loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  // if (auth0Loading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  //     </div>
+  //   );
+  // }
 
-  if (!isAuth) {
-    return <Navigate to="/login" replace />;
-  }
+  // if (!isAuth) {
+  //   return <Navigate to="/login" replace />;
+  // } mk
 
   return <>{children}</>;
 }
@@ -73,12 +73,14 @@ function AppContent() {
         {!hideLayout && <Sidebar />}
         
         {/* Main Content Area with left margin for fixed sidebar and its own scroll */}
-        <div className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}>
+        <div 
+        id="app-scroll-container"
+        className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}>
           
              <ScrollToTop />
           <Routes>
 
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/callback" element={<Callback />} />
             <Route 
