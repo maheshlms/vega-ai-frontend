@@ -87,21 +87,44 @@ const TargetSystems = () => {
         api.targetSystems.getTypes().catch(() => [])
       ]);
 
-      let systemsList = Array.isArray(systemsData) ? systemsData : systemsData.systems || [];
+      console.log('[fetchData] Full API response:', systemsData);
       
-      // Log to see what fields are available
-      console.log('[fetchData] Raw systems data:', systemsData);
+      // Handle different response formats
+      let systemsList = [];
+      if (Array.isArray(systemsData)) {
+        systemsList = systemsData;
+      } else if (systemsData && typeof systemsData === 'object') {
+        // Try different possible field names
+        systemsList = systemsData.target_systems || systemsData.systems || systemsData.data || [];
+      }
+      
+      console.log('[fetchData] Extracted systems list:', systemsList);
+      console.log('[fetchData] Systems count:', systemsList.length);
+      console.log('[fetchData] Integration ID from params:', integrationId);
+      
       if (systemsList.length > 0) {
         console.log('[fetchData] First system object keys:', Object.keys(systemsList[0]));
         console.log('[fetchData] First system object:', systemsList[0]);
       }
       
-      // Filter by integration type on the frontend if integrationId is provided
+      // Filter by integration_id if present in system object, or by integration type mapping
       if (integrationId) {
-        const systemType = getSystemTypeFromIntegration(integrationId);
-        systemsList = systemsList.filter(s => 
-          s.type && s.type.toLowerCase() === systemType.toLowerCase()
-        );
+        const beforeFilter = systemsList.length;
+        systemsList = systemsList.filter(s => {
+          // First, check if system has an integration_id field that matches
+          if (s.integration_id) {
+            return s.integration_id === integrationId;
+          }
+          // Otherwise, try to map integration ID to system type
+          const systemType = getSystemTypeFromIntegration(integrationId);
+          // Only filter by type if we got a valid mapping (not the UUID itself)
+          if (systemType && systemType !== integrationId && s.type) {
+            return s.type.toLowerCase() === systemType.toLowerCase();
+          }
+          // If no mapping found, include the system anyway (no type-based filtering)
+          return true;
+        });
+        console.log(`[fetchData] After filtering by integration: ${beforeFilter} -> ${systemsList.length}`);
       }
   
       setSystems(systemsList);
@@ -115,6 +138,7 @@ const TargetSystems = () => {
         error: systemsList.filter(s => s.status === 'error').length,
         pending: systemsList.filter(s => s.status === 'pending').length
       };
+      console.log('[fetchData] Calculated stats:', calculatedStats);
       setStats(calculatedStats);
     } catch (err) {
       console.error('Error fetching target systems:', err);
