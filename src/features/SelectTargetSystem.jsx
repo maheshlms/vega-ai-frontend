@@ -77,7 +77,16 @@ const SelectTargetSystem = () => {
                     {selectedId === (sys.id || sys._id) && <FaCheckCircle className="text-blue-600" />}
                   </div>
                   <p className="text-sm text-gray-600 mb-3">{sys.type || 'Target System'}</p>
-                  <div className="text-xs text-gray-500">Env: <span className="font-medium text-gray-700">{sys.environment || 'n/a'}</span></div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-gray-500">
+                      <span>URL: </span>
+                      <span className="font-medium text-gray-700 break-all">{sys.base_url || sys.host || 'n/a'}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span>Env: </span>
+                      <span className="font-medium text-gray-700">{sys.environment || 'n/a'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

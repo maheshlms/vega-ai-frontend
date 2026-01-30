@@ -72,7 +72,7 @@ const TopBar = () => {
         {/* LEFT - Logo */}
         <div className="flex items-center">
           <img 
-            src={dark ? "./logo-dark.png" : "./logo-light.png"} 
+            src={dark ? "/logo-dark.png" : "/logo-light.png"} 
             alt="Vega AI" 
             className="h-9" 
           />
@@ -91,7 +91,7 @@ const TopBar = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideDown {
           from {
             opacity: 0;

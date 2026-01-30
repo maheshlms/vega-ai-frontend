@@ -14,44 +14,8 @@ const Agents = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState(null);
 
-  // Load agents from LLM Runtime and merge with defaults for UX
+  // Load agents from LLM Runtime
   useEffect(() => {
-    const defaultAgents = [
-      {
-        id: 'default-1',
-        name: "Astra",
-        role: "Ping Federate Agent",
-        type: "Authentication",
-        image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-        tasks: "100",
-        success: "98.5%",
-        status: "active",
-        isDefault: true
-      },
-      {
-        id: 'default-2',
-        name: "Nexa",
-        role: "Ping Directory Agent",
-        type: "User Mgmt",
-        image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
-        tasks: "150",
-        success: "98.5%",
-        status: "active",
-        isDefault: true
-      },
-      {
-        id: 'default-3',
-        name: "Orion",
-        role: "Ping One Agent",
-        type: "Access Control",
-        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-        tasks: "120",
-        success: "98.5%",
-        status: "active",
-        isDefault: true
-      }
-    ];
-
     // Helper function to convert system type from snake_case to Title Case
     const formatSystemTypeName = (systemType) => {
       if (!systemType) return 'System';
@@ -69,7 +33,7 @@ const Agents = () => {
           const targetSystems = await api.targetSystems.list();
           if (Array.isArray(targetSystems)) {
             targetSystems.forEach(system => {
-              targetSystemMap[system.id] = system.type;
+              targetSystemMap[system.id || system._id] = system.type;
             });
           }
         } catch (err) {
@@ -106,11 +70,11 @@ const Agents = () => {
           };
         });
 
-        setAgents([...defaultAgents, ...normalized]);
+        setAgents(normalized);
       } catch (err) {
         console.error('Failed to fetch agents', err);
         setError('Unable to load agents from runtime');
-        setAgents(defaultAgents);
+        setAgents([]);
       } finally {
         setLoading(false);
       }
@@ -142,13 +106,6 @@ const Agents = () => {
   // Handle delete button click
   const handleDeleteClick = useCallback((e, agent) => {
     e.stopPropagation(); // Prevent card click from firing
-    
-    // Check if it's a default agent
-    if (agent.isDefault) {
-      alert("Default agents cannot be deleted. They are essential for system operations.");
-      return;
-    }
-    
     setAgentToDelete(agent);
     setShowDeleteModal(true);
   }, []);
@@ -156,16 +113,13 @@ const Agents = () => {
   // Confirm delete
   const confirmDelete = useCallback(() => {
     if (agentToDelete) {
-      // Remove from localStorage
       const removeAgent = async () => {
         try {
-          if (!agentToDelete.isDefault) {
-            await api.llmRuntime.deleteAgent(agentToDelete.id);
-          }
+          await api.llmRuntime.deleteAgent(agentToDelete.id);
           setAgents(prev => prev.filter(a => a.id !== agentToDelete.id));
         } catch (err) {
           console.error('Failed to delete agent', err);
-          alert('Failed to delete agent');
+          alert('Failed to delete agent: ' + err.message);
         } finally {
           setShowDeleteModal(false);
           setAgentToDelete(null);
@@ -307,15 +261,23 @@ const Agents = () => {
           </div>
 
           {/* AGENT CARDS */}
-          <div className="flex flex-wrap items-center gap-6">
-            {agents.map((agent, index) => (
-              <div 
-                key={agent.id || index}
-                className="bg-white w-55 h-82 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
-                onClick={()=> navigate(`/agents/${agent.id}/chat`, { state: { agent } })}
-              >
-                {/* Delete Button - Top Left (only for non-default agents) */}
-                {!agent.isDefault && (
+          {loading ? (
+            <div className="flex items-center justify-center p-12 w-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="w-full bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <p className="text-gray-500 text-lg">No agents configured. Ask your admin to create one.</p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-6">
+              {agents.map((agent, index) => (
+                <div 
+                  key={agent.id || index}
+                  className="bg-white w-55 h-82 rounded-2xl p-6 shadow-sm border border-gray-200 relative hover:shadow-lg transition-all cursor-pointer group"
+                  onClick={()=> navigate(`/agents/${agent.id}/chat`, { state: { agent } })}
+                >
+                  {/* Delete Button - Top Left */}
                   <button
                     onClick={(e) => handleDeleteClick(e, agent)}
                     className="absolute top-3 left-3 w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
@@ -323,74 +285,65 @@ const Agents = () => {
                   >
                     <FaTrash className="text-sm" />
                   </button>
-                )}
 
-                {/* Green Active Dot - Top Right */}
-                {agent.status === 'active' && (
-                  <div className="absolute top-3 right-3">
-                    <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                  </div>
-                )}
+                  {/* Green Active Dot - Top Right */}
+                  {agent.status === 'active' && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                    </div>
+                  )}
 
-                {/* Profile Image - Centered */}
-                <div className="flex justify-center mb-4">
-                  <div className="w-24 h-24 rounded-full overflow-hidden p-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
-                    <img 
-                      src={agent.image} 
-                      alt={agent.name}
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop';
-                      }}
-                    />
+                  {/* Profile Image - Centered */}
+                  <div className="flex justify-center mb-4">
+                    <div className="w-24 h-24 rounded-full overflow-hidden p-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+                      <img 
+                        src={agent.image} 
+                        alt={agent.name}
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop';
+                        }}
+                      />
+                    </div>
                   </div>
+
+                  {/* Type Badge - Centered */}
+                  <div className="flex justify-center mb-2">
+                    <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded text-xs font-medium">
+                      {agent.type}
+                    </div>
+                  </div>
+
+                  {/* Agent Name - Centered */}
+                  <h3 className="text-center text-xl font-bold text-black mb-1">{agent.name}</h3>
+                  
+                  {/* Agent Role - Centered */}
+                  <p className="text-center text-sm text-gray-600 mb-4">{agent.role}</p>
+
+                  {/* Stats - Side by Side */}
+                  <div className="flex justify-center items-center gap-8">
+                    <div className="text-center w-18 h-12 rounded-md shadow-md flex flex-col justify-center">
+                      <div className="text-md font-bold text-black">{agent.tasks || '0'}</div>
+                      <div className="text-xs text-gray-500">Task</div>
+                    </div>
+                    <div className="text-center w-18 h-12 rounded-md shadow-md flex flex-col justify-center">
+                      <div className="text-md font-bold text-emerald-600">{agent.success || '100%'}</div>
+                      <div className="text-xs text-gray-500">Success</div>
+                    </div>
+                  </div>
+
+                  {/* Environment Badge (if available) */}
+                  {agent.environment && (
+                    <div className="mt-4 text-center">
+                      <span className="text-xs text-gray-500">
+                        Environment: <span className="font-medium text-gray-700">{agent.environment}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Type Badge - Centered */}
-                <div className="flex justify-center mb-2">
-                  <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded text-xs font-medium">
-                    {agent.type}
-                  </div>
-                </div>
-
-                {/* Agent Name - Centered */}
-                <h3 className="text-center text-xl font-bold text-black mb-1">{agent.name}</h3>
-                
-                {/* Agent Role - Centered */}
-                <p className="text-center text-sm text-gray-600 mb-4">{agent.role}</p>
-
-                {/* Stats - Side by Side */}
-                <div className="flex justify-center items-center gap-8">
-                  <div className="text-center w-18 h-12 rounded-md shadow-md flex flex-col justify-center">
-                    <div className="text-md font-bold text-black">{agent.tasks || '0'}</div>
-                    <div className="text-xs text-gray-500">Task</div>
-                  </div>
-                  <div className="text-center w-18 h-12 rounded-md shadow-md flex flex-col justify-center">
-                    <div className="text-md font-bold text-emerald-600">{agent.success || '100%'}</div>
-                    <div className="text-xs text-gray-500">Success</div>
-                  </div>
-                </div>
-
-                {/* Environment Badge (if available) */}
-                {agent.environment && (
-                  <div className="mt-4 text-center">
-                    <span className="text-xs text-gray-500">
-                      Environment: <span className="font-medium text-gray-700">{agent.environment}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Default Agent Badge */}
-                {agent.isDefault && (
-                  <div className="mt-3 text-center">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                      System Agent
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
         </div>
       </div>
