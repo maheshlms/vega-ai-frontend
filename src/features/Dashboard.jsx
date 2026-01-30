@@ -7,11 +7,24 @@ import { PiCertificate } from "react-icons/pi";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CiServer } from "react-icons/ci";
 import FloatingChat from "../features/FloatingChat";
-import {Typewriter } from "react-simple-typewriter" ;
+import { Typewriter } from "react-simple-typewriter";
 
 const Dashboard = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check for mobile devices and handle resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Initialize component with smooth animation
   useEffect(() => {
@@ -132,17 +145,17 @@ const Dashboard = () => {
     }, 1000);
   }, []);
 
-  // Custom tooltip for chart
+  // Custom tooltip for chart with error boundary
   const CustomTooltip = useCallback(({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900 mb-1">{payload[0].payload.day}</p>
+          <p className="text-sm font-medium text-gray-900 mb-1">{payload[0]?.payload?.day || 'N/A'}</p>
           <p className="text-xs text-green-600">
-            Successful: <span className="font-semibold">{payload[0].value}</span>
+            Successful: <span className="font-semibold">{payload[0]?.value || 0}</span>
           </p>
           <p className="text-xs text-red-600">
-            Failed: <span className="font-semibold">{payload[1].value}</span>
+            Failed: <span className="font-semibold">{payload[1]?.value || 0}</span>
           </p>
         </div>
       );
@@ -151,20 +164,22 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="bg-[#F9FAFB] min-h-screen pb-10">
-      <div className="max-w-[1920px] mx-auto px-6">
+    <div className="bg-[#F9FAFB] min-h-screen ">
+      <div className="max-w-[1920px] 3xl:max-w-[2560px] mx-auto px-6">
 
-        
-        
-        {/* Header Section */}
+        {/* Header Section - Fully Responsive */}
         <div className={`pt-4 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl 2xl:text-3xl font-bold text-slate-800 ">IAM Command Center</h1>
+            <h1 className="text-2xl 2xl:text-3xl 3xl:text-4xl font-bold text-slate-800">
+              IAM Command Center
+            </h1>
             <TfiReload 
               className={`text-[#16A34A] cursor-pointer hover:rotate-180 transition-transform duration-500 hover:scale-110 ${isRefreshing ? 'animate-spin' : ''}`}
               onClick={handleRefresh}
               role="button"
               aria-label="Refresh dashboard"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleRefresh()}
             />
           </div>
           <div className="flex items-center gap-2 mt-1">
@@ -174,8 +189,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Top Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
+        {/* Top Stats Cards - Enhanced Grid for Ultra-Wide */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 3xl:grid-cols-8 gap-4 py-4">
           {topStatsData.map((item, index) => {
             const IconComponent = item.icon;
             return (
@@ -183,36 +198,52 @@ const Dashboard = () => {
                 key={`top-stat-${index}`}
                 className={`rounded-xl shadow-xl bg-white p-3 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                 style={{ transitionDelay: `${index * 80}ms` }}
+                role="article"
+                aria-label={`${item.heading}: ${item.value}`}
               >
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-[#6B7280] font-medium">{item.heading}</p>
+                  <p className="text-sm text-[#6B7280] font-medium">
+                    {item.heading}
+                  </p>
                   <div className="p-1.5 rounded-lg bg-slate-50 hover:scale-110 transition-transform duration-300">
                     <IconComponent size={18} style={{ color: item.iconcolor }} />
                   </div>
                 </div>
-                <p className="text-lg 2xl:text-xl font-bold text-center mt-2 text-slate-900">{item.value}</p>
-                <p className="text-xs text-center mt-1 text-[#9CA3AF]">{item.description}</p>
+                <p className="text-lg 2xl:text-xl 3xl:text-2xl font-bold text-center mt-2 text-slate-900">
+                  {item.value}
+                </p>
+                <p className="text-xs text-center mt-1 text-[#9CA3AF]">
+                  {item.description}
+                </p>
               </div>
             );
           })}
         </div>
 
-        {/* Secondary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Secondary Stats - Enhanced Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 3xl:grid-cols-8 gap-4">
           {secondaryStatsData.map((item, index) => (
             <div 
               key={`secondary-stat-${index}`}
               className={`rounded-xl shadow-xl bg-white p-3 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 group ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
               style={{ transitionDelay: `${320 + index * 80}ms` }}
+              role="article"
+              aria-label={`${item.description}: ${item.value}`}
             >
-              <p className="text-lg 2xl:text-xl font-bold text-center mt-2 text-slate-900 group-hover:scale-105 transition-transform duration-300">{item.value}</p>
-              <p className="text-sm text-[#6B7280] text-center mt-1 font-medium">{item.description}</p>
-              <p className="text-xs text-[#9CA3AF] text-center mt-1">{item.sub}</p>
+              <p className="text-lg 2xl:text-xl 3xl:text-2xl font-bold text-center mt-2 text-slate-900 group-hover:scale-105 transition-transform duration-300">
+                {item.value}
+              </p>
+              <p className="text-sm text-[#6B7280] text-center mt-1 font-medium">
+                {item.description}
+              </p>
+              <p className="text-xs text-[#9CA3AF] text-center mt-1">
+                {item.sub}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Chart and Side Cards Section */}
+        {/* Chart and Side Cards Section - Ultra Responsive */}
         <div className={`flex flex-col xl:flex-row gap-4 mt-6 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '640ms' }}>
           
           {/* SSO TRANSACTION OVERVIEW CHART */}
@@ -221,13 +252,14 @@ const Dashboard = () => {
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-sm shadow-blue-500/50"></div>
-                <h2 className="text-base 2xl:text-lg font-semibold text-gray-800">
+                <h2 className="text-base 2xl:text-lg 3xl:text-xl font-semibold text-gray-800">
                   SSO Transaction Overview (This Week)
                 </h2>
               </div>
               <button 
                 className="p-2 hover:bg-gray-100 rounded-full transition-all duration-300 hover:rotate-12"
                 aria-label="Chart information"
+                tabIndex={0}
               >
                 <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
@@ -236,7 +268,7 @@ const Dashboard = () => {
               </button>
             </div>
 
-            {/* Chart */}
+            {/* Chart - Responsive Height */}
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                 <defs>
@@ -297,8 +329,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* RIGHT SIDE CARDS COLUMN */}
-          <div className="flex flex-col gap-4 xl:w-80 2xl:w-96">
+          {/* RIGHT SIDE CARDS COLUMN - Responsive Width */}
+          <div className="flex flex-col gap-4 xl:w-80 2xl:w-96 3xl:w-[450px]">
             
             {/* CERTIFICATE RENEWALS */}
             <div className="shadow-xl rounded-xl bg-white p-4 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]">
@@ -353,20 +385,16 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* ENVIRONMENT STATUS AND SECURITY ALERTS */}
-        <div className={`flex flex-col lg:flex-row gap-4 mt-6 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '800ms' }}>
-          
-          {/* ENVIRONMENT STATUS */}
-          <div className="flex-1 bg-white rounded-xl shadow-xl -mt-30 h-65 p-5 hover:shadow-2xl transition-all duration-300">
+        <div className="flex-1 bg-white rounded-xl shadow-xl p-5 hover:shadow-2xl transition-all duration-300 h-65 w-[66%] -mt-23">
             {/* Header */}
             <div className="flex items-center gap-2 mb-5">
               <div className="p-1.5 rounded-lg bg-indigo-50">
                 <CiServer size={24} className="text-[#818CF8]" />
               </div>
-              <h1 className="text-lg font-bold">Environment Status</h1>
+              <h1 className="text-lg 3xl:text-xl font-bold">Environment Status</h1>
             </div>
 
-            {/* Three Columns */}
+            {/* Three Columns - Fully Responsive */}
             <div className="flex flex-col sm:flex-row gap-5">
               
               {/* PRODUCTION */}
@@ -449,14 +477,14 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* SECURITY ALERTS */}
-          <div className="lg:w-80 2xl:w-96 bg-white rounded-xl h-70 shadow-xl p-5 hover:shadow-2xl transition-all duration-300">
+            {/* SECURITY ALERTS */}
+          <div className="lg:w-80 2xl:w-96 3xl:w-[450px] bg-white rounded-xl shadow-xl p-5 hover:shadow-2xl transition-all duration-300 h-70 relative  left-170 bottom-35">
             {/* Header */}
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-red-50">
                 <MdSecurity size={24} className="text-red-500" />
               </div>
-              <h1 className="text-lg font-bold">Security Alerts</h1>
+              <h1 className="text-lg 3xl:text-xl font-bold">Security Alerts</h1>
             </div>
 
             {/* Alert Items */}
@@ -464,7 +492,9 @@ const Dashboard = () => {
               {securityAlerts.map((alert, index) => (
                 <div key={`alert-${index}`} className="flex justify-between items-center hover:bg-slate-50 p-2 rounded transition-colors duration-200">
                   <span className="text-sm text-gray-700 font-medium">{alert.type}</span>
-                  <span className="text-sm font-semibold text-gray-900 bg-slate-100 px-3 py-1 rounded-full">{alert.count}</span>
+                  <span className="text-sm font-semibold text-gray-900 bg-slate-100 px-3 py-1 rounded-full">
+                    {alert.count}
+                  </span>
                 </div>
               ))}
             </div>
@@ -473,30 +503,83 @@ const Dashboard = () => {
             <button 
               className="w-full mt-5 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-all duration-300 border border-blue-200 active:scale-95 transform hover:shadow-md"
               aria-label="View resolved issues"
+              tabIndex={0}
             >
               All critical issues resolved
             </button>
           </div>
-        </div>
+
+              
 
         {/* Floating Chat */}
-        <div className="chatbot flex items-center">
+        <div className="chatbot flex items-center mt-6">
           <FloatingChat />
         </div>
 
       </div>
 
-      {/* Minimal Custom CSS */}
+      {/* Enhanced Custom CSS with Ultra-Wide Support */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         * {
           font-family: 'Inter', sans-serif;
         }
+
+        /* 3XL breakpoint for ultra-wide displays (34" and above) */
+        @media (min-width: 1920px) {
+          .\\33xl\\:grid-cols-8 {
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+          }
+          
+          .\\33xl\\:text-4xl {
+            font-size: 2.25rem;
+            line-height: 2.5rem;
+          }
+          
+          .\\33xl\\:text-2xl {
+            font-size: 1.5rem;
+            line-height: 2rem;
+          }
+          
+          .\\33xl\\:text-xl {
+            font-size: 1.25rem;
+            line-height: 1.75rem;
+          }
+          
+          .\\33xl\\:w-\\[450px\\] {
+            width: 450px;
+          }
+          
+          .\\33xl\\:max-w-\\[2560px\\] {
+            max-width: 2560px;
+          }
+        }
+
+        /* Smooth scrolling */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        /* Prevent text selection on interactive elements */
+        button, [role="button"] {
+          user-select: none;
+          -webkit-user-select: none;
+        }
+
+        /* Improved focus styles for accessibility */
+        button:focus-visible, [role="button"]:focus-visible {
+          outline: 2px solid #3B82F6;
+          outline-offset: 2px;
+        }
+
+        /* Smooth transitions for all interactive elements */
+        button, a, [role="button"] {
+          transition: all 0.2s ease-in-out;
+        }
       `}</style>
     </div>
   );
 };
-
 
 export default Dashboard;
