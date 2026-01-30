@@ -67,23 +67,7 @@ export const api = {
     return await response.json();
   },
 
-  // Chat with backend
-  sendChatMessage: async (message, chatHistory = {}) => {
-    const response = await api.fetchWithAuth('/test/license-chat', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        message,
-        chat_history: chatHistory  // Include conversation context
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to send message');
-    }
-    
-    return await response.json();
-  },
-
+  
   // Health check
   healthCheck: async () => {
     const response = await fetch(`${API_BASE}/health`);
