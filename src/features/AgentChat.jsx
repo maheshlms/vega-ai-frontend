@@ -68,6 +68,7 @@ const AgentChat = () => {
       const response = await api.fetchWithAuth('/api/v1/chat', {
         method: 'POST',
         body: JSON.stringify({
+          user_id: 'current-user',
           session_id: Date.now().toString(),
           agent_id: agent?.id,
           agent_type: agent?.type || 'license',
