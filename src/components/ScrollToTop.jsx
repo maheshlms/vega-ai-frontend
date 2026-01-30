@@ -5,13 +5,13 @@ const ScrollToTop = () => {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    // Case 1: normal page scroll (most apps)
-    window.scrollTo(0, 0);
-
-    // Case 2: dashboard container scroll (optional, safe)
     const container = document.getElementById("app-scroll-container");
+
     if (container) {
-      container.scrollTo({ top: 0 });
+      container.scrollTo({ top: 0, behavior: "auto" });
+    } else {
+      // fallback (login pages etc.)
+      window.scrollTo(0, 0);
     }
   }, [pathname]);
 
