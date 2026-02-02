@@ -368,9 +368,9 @@ const AgentChat = () => {
   }, [navigate, heygenScript, chatHistory]);
 
   return (
-    <div className="w-full  bg-[#F3F4F6]">
+    <div className="w-full max-h-screen bg-[#F3F4F6] flex flex-col">
       {/* Header */}
-      <div className="px-10 py-5 flex items-center justify-between">
+      <div className="px-10 py-5 flex items-center justify-between flex-shrink-0">
         {/* Left side - Back button and title */}
         <div className="flex items-center gap-2">
           <button
@@ -395,8 +395,8 @@ const AgentChat = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex justify-center   px-4">
-        <div className="bg-white w-full max-w-4xl rounded-xl shadow-lg relative">
+      <div className="flex justify-center px-4 flex-1 pb-2">
+        <div className="bg-white w-full max-w-7xl rounded-xl shadow-lg relative flex flex-col" style={{ height: 'calc(100vh - 170px)' }}>
           
           {/* Avatar */}
           <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
@@ -413,7 +413,7 @@ const AgentChat = () => {
           </div>
 
           {/* Content area */}
-          <div className="pt-1 pb-6 px-6">
+          <div className="pt-1 pb-6 px-6 flex flex-col flex-1 overflow-hidden">
             
             {/* Agent info */}
             <div className="flex flex-col items-center text-center space-y-2 pt-8">
@@ -446,7 +446,7 @@ const AgentChat = () => {
             </div>
 
             {/* Messages container */}
-            <div className=" h-[250px] overflow-y-auto px-4">
+            <div className="flex-1 overflow-y-auto px-4 mb-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-gray-400 text-sm">Start a conversation...</p>
@@ -467,7 +467,10 @@ const AgentChat = () => {
                             : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                         }`}
                       >
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+                        <div 
+                          className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+                          dangerouslySetInnerHTML={{ __html: message.text }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -543,7 +546,7 @@ const AgentChat = () => {
             </div>
 
             {/* Input area */}
-            <div className="mt-6 border-t border-gray-200 pt-4">
+            <div className="flex-shrink-0 border-t border-gray-200 pt-4">
               {/* Attached Files Display */}
               {attachedFiles.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2 pb-3 border-b border-gray-200">

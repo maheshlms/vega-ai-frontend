@@ -17,7 +17,7 @@ const Sidebar = () => {
     { icon: AiOutlineHome, value: "Dashboard", path: "/dashboard" },
     { icon: GoPeople, value: "AI Agent", path: "/agents" },
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
-    { icon: GoDatabase, value: "Data Uplink", path: "/data" },
+    // { icon: GoDatabase, value: "Data Uplink", path: "/data" },
     { icon: TbWaveSawTool, value: "Audit Logs", path: "/audits" },
     { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
