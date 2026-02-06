@@ -6,6 +6,7 @@ import { TbWaveSawTool } from "react-icons/tb";
 import { IoSettingsOutline, IoLogOutOutline } from "react-icons/io5";
 import { AiOutlineHome } from "react-icons/ai";
 import { FaLink } from "react-icons/fa";
+import { RiAdminLine } from "react-icons/ri";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -19,6 +20,7 @@ const Sidebar = () => {
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     // { icon: GoDatabase, value: "Data Uplink", path: "/data" },
     { icon: TbWaveSawTool, value: "Audit Logs", path: "/audits" },
+    { icon: RiAdminLine, value: "Admin", path: "/admin" },
     { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
   ];
@@ -26,7 +28,7 @@ const Sidebar = () => {
   return (
     <div className="h-screen w-54 fixed left-0 top-18 border-r border-sidebar bg-sidebar overflow-y-auto flex-shrink-0 z-10">
       {menuItems.map((item, index) => {
-        const isActive = location.pathname === item.path;
+        const isActive = location.pathname.startsWith(item.path);
         const Icon = item.icon;
 
         return (
@@ -37,7 +39,7 @@ const Sidebar = () => {
               ${isActive ? "bg-sidebar-active rounded-md" : ""}
             `}
           >
-            <div className="flex items-center">
+            <div className="flex items-center ">
               {/* ICON COLUMN */}
               <span className="w-8 flex justify-center">
                 <Icon

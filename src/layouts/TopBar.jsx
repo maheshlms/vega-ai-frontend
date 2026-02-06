@@ -6,9 +6,9 @@ import { GoSun } from "react-icons/go";
 // Import all dropdown components
 import NotificationDropdown from '../features/NotificationDropdown';
 import HelpDropdown from '../features/HelpDropdown';
-import SettingsDropdown from '../features/SettingsDropdown';
 import ProfileDropdown from '../features/ProfileDropdown';
 import SearchBox from '../features/SearchBox';
+import SystemStatusIndicator from '../features/SystemStatusIndicator';
 
 /* ===================== DARK MODE ===================== */
 const DarkMode = () => {
@@ -26,7 +26,8 @@ const DarkMode = () => {
   return (
     <button
       onClick={() => setDark(!dark)}
-      className="p-2 rounded-md shadow bg-white cursor-pointer"
+      className="p-2 rounded-md shadow bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {dark ? <GoSun size={20} /> : <MdOutlineDarkMode size={20} />}
     </button>
@@ -82,10 +83,10 @@ const TopBar = () => {
         <SearchBox icon={IoIosSearch} />
 
         {/* RIGHT - Actions */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <SystemStatusIndicator />
           <NotificationDropdown />
           <HelpDropdown />
-          <SettingsDropdown />
           <ProfileDropdown />
           <DarkMode />
         </div>

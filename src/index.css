@@ -88,3 +88,11 @@
 html {
   scroll-behavior: smooth;
 }
+
+
+@layer utilities {
+  .animate-text {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

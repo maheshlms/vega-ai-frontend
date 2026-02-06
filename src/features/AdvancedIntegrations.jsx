@@ -36,6 +36,16 @@ const AdvancedIntegrations = () => {
         { text: 'SaaS', color: 'blue' },
         { text: 'IDaaS', color: 'purple' }
       ]
+    },
+     slack: {
+      id: 'slack',
+      logo: 'slack',
+      title: 'Slack',
+      verified: true,
+      badges: [
+        { text: 'Chat', color: 'blue' },
+        { text: 'Notification', color: 'purple' }
+      ]
     }
   };
 

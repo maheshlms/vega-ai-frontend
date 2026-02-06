@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaSync, FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaClock, FaLock, FaArrowLeft } from 'react-icons/fa';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { auth } from '../utils/auth';
 import TargetSystemForm from './TargetSystemForm';
 import TargetSystemStatus from './TargetSystemStatus';
+import {toast} from "react-toastify" ;
 
 const TargetSystems = () => {
   const { integrationId } = useParams();
@@ -28,6 +29,8 @@ const TargetSystems = () => {
   const [canAdd, setCanAdd] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [systemToDelete, setSystemToDelete] = useState(null);
   
   // Filter states - don't include integrationId in API filters
   const [filters, setFilters] = useState({
@@ -115,7 +118,7 @@ const TargetSystems = () => {
       fetchData();
     } catch (err) {
       console.error('Error creating target system:', err);
-      alert('Failed to create target system: ' + err.message);
+      toast.error('Failed to create target system: ' + err.message);
     }
   };
 
@@ -127,23 +130,36 @@ const TargetSystems = () => {
       fetchData();
     } catch (err) {
       console.error('Error updating target system:', err);
-      alert('Failed to update target system: ' + err.message);
+      toast.error('Failed to update target system: ' + err.message);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this target system?')) {
-      return;
-    }
+  // Handle delete button click - show modal
+  const handleDeleteClick = useCallback((system) => {
+    setSystemToDelete(system);
+    setShowDeleteModal(true);
+  }, []);
+
+  // Confirm delete
+  const confirmDelete = useCallback(async () => {
+    if (!systemToDelete) return;
 
     try {
-      await api.targetSystems.delete(id);
+      await api.targetSystems.delete(systemToDelete._id);
+      setShowDeleteModal(false);
+      setSystemToDelete(null);
       fetchData();
     } catch (err) {
       console.error('Error deleting target system:', err);
-      alert('Failed to delete target system: ' + err.message);
+      toast.error('Failed to delete target system: ' + err.message);
     }
-  };
+  }, [systemToDelete]);
+
+  // Cancel delete
+  const cancelDelete = useCallback(() => {
+    setShowDeleteModal(false);
+    setSystemToDelete(null);
+  }, []);
 
   const handleTestConnection = async (id) => {
     setTestingId(id);
@@ -151,11 +167,11 @@ const TargetSystems = () => {
       const result = await api.targetSystems.testConnection(id);
       console.log('[handleTestConnection] Result:', result);
       const message = result.message || result.detail || 'Connection test completed';
-      alert(`Connection test: ${message}`);
+      toast.info(`Connection test: ${message}`);
       fetchData();
     } catch (err) {
       console.error('Connection test failed:', err);
-      alert('Connection test failed: ' + err.message);
+      toast.info('Connection test failed: ' + err.message);
     } finally {
       setTestingId(null);
     }
@@ -191,6 +207,68 @@ const TargetSystems = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-scaleIn">
+            {/* Warning Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <FaTrash className="text-red-600 text-2xl" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-3">
+              Delete Target System?
+            </h2>
+
+            {/* System Info */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="mb-3">
+                <p className="font-semibold text-gray-900 text-lg">{systemToDelete?.name}</p>
+                <p className="text-sm text-gray-500">{systemToDelete?.type}</p>
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="text-gray-600">
+                  Environment: <span className="font-medium text-gray-800">{systemToDelete?.environment}</span>
+                </p>
+                <p className="text-gray-600">
+                  Host: <span className="font-medium text-gray-800 break-all">{systemToDelete?.base_url || systemToDelete?.host}</span>
+                </p>
+                <div className="mt-2">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(systemToDelete?.status)}`}>
+                    {systemToDelete?.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <p className="text-gray-600 text-center mb-8">
+              Are you sure you want to delete this target system? This action cannot be undone. 
+              All associated agents and monitoring will be affected.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDelete}
+                className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-6 py-6">
@@ -198,7 +276,7 @@ const TargetSystems = () => {
             <div>
               {integrationId && (
                 <button
-                  onClick={() => navigate('/integration')}
+                  onClick={() => navigate('/admin/targetsys')}
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3"
                 >
                   <FaArrowLeft size={16} />
@@ -382,7 +460,7 @@ const TargetSystems = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className=" flex  flex-wrap items-center  gap-4">
             {systems.map((system) => (
               <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow w-fit min-w-[400px] max-w-full">
                 <div className="mb-4">
@@ -416,7 +494,7 @@ const TargetSystems = () => {
                         setEditingSystem(system);
                         setShowForm(true);
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-sm font-medium"
                       title="Edit this target system"
                     >
                       <FaEdit className="text-sm" />
@@ -425,7 +503,7 @@ const TargetSystems = () => {
                   ) : (
                     <button
                       disabled
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded-md text-sm font-medium"
                       title="You do not have permission to edit target systems"
                     >
                       <FaEdit className="text-sm" />
@@ -435,15 +513,15 @@ const TargetSystems = () => {
                   <button
                     onClick={() => handleTestConnection(system._id)}
                     disabled={testingId === system._id}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 text-sm font-medium disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-sm font-medium disabled:opacity-50"
                   >
                     <FaCheckCircle className="text-sm" />
                     Test
                   </button>
                   {canDelete ? (
                     <button
-                      onClick={() => handleDelete(system._id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded text-sm font-medium"
+                      onClick={() => handleDeleteClick(system)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-sm font-medium"
                       title="Delete this target system"
                     >
                       <FaTrash className="text-sm" />
@@ -452,7 +530,7 @@ const TargetSystems = () => {
                   ) : (
                     <button
                       disabled
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded-md text-sm font-medium"
                       title="You do not have permission to delete target systems"
                     >
                       <FaTrash className="text-sm" />
@@ -465,6 +543,32 @@ const TargetSystems = () => {
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

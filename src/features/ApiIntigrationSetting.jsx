@@ -504,14 +504,14 @@ const  ApiIntegrationSetting = () => {
 
             {/* Create API Key Modal */}
             {showCreateKeyModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-2xl font-bold">Generate API Key</h2>
                                 <button
                                     onClick={() => setShowCreateKeyModal(false)}
-                                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                    className="text-white hover:text-red-500 hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                                 >
                                     <FaTimes size={20} />
                                 </button>
@@ -570,7 +570,7 @@ const  ApiIntegrationSetting = () => {
 
             {/* Regenerate Key Confirmation Modal */}
             {showRegenerateModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                         <div className="p-6 border-b border-gray-200">
                             <div className="flex items-center gap-3">
@@ -610,7 +610,7 @@ The old key will stop working immediately, and any applications using it will ne
 
         {/* Delete Key Confirmation Modal */}
         {showDeleteKeyModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center gap-3">
@@ -652,7 +652,7 @@ The old key will stop working immediately, and any applications using it will ne
 
         {/* Add Webhook Modal */}
         {showAddWebhookModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                     <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-2xl">
                         <div className="flex justify-between items-center">
@@ -733,7 +733,7 @@ The old key will stop working immediately, and any applications using it will ne
 
         {/* Test Webhook Modal */}
         {showTestWebhookModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-white/30 backdrop-blur-md   bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex justify-between items-center">

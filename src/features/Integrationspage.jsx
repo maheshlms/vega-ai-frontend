@@ -40,13 +40,16 @@ const IntegrationsPage = () => {
                 // Get the full integration data from the integrations array for complete _id
                 const fullIntegration = integrationsMap[item.value];
                 const itemId = fullIntegration?._id || item._id || item.id;
+                const logoUrl = getDefaultLogo(item.value);
                 console.log(`Item "${item.name}" (value: ${item.value}) ID:`, itemId);
+                console.log(`  -> Logo URL:`, logoUrl);
+                console.log(`  -> Backend icon:`, item.icon);
                 return {
                   id: itemId,
                   value: item.value,
                   name: item.name,
                   description: item.description,
-                  logo: item.icon || getDefaultIcon(item.value),
+                  logo: logoUrl || item.icon,
                   verified: true,
                   status: 'connected',
                   badges: item.tags || [],
@@ -80,19 +83,75 @@ const IntegrationsPage = () => {
     return iconMap[category] || FaPlug;
   };
 
-  // Get default icon emoji based on integration value
-  const getDefaultIcon = (value) => {
-    const iconMap = {
-      'ping_federate': '🔐',
-      'ping_directory': '📚',
-      'activedirectory': '🏢',
-      'ping_one': '☁️',
-      'okta': '⭕',
-      'auth0': '🔒',
-      'slack': '💬',
-      'teams': '👥'
+  // Get actual logo URLs for each integration
+  const getDefaultLogo = (value) => {
+    const logoMap = {
+      // Ping Identity Products - Using official Ping Identity logo from original document
+      'ping_federate': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      'ping_directory': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      'ping_one': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      'pingfederate': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      'pingdirectory': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      'pingone': 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
+      
+      // Microsoft Products - Active Directory/Azure (keeping current working version)
+      'activedirectory': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      'active_directory': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      'azure_ad': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      'azuread': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      'azure': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      'microsoft_ad': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg',
+      
+      // Microsoft Teams - Using custom SVG data URI for Teams logo
+      'teams': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iNTAlIiB5MT0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNWE2MmM1Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDA0N2IzIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMTYuNSIgY3k9IjUuNSIgcj0iMy41IiBmaWxsPSIjN2I4M2ViIi8+PGNpcmNsZSBjeD0iMTkiIGN5PSIxMiIgcj0iMi41IiBmaWxsPSI1YTYyYzUiLz48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMiAzaDEydjEySDB6Ii8+PHRleHQgeD0iOCIgeT0iMTMiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlQ8L3RleHQ+PHBhdGggZmlsbD0iIzdhODJlYiIgZD0iTTE0LjUgMTRoNXY3aC01eiIvPjxwYXRoIGZpbGw9IiM1YTYyYzUiIGQ9Ik0xNi41IDE2LjVoNXY0LjVoLTV6Ii8+PC9zdmc+',
+      'microsoft_teams': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iNTAlIiB5MT0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNWE2MmM1Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDA0N2IzIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMTYuNSIgY3k9IjUuNSIgcj0iMy41IiBmaWxsPSIjN2I4M2ViIi8+PGNpcmNsZSBjeD0iMTkiIGN5PSIxMiIgcj0iMi41IiBmaWxsPSI1YTYyYzUiLz48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMiAzaDEydjEySDB6Ii8+PHRleHQgeD0iOCIgeT0iMTMiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlQ8L3RleHQ+PHBhdGggZmlsbD0iIzdhODJlYiIgZD0iTTE0LjUgMTRoNXY3aC01eiIvPjxwYXRoIGZpbGw9IiM1YTYyYzUiIGQ9Ik0xNi41IDE2LjVoNXY0LjVoLTV6Ii8+PC9zdmc+',
+      'microsoftteams': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iNTAlIiB5MT0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNWE2MmM1Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDA0N2IzIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMTYuNSIgY3k9IjUuNSIgcj0iMy41IiBmaWxsPSIjN2I4M2ViIi8+PGNpcmNsZSBjeD0iMTkiIGN5PSIxMiIgcj0iMi41IiBmaWxsPSI1YTYyYzUiLz48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMiAzaDEydjEySDB6Ii8+PHRleHQgeD0iOCIgeT0iMTMiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlQ8L3RleHQ+PHBhdGggZmlsbD0iIzdhODJlYiIgZD0iTTE0LjUgMTRoNXY3aC01eiIvPjxwYXRoIGZpbGw9IiM1YTYyYzUiIGQ9Ik0xNi41IDE2LjVoNXY0LjVoLTV6Ii8+PC9zdmc+',
+      
+      // LDAP - Using a database/directory icon
+      'ldap': 'https://cdn-icons-png.flaticon.com/512/2906/2906274.png',
+      'openldap': 'https://cdn-icons-png.flaticon.com/512/2906/2906274.png',
+      'ldap_directory': 'https://cdn-icons-png.flaticon.com/512/2906/2906274.png',
+      
+      // Okta
+      'okta': 'https://www.okta.com/sites/default/files/Okta_Logo_BrightBlue_Medium.png',
+      
+      // Auth0 - Using the original URL from first code
+      'auth0': 'https://cdn.auth0.com/website/new-homepage/dark-favicon.png',
+      
+      // Google
+      'google': 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
+      'google_workspace': 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
+      'gsuite': 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png',
+      
+      // Slack
+      'slack': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg',
+      
+      // Generic/Custom
+      'custom': 'https://cdn-icons-png.flaticon.com/512/3524/3524388.png',
+      'custom_integration': 'https://cdn-icons-png.flaticon.com/512/3524/3524388.png',
+      'api': 'https://cdn-icons-png.flaticon.com/512/2920/2920277.png',
+      'webhook': 'https://cdn-icons-png.flaticon.com/512/8099/8099231.png',
+      'saml': 'https://cdn-icons-png.flaticon.com/512/6195/6195699.png',
+      'oidc': 'https://cdn-icons-png.flaticon.com/512/9068/9068642.png',
+      'oauth': 'https://cdn-icons-png.flaticon.com/512/9068/9068699.png',
     };
-    return iconMap[value] || '🔌';
+    
+    // Normalize the value to lowercase and handle common variations
+    const normalizedValue = value?.toLowerCase().replace(/[-_\s]/g, '');
+    
+    // Try exact match first
+    if (logoMap[value]) {
+      return logoMap[value];
+    }
+    
+    // Try normalized match
+    for (const [key, url] of Object.entries(logoMap)) {
+      if (key.toLowerCase().replace(/[-_\s]/g, '') === normalizedValue) {
+        return url;
+      }
+    }
+    
+    return null;
   };
 
   const getBadgeColors = (badge) => {
@@ -122,38 +181,65 @@ const IntegrationsPage = () => {
     });
   };
 
-  const IntegrationCard = ({ item }) => (
-    <div 
-      onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
-    >
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl">
-          {item.logo}
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900">{item.name}</h3>
-            {item.verified && (
-              <FaCheckCircle className="text-green-500 text-sm" />
+  const IntegrationCard = ({ item }) => {
+    console.log(`Rendering card for ${item.name}, logo:`, item.logo);
+    
+    return (
+      <div 
+        // onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}   commented for some external use 
+        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center overflow-hidden p-2.5">
+            {item.logo ? (
+              <img 
+                src={item.logo} 
+                alt={`${item.name} logo`}
+                className="w-full h-full object-contain"
+                onLoad={(e) => {
+                  console.log(`✓ Logo loaded successfully for ${item.name}:`, item.logo);
+                }}
+                onError={(e) => {
+                  console.error(`✗ Logo failed to load for ${item.name}:`, item.logo);
+                  // Fallback to a default icon if image fails to load
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                  const fallbackIcon = document.createElement('div');
+                  fallbackIcon.className = 'w-full h-full flex items-center justify-center text-gray-400';
+                  fallbackIcon.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>';
+                  e.target.parentElement.appendChild(fallbackIcon);
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <FaPlug className="w-6 h-6" />
+              </div>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">{item.name}</h3>
+              {item.verified && (
+                <FaCheckCircle className="text-green-500 text-sm" />
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {item.badges.map((badge, index) => (
+            <span
+              key={index}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getBadgeColors(badge)}`}
+            >
+              {badge}
+            </span>
+          ))}
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-2">
-        {item.badges.map((badge, index) => (
-          <span
-            key={index}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getBadgeColors(badge)}`}
-          >
-            {badge}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -162,7 +248,7 @@ const IntegrationsPage = () => {
         <div className="px-6 py-6">
           <div className="flex items-center gap-2 mb-1">
             <FaStar className="text-yellow-500" />
-            <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Integrations MarketPlace</h1>
           </div>
           <p className="text-sm text-gray-500">
             Connect your IAM systems and manage integrations
