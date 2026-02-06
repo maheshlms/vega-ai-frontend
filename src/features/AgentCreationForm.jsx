@@ -1,45 +1,84 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { FaCheckCircle, FaTimes } from 'react-icons/fa';
 
 const AgentCreationForm = () => {
   const navigate = useNavigate();
-  const { targetId, agentTypeId } = useParams();
+  const location = useLocation();
+  const { agentTypeId } = useParams();
+  const integrationDataFromState = location.state;
+  
+  // Get integration ID from navigation state
+  const integrationIdForFilter = integrationDataFromState?.integrationId;
+  const integrationType = integrationDataFromState?.integrationType;
+  
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [formData, setFormData] = React.useState({
     agentName: '',
     environment: '',
     notificationWindow: 30,
-    slackChannel: '#alerts'
+    slackChannel: '#alerts',
+    selectedTargetSystem: null
   });
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [availableTargetSystems, setAvailableTargetSystems] = React.useState([]);
+  const [loadingTargetSystems, setLoadingTargetSystems] = React.useState(false);
 
-  // Fetch target system and load environment
+  // Fetch target systems when environment changes
   React.useEffect(() => {
-    const loadTargetEnvironment = async () => {
+    const fetchTargetSystemsByEnvironment = async () => {
+      if (!formData.environment) {
+        setAvailableTargetSystems([]);
+        return;
+      }
+
+      if (!integrationIdForFilter) {
+        console.warn('[AgentCreationForm] No integration ID available for filtering');
+        setAvailableTargetSystems([]);
+        return;
+      }
+
+      setLoadingTargetSystems(true);
       try {
-        if (!targetId) return;
-        const target = await api.targetSystems.get(targetId);
-        if (target?.environment) {
-          setFormData(prev => ({
-            ...prev,
-            environment: target.environment
-          }));
-        }
+        const response = await api.targetSystems.list({ 
+          environment: formData.environment,
+          limit: 50 
+        });
+        
+        const systems = Array.isArray(response) ? response : response.systems || [];
+        
+        // Filter to only show connected systems
+        let connectedSystems = systems.filter(sys => sys.status === 'connected');
+        
+        // IMPORTANT: Filter by integration_id
+        // This ensures Ping Directory agents only see Ping Directory target systems
+        console.log('[AgentCreationForm] Filtering by integration_id:', integrationIdForFilter);
+        connectedSystems = connectedSystems.filter(sys => {
+          console.log('[AgentCreationForm] System:', sys.name, 'integration_id:', sys.integration_id, 'matches:', sys.integration_id === integrationIdForFilter);
+          return sys.integration_id === integrationIdForFilter;
+        });
+        
+        setAvailableTargetSystems(connectedSystems);
       } catch (err) {
-        console.error('Failed to load target environment:', err);
+        console.error('Failed to fetch target systems:', err);
+        setAvailableTargetSystems([]);
+      } finally {
+        setLoadingTargetSystems(false);
       }
     };
-    loadTargetEnvironment();
-  }, [targetId]);
+
+    fetchTargetSystemsByEnvironment();
+  }, [formData.environment, integrationIdForFilter]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'notificationWindow' ? parseInt(value) || 0 : value
+      [name]: name === 'notificationWindow' ? parseInt(value) || 0 : value,
+      // Reset selected target system when environment changes
+      ...(name === 'environment' ? { selectedTargetSystem: null } : {})
     }));
   };
 
@@ -48,17 +87,25 @@ const AgentCreationForm = () => {
     setSubmitting(true);
     setError('');
 
+    // Validate target system selection
+    if (!formData.selectedTargetSystem) {
+      setError('Please select a target system');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const payload = {
         name: formData.agentName,
         type: agentTypeId || 'license',
-        description: `${agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} agent for ${formData.environment || 'environment'} (target ${targetId})`,
+        description: `${agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} agent for ${formData.environment || 'environment'} (target ${formData.selectedTargetSystem._id || formData.selectedTargetSystem.id})`,
         checkInterval: 3600,
         config: {
           environment: formData.environment,
           notificationWindow: formData.notificationWindow,
           slackChannel: formData.slackChannel,
-          targetId: targetId,
+          targetId: formData.selectedTargetSystem._id || formData.selectedTargetSystem.id,
+          targetSystemName: formData.selectedTargetSystem.name,
           agentTypeId: agentTypeId
         }
       };
@@ -83,7 +130,8 @@ const AgentCreationForm = () => {
       agentName: '',
       environment: '',
       notificationWindow: 30,
-      slackChannel: '#alerts'
+      slackChannel: '#alerts',
+      selectedTargetSystem: null
     });
   };
 
@@ -106,10 +154,10 @@ const AgentCreationForm = () => {
               </div>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              License Agent Created!
+              Agent Created Successfully!
             </h2>
             <p className="text-gray-600 mb-8">
-              Your license monitoring agent is now active
+              Your {agentTypeId} agent is now active and monitoring
             </p>
             
             <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 rounded-xl p-5 mb-8 border border-gray-100">
@@ -121,6 +169,10 @@ const AgentCreationForm = () => {
                 <span className="text-sm text-gray-600">Environment</span>
                 <span className="font-semibold text-gray-900">{formData.environment}</span>
               </div>
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                <span className="text-sm text-gray-600">Target System</span>
+                <span className="font-semibold text-gray-900">{formData.selectedTargetSystem?.name}</span>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Notification Window</span>
                 <span className="font-semibold text-gray-900">{formData.notificationWindow} days</span>
@@ -131,15 +183,15 @@ const AgentCreationForm = () => {
               onClick={handleSuccess}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
             >
-              Done
+              View Agents
             </button>
           </div>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="relative z-10 flex items-start justify-center min-h-screen p-8 pt-20">
-        <div className="w-full max-w-2xl">
+      <div className="relative z-10 flex items-start justify-center min-h-screen p-8">
+        <div className="w-full max-w-4xl">
           {/* Back Button */}
           <button
             onClick={() => navigate(-1)}
@@ -156,10 +208,10 @@ const AgentCreationForm = () => {
               <div>
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                   <span className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">+</span>
-                  <span className="font-medium">Create Your AI Agents</span>
+                  <span className="font-medium">Create Your AI Agent</span>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  License Agent
+                  {agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} Agent
                 </h1>
               </div>
               <button
@@ -198,27 +250,107 @@ const AgentCreationForm = () => {
                   </p>
                 </div>
 
-                {/* Environment */}
+                {/* Environment Dropdown */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Environment <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="environment"
                     value={formData.environment}
                     onChange={handleInputChange}
-                    placeholder="e.g., production, staging, development"
                     required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  />
+                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300 cursor-pointer"
+                  >
+                    <option value="">Select Environment</option>
+                    <option value="production">Production</option>
+                    <option value="staging">Staging</option>
+                    <option value="development">Development</option>
+                  </select>
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Specify the deployment environment for this agent</span>
+                    <span>Select the deployment environment for this agent</span>
                   </p>
                 </div>
 
-                {/* Notification Window (Number Input) */}
+                {/* Target System Selection - Dropdown */}
+                {formData.environment && (
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Select Target System <span className="text-red-500">*</span>
+                    </label>
+                    
+                    {loadingTargetSystems ? (
+                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-200">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        <span className="text-sm text-gray-600">Loading target systems...</span>
+                      </div>
+                    ) : availableTargetSystems.length === 0 ? (
+                      <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200">
+                        <p className="text-sm text-yellow-700">
+                          No connected target systems found for <strong>{formData.environment}</strong> environment.
+                        </p>
+                        <p className="text-xs text-yellow-600 mt-1">
+                          Please ensure target systems are connected in the {formData.environment} environment.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        name="targetSystem"
+                        value={formData.selectedTargetSystem?._id || formData.selectedTargetSystem?.id || ''}
+                        onChange={(e) => {
+                          const selectedSystem = availableTargetSystems.find(
+                            sys => (sys._id || sys.id) === e.target.value
+                          );
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedTargetSystem: selectedSystem || null
+                          }));
+                        }}
+                        required
+                        className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300 cursor-pointer"
+                      >
+                        <option value="">Select a target system...</option>
+                        {availableTargetSystems.map((system) => {
+                          const systemId = system._id || system.id;
+                          const url = system.base_url || system.host || 'n/a';
+                          
+                          return (
+                            <option key={systemId} value={systemId}>
+                              {system.name} ({url})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    )}
+                    
+                    {/* Selected system preview */}
+                    {formData.selectedTargetSystem && (
+                      <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 animate-slideDown">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <FaCheckCircle className="text-white text-xs" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-green-900 truncate">
+                              {formData.selectedTargetSystem.name}
+                            </p>
+                            <p className="text-xs text-green-700 truncate">
+                              {formData.selectedTargetSystem.base_url || formData.selectedTargetSystem.host}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <span>💡</span>
+                      <span>Only connected systems in the selected environment are shown</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Notification Window */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Notification Window (days) <span className="text-red-500">*</span>
@@ -239,7 +371,7 @@ const AgentCreationForm = () => {
                   </p>
                 </div>
 
-                {/* Slack Channel (Read-only, only option) */}
+                {/* Slack Channel */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Notification Channel
@@ -268,17 +400,17 @@ const AgentCreationForm = () => {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="flex-1 px-6 py-3 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 border-2 border-yellow-200 hover:border-yellow-300 text-yellow-700 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
+                  className="flex-1 px-6 py-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-2 border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
                 >
                   <span className="text-lg">🔄</span>
                   <span>Reset</span>
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={submitting || !formData.selectedTargetSystem}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {submitting ? 'Creating...' : 'Create Agent'}
+                  {submitting ? 'Creating Agent...' : 'Create Agent'}
                 </button>
               </div>
             </form>
@@ -325,8 +457,23 @@ const AgentCreationForm = () => {
           50% { transform: scale(1.05); }
         }
 
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         .animate-blob {
           animation: blob 7s infinite;
+        }
+
+        .animate-slideDown {
+          animation: slideDown 0.3s ease-out;
         }
 
         .animation-delay-2000 {

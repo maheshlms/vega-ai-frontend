@@ -7,11 +7,10 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
     type: integrationValue || '',
     integration_id: integrationId || '',
     environment: 'production',
-    auth_method: 'BasicAuth',
+    auth_method: 'BearerToken',
     host: '',
     port: 443,
-    username: '',
-    password: '',
+    access_token: '',
     description: ''
   });
 
@@ -25,11 +24,10 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
         type: system.type || '',
         integration_id: system.integration_id || '',
         environment: system.environment || 'production',
-        auth_method: system.auth_method || 'BasicAuth',
+        auth_method: system.auth_method || 'BearerToken',
         host: system.host || '',
         port: system.port || 443,
-        username: system.username || '',
-        password: '', // Don't pre-fill password for security
+        access_token: '', // Don't pre-fill token for security
         description: system.description || ''
       });
     }
@@ -50,8 +48,8 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.type || !formData.host || !formData.username || !formData.password) {
-        setError('Please fill in all required fields (Name, Type, Host, Username, Password)');
+      if (!formData.name || !formData.type || !formData.host || !formData.access_token) {
+        setError('Please fill in all required fields (Name, Type, Host, Access Token)');
         setLoading(false);
         return;
       }
@@ -97,8 +95,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
         base_url: base_url,
         auth_method: authMethodToSnakeCase(formData.auth_method),  // Convert to snake_case
         credentials: {
-          username: formData.username,
-          password: formData.password
+          access_token: formData.access_token
         },
         environment: formData.environment,
         description: formData.description
@@ -138,219 +135,210 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
         snakeCase: method
       }))
     : [
-        { value: 'BasicAuth', label: 'Basic Auth', snakeCase: 'basic_auth' },
+        { value: 'BearerToken', label: 'Bearer Token', snakeCase: 'bearer_token' },
         { value: 'APIKey', label: 'API Key', snakeCase: 'api_key' },
         { value: 'OAuth2', label: 'OAuth2', snakeCase: 'oauth2' },
-        { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials' },
-        { value: 'BearerToken', label: 'Bearer Token', snakeCase: 'bearer_token' },
-        { value: 'Certificate', label: 'Certificate', snakeCase: 'certificate' }
+        { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials' }
       ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">
-          {system ? 'Edit Target System' : 'Create Target System'}
-        </h2>
+      <div className="bg-white border-b-2 border-gray-100 px-8 py-6 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {system ? 'Edit Target System' : 'Create Target System'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {system ? 'Update your target system configuration' : 'Add a new target system to your environment'}
+          </p>
+        </div>
         <button
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
           title="Close"
         >
-          <FaTimes size={24} />
+          <FaTimes size={20} />
         </button>
       </div>
 
-      {/* Form Content */}
-      <form onSubmit={handleSubmit} className="p-6">
+      {/* Form Content - Scrollable */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6">
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+            <p className="text-sm font-medium text-red-800">{error}</p>
           </div>
         )}
 
-        {/* Name */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            System Name *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="e.g., Production PingFederate"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        {/* Type */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            System Type *
-          </label>
-          {integrationName ? (
-            // Read-only display when integration is selected
-            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 font-semibold">
-              {integrationName}
-            </div>
-          ) : (
-            // Editable dropdown when no integration is selected
-            <select
-              name="type"
-              value={formData.type}
+        <div className="space-y-6">
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              System Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., Production PingFederate"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
               required
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              System Type <span className="text-red-500">*</span>
+            </label>
+            {integrationName ? (
+              <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium">
+                {integrationName}
+              </div>
+            ) : (
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                required
+              >
+                <option value="">Select a type...</option>
+                {defaultTypeOptions.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Environment */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Environment
+            </label>
+            <select
+              name="environment"
+              value={formData.environment}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
             >
-              <option value="">Select a type...</option>
-              {defaultTypeOptions.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
+              <option value="development">Development</option>
+              <option value="staging">Staging</option>
+              <option value="production">Production</option>
+            </select>
+          </div>
+
+          {/* Auth Method */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Authentication Method
+            </label>
+            <select
+              name="auth_method"
+              value={formData.auth_method}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+            >
+              {authMethodOptions.map(method => (
+                <option key={method.snakeCase} value={method.value}>
+                  {method.label}
                 </option>
               ))}
             </select>
-          )}
-        </div>
+          </div>
 
-        {/* Environment */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Environment
-          </label>
-          <select
-            name="environment"
-            value={formData.environment}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="development">Development</option>
-            <option value="staging">Staging</option>
-            <option value="production">Production</option>
-          </select>
-        </div>
+          {/* Host */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Host/Domain <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="host"
+              value={formData.host}
+              onChange={handleChange}
+              placeholder="e.g., api.example.com"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-2">Enter the hostname or domain without the protocol</p>
+          </div>
 
-        {/* Auth Method */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Auth Method
-          </label>
-          <select
-            name="auth_method"
-            value={formData.auth_method}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select auth method...</option>
-            {authMethodOptions.map(method => (
-              <option key={method.snakeCase} value={method.value}>
-                {method.label}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* Port */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Port
+            </label>
+            <input
+              type="number"
+              name="port"
+              value={formData.port}
+              onChange={handleChange}
+              placeholder="443"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+              min="1"
+              max="65535"
+            />
+          </div>
 
-        {/* Host */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Host/Domain *
-          </label>
-          <input
-            type="text"
-            name="host"
-            value={formData.host}
-            onChange={handleChange}
-            placeholder="e.g., pingfederate.example.com"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+          {/* Access Token */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Access Token <span className="text-red-500">*</span>
+              {system && <span className="text-xs text-gray-500 ml-2 font-normal">(leave empty to keep existing)</span>}
+            </label>
+            <textarea
+              name="access_token"
+              value={formData.access_token}
+              onChange={handleChange}
+              placeholder="Paste your access token here..."
+              rows="4"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+              required={!system}
+            />
+            <p className="text-xs text-gray-500 mt-2">Your access token will be securely encrypted and stored</p>
+          </div>
 
-        {/* Port */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Port
-          </label>
-          <input
-            type="number"
-            name="port"
-            value={formData.port}
-            onChange={handleChange}
-            placeholder="443"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            min="1"
-            max="65535"
-          />
-        </div>
-
-        {/* Username */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Username
-          </label>
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Admin user"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Password */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Password
-            {system && <span className="text-xs text-gray-500 ml-2">(leave empty to keep existing)</span>}
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="••••••••"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Description */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Add notes about this system..."
-            rows="3"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-3 justify-end border-t border-gray-200 pt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-          >
-            <FaSave />
-            {loading ? 'Saving...' : 'Save'}
-          </button>
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Add notes about this system..."
+              rows="3"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
         </div>
       </form>
+
+      {/* Footer Buttons */}
+      <div className="bg-gray-50 border-t-2 border-gray-100 px-8 py-6 flex gap-3 justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-100 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
+        >
+          <FaSave />
+          {loading ? 'Saving...' : system ? 'Update System' : 'Create System'}
+        </button>
+      </div>
     </div>
   );
 };

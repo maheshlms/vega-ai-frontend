@@ -167,7 +167,7 @@
                                 type="text"
                                 value={configForm.environmentId || ''}
                                 onChange={(e) => handleInputChange('environmentId', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="a1b2c3d4-e5f6-7890"
                             />
                         </div>
@@ -178,7 +178,7 @@
                                 type="text"
                                 value={configForm.workerAppId || ''}
                                 onChange={(e) => handleInputChange('workerAppId', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="worker_app_123"
                             />
                         </div>
@@ -189,7 +189,7 @@
                                 type="password"
                                 value={configForm.clientSecret || ''}
                                 onChange={(e) => handleInputChange('clientSecret', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="Enter client secret"
                             />
                         </div>
@@ -240,7 +240,7 @@
                                 type="text"
                                 value={configForm.domain || ''}
                                 onChange={(e) => handleInputChange('domain', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="yourcompany.okta.com"
                             />
                         </div>
@@ -251,7 +251,7 @@
                                 type="password"
                                 value={configForm.apiToken || ''}
                                 onChange={(e) => handleInputChange('apiToken', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="Enter API token"
                             />
                         </div>
@@ -289,7 +289,7 @@
                                 type="text"
                                 value={configForm.providerName || ''}
                                 onChange={(e) => handleInputChange('providerName', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="Custom SAML Provider"
                             />
                         </div>
@@ -300,7 +300,7 @@
                                 type="text"
                                 value={configForm.metadataUrl || ''}
                                 onChange={(e) => handleInputChange('metadataUrl', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="https://provider.com/metadata"
                             />
                         </div>
@@ -311,7 +311,7 @@
                                 type="text"
                                 value={configForm.entityId || ''}
                                 onChange={(e) => handleInputChange('entityId', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="https://yourapp.com/saml"
                             />
                         </div>
@@ -322,7 +322,7 @@
                                 type="text"
                                 value={configForm.ssoUrl || ''}
                                 onChange={(e) => handleInputChange('ssoUrl', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="https://provider.com/sso"
                             />
                         </div>
@@ -337,7 +337,7 @@
                                 type="text"
                                 value={configForm.workspaceDomain || ''}
                                 onChange={(e) => handleInputChange('workspaceDomain', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="yourcompany.com"
                             />
                         </div>
@@ -348,7 +348,7 @@
                                 type="email"
                                 value={configForm.serviceAccountEmail || ''}
                                 onChange={(e) => handleInputChange('serviceAccountEmail', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="service-account@project.iam.gserviceaccount.com"
                             />
                         </div>
@@ -370,7 +370,7 @@
                                 type="email"
                                 value={configForm.adminEmail || ''}
                                 onChange={(e) => handleInputChange('adminEmail', e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                className="w-full px-4 py-2.5 border  outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 placeholder="admin@yourcompany.com"
                             />
                         </div>
@@ -520,9 +520,9 @@
 
                 {/* Configuration Modal */}
                 {showModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="fixed inset-0  bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-scale-in">
-                            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+                            <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-6 rounded-t-2xl">
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h2 className="text-2xl font-bold">
@@ -536,7 +536,7 @@
                                     </div>
                                     <button
                                         onClick={() => setShowModal(false)}
-                                        className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                        className="text-white hover:bg-white hover:text-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                                     >
                                         <FaTimes size={20} />
                                     </button>
@@ -552,13 +552,13 @@
                                     <>
                                         <button
                                             onClick={handleTestConnection}
-                                            className="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                                            className="  px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md bg-gray-200 text-gray-500 border border-2 hover:border-gray-400 border-gray-300 hover:text-gray-600 hover:bg-gray-300"
                                         >
                                             Test Connection
                                         </button>
                                         <button
                                             onClick={handleSyncNow}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                                            className="bg-blue-200 text-blue-500 border border-2 hover:border-blue-400 border-blue-300 hover:text-blue-600 hover:bg-blue-300  px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
                                         >
                                             Sync Now
                                         </button>
@@ -566,7 +566,7 @@
                                 )}
                                 <button
                                     onClick={handleSaveConfig}
-                                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                                    className="flex-1 border border-2 border-green-300 bg-green-100 text-green-500 hover:border-green-400 hover:bg-green-200 hover:text-green-600 px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
                                 >
                                     {modalMode === 'configure' ? 'Save Changes' : 'Connect Provider'}
                                 </button>
@@ -583,7 +583,7 @@
 
                 {/* Disconnect Confirmation Modal */}
                 {showDisconnectConfirm && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                         <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                             <div className="p-6 border-b border-gray-200">
                                 <div className="flex items-center gap-3">
@@ -627,91 +627,113 @@
 
             {/* Add New Provider Modal */}
             {showAddNewModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-                        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Add New Provider</h2>
-                                <button
-                                    onClick={() => setShowAddNewModal(false)}
-                                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
-                                >
-                                    <FaTimes size={20} />
-                                </button>
-                            </div>
-                        </div>
+  <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col animate-scale-in">
 
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Provider Type</label>
-                                    <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                                        <option>Custom SAML Provider</option>
-                                        <option>Custom OIDC Provider</option>
-                                        <option>Custom OAuth 2.0</option>
-                                        <option>Custom LDAP</option>
-                                    </select>
-                                </div>
+      {/* ===== Header ===== */}
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Add New Provider</h2>
+          <button
+            onClick={() => setShowAddNewModal(false)}
+            className="text-white hover:bg-white/20 rounded-full p-2 transition"
+          >
+            <FaTimes size={20} />
+          </button>
+        </div>
+      </div>
 
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-300"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-sm">
-                                        <span className="px-2 bg-white text-gray-500 font-medium">OR</span>
-                                    </div>
-                                </div>
+      {/* ===== Scrollable Body ===== */}
+      <div className="p-6 overflow-y-auto flex-1 scroll-smooth">
+        <div className="space-y-4">
 
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 cursor-pointer transition-all duration-200">
-                                        <input type="radio" name="providerType" className="w-4 h-4 text-indigo-600" />
-                                        <span className="text-sm font-medium text-gray-700">SAML 2.0</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 cursor-pointer transition-all duration-200">
-                                        <input type="radio" name="providerType" className="w-4 h-4 text-indigo-600" />
-                                        <span className="text-sm font-medium text-gray-700">OpenID Connect (OIDC)</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 cursor-pointer transition-all duration-200">
-                                        <input type="radio" name="providerType" className="w-4 h-4 text-indigo-600" />
-                                        <span className="text-sm font-medium text-gray-700">OAuth 2.0</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 cursor-pointer transition-all duration-200">
-                                        <input type="radio" name="providerType" className="w-4 h-4 text-indigo-600" />
-                                        <span className="text-sm font-medium text-gray-700">LDAP</span>
-                                    </label>
-                                </div>
+          {/* Select Provider */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Provider Type
+            </label>
+            <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <option>Custom SAML Provider</option>
+              <option>Custom OIDC Provider</option>
+              <option>Custom OAuth 2.0</option>
+              <option>Custom LDAP</option>
+            </select>
+          </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Provider Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                                        placeholder="Enter provider name"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+          {/* OR Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500 font-medium">
+                OR
+              </span>
+            </div>
+          </div>
 
-                        <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                            <button
-                                onClick={() => {
-                                    showAlert('Custom provider configuration wizard will open', 'info');
-                                    setShowAddNewModal(false);
-                                }}
-                                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                            >
-                                Next
-                            </button>
-                            <button
-                                onClick={() => setShowAddNewModal(false)}
-                                className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-medium transition-all duration-200"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
+          {/* Radio Options */}
+          <div className="space-y-2">
+            {["SAML 2.0", "OpenID Connect (OIDC)", "OAuth 2.0", "LDAP"].map(
+              (type) => (
+                <label
+                  key={type}
+                  className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 cursor-pointer transition"
+                >
+                  <input
+                    type="radio"
+                    name="providerType"
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {type}
+                  </span>
+                </label>
+              )
             )}
+          </div>
+
+          {/* Provider Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Provider Name
+            </label>
+            <input
+              type="text"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Enter provider name"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Footer ===== */}
+      <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+        <button
+          onClick={() => {
+            showAlert(
+              "Custom provider configuration wizard will open",
+              "info"
+            );
+            setShowAddNewModal(false);
+          }}
+          className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-lg font-medium transition shadow-md hover:shadow-lg"
+        >
+          Next
+        </button>
+
+        <button
+          onClick={() => setShowAddNewModal(false)}
+          className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-medium transition"
+        >
+          Cancel
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
+
 
             <style jsx>{`
                 @keyframes slide-in-right {

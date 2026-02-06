@@ -475,14 +475,14 @@ const UserGroupSetting = () => {
 
             {/* Add Mapping Modal */}
             {showAddMappingModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-2xl font-bold">Add Group Mapping</h2>
                                 <button
                                     onClick={() => setShowAddMappingModal(false)}
-                                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                    className="text-white hover:bg-white hover:text-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                                 >
                                     <FaTimes size={20} />
                                 </button>
@@ -533,14 +533,14 @@ const UserGroupSetting = () => {
 
             {/* Create Role Modal */}
             {showCreateRoleModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-2xl font-bold">Create New Role</h2>
                                 <button
                                     onClick={() => setShowCreateRoleModal(false)}
-                                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                    className="text-white hover:bg-white hover:text-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                                 >
                                     <FaTimes size={20} />
                                 </button>

@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heygen/streaming-avatar": "^2.1.0",
     "@auth0/auth0-react": "^2.2.4",
+    "@heygen/streaming-avatar": "^2.1.0",
     "@tailwindcss/vite": "^4.1.18",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -19,6 +19,7 @@
     "react-router-dom": "^7.12.0",
     "react-scroll": "^1.9.3",
     "react-simple-typewriter": "^5.0.1",
+    "react-toastify": "^11.0.5",
     "recharts": "^3.6.0",
     "remixicon": "^4.8.0"
   },

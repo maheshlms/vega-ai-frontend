@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-// import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { UserProvider } from './utils/UserContext'; // Import UserProvider
 import LoginPage from './features/LoginPage.jsx';
 import Callback from './features/Callback.jsx';
@@ -16,7 +16,7 @@ import AuditLogs from './features/AuditLogs.jsx';
 import Settings from './features/Settings.jsx';
 import Logout from './features/Logout.jsx';
 import { auth } from './utils/auth';
-import SelectTargetSystem from './features/SelectTargetSystem.jsx';
+import SelectTargetSystem from './features/AvailableIntegration.jsx';
 import AgentTypeSelection from './features/AgentTypeSelection.jsx';
 import AgentCreationForm from './features/AgentCreationForm.jsx';
 import AgentChat from './features/AgentChat.jsx';
@@ -33,29 +33,46 @@ import GeneralSetting from './features/GeneralSetting.jsx';
 import Plans from './features/Plans.jsx';
 import Rename from './features/Rename.jsx';
 import ScrollToTop from "./components/ScrollToTop";
+import AiAssist from "./features/AiAssist.jsx";
+import TaskExecute from "./features/TaskExecute.jsx";
+import { ToastContainer } from 'react-toastify';
+import AdminSidebar from "./features/AdminSidebar.jsx" ;
+import AdminAgentControll from "./features/AdminAgentControll"
+import TargetSystemIntegration from "./features/TargetSystemIntegration.jsx" ;
+import AvailableIntegration from "./features/AvailableIntegration.jsx" ;
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
-  // const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading } = useAuth0(); //mk
-  // const isLocalAuthenticated = auth.isAuthenticated();mk
+  const { isAuthenticated, isLoading } = useAuth0();
+  const location = useLocation();
   
-  // User is authenticated if either:     sw
-  // 1. Auth0 confirms authentication, OR   sw
-  // 2. We have a valid stored token (from previous Auth0 login)  sw
-  // const isAuth = auth0Authenticated || isLocalAuthenticated;  mk   sw
+  // Check both Auth0 authentication and localStorage token
+  const isLocalAuthenticated = auth.isAuthenticated();
+  
+  // User is authenticated if either:
+  // 1. Auth0 confirms authentication, OR
+  // 2. We have a valid stored token (from previous Auth0 login)
+  const isAuth = isAuthenticated || isLocalAuthenticated;
 
-  // if (auth0Loading) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen">
-  //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
+  // Show loading spinner while Auth0 is checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="ml-3 text-gray-600">Verifying authentication...</p>
+      </div>
+    );
+  }
 
-  // if (!isAuth) {
-  //   return <Navigate to="/login" replace />;
-  // } mk
+  // If not authenticated, redirect to login
+  if (!isAuth) {
+    console.warn('🔒 Access denied - redirecting to login');
+    console.log('Auth0 authenticated:', isAuthenticated);
+    console.log('Local token valid:', isLocalAuthenticated);
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
+  // User is authenticated - render the protected content
   return <>{children}</>;
 }
 
@@ -66,6 +83,7 @@ function AppContent() {
   return (
     <div className="h-screen overflow-hidden flex flex-col">
       <MouseMove />
+      <ToastContainer />
      
       {!hideLayout && <TopBar />}
       
@@ -80,9 +98,10 @@ function AppContent() {
              <ScrollToTop />
           <Routes>
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/callback" element={<Callback />} />
+            
             <Route 
               path="/dashboard" 
               element={
@@ -91,6 +110,7 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
               path="/agents" 
               element={
@@ -99,6 +119,7 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
               path="/agents/:agentId/chat" 
               element={
@@ -107,32 +128,62 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+            
+            <Route 
+              path="/agents/agentchat" 
+              element={
+                <ProtectedRoute>
+                  <AgentChat />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/agents/agentchat/execute" 
+              element={
+                <ProtectedRoute>
+                  <TaskExecute />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/agents/agentchat/aiassist" 
+              element={
+                <ProtectedRoute>
+                  <AiAssist />
+                </ProtectedRoute>
+              }
+            />
+
             <Route 
               path="/agents/select-target" 
               element={
                 <ProtectedRoute>
-                  <SelectTargetSystem />
+                  <AvailableIntegration />
                 </ProtectedRoute>
               } 
             />
+
+            {/* 🚨 UPDATED ROUTE - Must come before catch-all */}
             <Route 
-              path="/agents/select-type/:targetId" 
+              path="/agents/select-type/:integrationType/:targetId" 
               element={
                 <ProtectedRoute>
                   <AgentTypeSelection />
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
-              path="/agents/create/:targetId/:agentTypeId" 
+              path="/agents/create/:agentTypeId" 
               element={
                 <ProtectedRoute>
                   <AgentCreationForm />
                 </ProtectedRoute>
               } 
             />
-            {/* Catch-all under /agents to avoid broken deep-links */}
-            <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
+
             <Route 
               path="/agents/createagent" 
               element={
@@ -141,6 +192,37 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+
+            {/* Catch-all under /agents - MUST BE LAST among /agents routes */}
+            <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
+            
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <AdminSidebar/>
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/admin/targetsys" 
+              element={
+                <ProtectedRoute>
+                  <TargetSystemIntegration/>
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/admin/agent" 
+              element={
+                <ProtectedRoute>
+                  <AdminAgentControll />
+                </ProtectedRoute>
+              } 
+            />
+
             <Route 
               path="/integration" 
               element={
@@ -149,14 +231,25 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+
+            {/* <Route 
+              path="/in" 
+              element={
+                <ProtectedRoute>
+                  <IntegrationBay />
+                </ProtectedRoute>
+              } 
+            /> */}
+
             <Route 
-              path="/integration/target-systems/:integrationId" 
+              path="/admin/integration/target-systems/:integrationId" 
               element={
                 <ProtectedRoute>
                   <TargetSystems />
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
               path="/data" 
               element={
@@ -165,14 +258,16 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/audits" 
-              element={
-                <ProtectedRoute>
-                  <AuditLogs />
-                </ProtectedRoute>
-              } 
-            />
+           
+           <Route  
+             path="/audits"
+             element={
+              <ProtectedRoute>
+                <AuditLogs />
+              </ProtectedRoute>
+             }
+           />
+            
             <Route 
               path="/settings" 
               element={
@@ -190,6 +285,7 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             /> 
+            
             <Route 
               path="/settings/identity-providers" 
               element={
@@ -225,6 +321,7 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
               path="/settings/users-groups" 
               element={

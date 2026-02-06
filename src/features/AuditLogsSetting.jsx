@@ -563,14 +563,14 @@ className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cur
 
         {/* Generate Report Modal */}
         {showGenerateReportModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                     <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-2xl">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold">Generate Report</h2>
                             <button
                                 onClick={() => setShowGenerateReportModal(false)}
-                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                className="text-white hover:text-red-500 hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                             >
                                 <FaTimes size={20} />
                             </button>
@@ -629,14 +629,14 @@ className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cur
 
         {/* Schedule Report Modal */}
         {showScheduleReportModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-white/30 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
                     <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold">Schedule Report</h2>
                             <button
                                 onClick={() => setShowScheduleReportModal(false)}
-                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                                className="text-white hover:text-red-500 hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
                             >
                                 <FaTimes size={20} />
                             </button>

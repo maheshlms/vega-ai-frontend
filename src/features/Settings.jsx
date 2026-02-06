@@ -27,7 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../utils/UserContext'; // Import the context hook
 
 const Settings = () => {
-  const { userName } = useUser(); // Get userName from context
+  const {userName} = useUser(); // Get userName from context
   const navigate = useNavigate();
 
   const topcard = [

@@ -7,17 +7,19 @@ const LLM_RUNTIME_SERVICE = import.meta.env.VITE_LLM_RUNTIME_URL || "http://loca
 
 // Helper function to make authenticated requests to different services
 const fetchWithAuthToService = async (serviceUrl, endpoint, options = {}) => {
-  const authHeader = auth.getAuthHeader();
+  // Use getAuthHeaders() instead of getAuthHeader() for consistency
+  const authHeaders = auth.getAuthHeaders();
   
   const isFormData = options.body instanceof FormData;
   
   const headers = {
-    ...authHeader,
+    ...authHeaders,
     ...options.headers
   };
   
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
+  // Don't override Content-Type if it's FormData or already set
+  if (isFormData && headers['Content-Type']) {
+    delete headers['Content-Type'];
   }
   
   const response = await fetch(`${serviceUrl}${endpoint}`, {
@@ -25,10 +27,12 @@ const fetchWithAuthToService = async (serviceUrl, endpoint, options = {}) => {
     headers
   });
 
+  // Handle unauthorized access
   if (response.status === 401) {
-    auth.logout();
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    console.warn('⚠️ 401 received, token may be expired');
+    // auth.logout();
+    // window.location.href = '/login';
+    throw new Error('Unauthorized - Please login again');
   }
 
   return response;
@@ -73,7 +77,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ 
         message,
-        chat_history: chatHistory  // Include conversation context
+        chat_history: chatHistory
       })
     });
     
@@ -84,7 +88,7 @@ export const api = {
     return await response.json();
   },
 
-  // Health check
+  // Health check (no auth required)
   healthCheck: async () => {
     const response = await fetch(`${API_BASE}/health`);
     return response.ok;
@@ -191,7 +195,6 @@ export const api = {
 
     // Query audit logs with filters, pagination, and sorting
     queryLogs: async (filters = {}) => {
-      // Ensure only optional fields are sent
       const cleanFilters = {};
       if (filters.event_type) cleanFilters.event_type = filters.event_type;
       if (filters.severity) cleanFilters.severity = filters.severity;
@@ -268,7 +271,6 @@ export const api = {
 
     // Get event types available
     getEventTypes: async () => {
-      // Return hardcoded event types since endpoint may not exist yet
       return {
         event_types: [
           'agent_created',
@@ -378,12 +380,10 @@ export const api = {
 
     // Test connection to target system
     testConnection: async (id) => {
-      // Validate ID before proceeding
       if (!id || id === 'undefined' || typeof id === 'undefined') {
         throw new Error('Target system ID is required for connection testing');
       }
 
-      // Send test request with target_system_id in the body
       const testUrl = '/api/v1/target-systems/test-connection';
       console.log('[testConnection] Sending test request for ID:', id);
       
@@ -429,7 +429,6 @@ export const api = {
       }
       
       const data = await response.json();
-      // Return integrations as types (value and name are the same)
       return {
         types: data.integrations.map(integration => ({
           value: integration.value,
