@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
-import { UserProvider } from './utils/UserContext'; // Import UserProvider
+import { UserProvider } from './utils/UserContext';
 import LoginPage from './features/LoginPage.jsx';
 import Callback from './features/Callback.jsx';
 import MouseMove from './effects/MouseMove.jsx';
@@ -36,25 +36,21 @@ import ScrollToTop from "./components/ScrollToTop";
 import AiAssist from "./features/AiAssist.jsx";
 import TaskExecute from "./features/TaskExecute.jsx";
 import { ToastContainer } from 'react-toastify';
-import AdminSidebar from "./features/AdminSidebar.jsx" ;
-import AdminAgentControll from "./features/AdminAgentControll"
-import TargetSystemIntegration from "./features/TargetSystemIntegration.jsx" ;
-import AvailableIntegration from "./features/AvailableIntegration.jsx" ;
+import AdminSidebar from "./features/AdminSidebar.jsx";
+import AdminAgentControll from "./features/AdminAgentControll";
+import TargetSystemIntegration from "./features/TargetSystemIntegration.jsx";
+import AvailableIntegration from "./features/AvailableIntegration.jsx";
+import TargetSystemShow from "./features/TargetSystemShow.jsx";
+import CreateTargetSystem from "./features/CreateTargetSystem.jsx";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuth0();
   const location = useLocation();
   
-  // Check both Auth0 authentication and localStorage token
   const isLocalAuthenticated = auth.isAuthenticated();
-  
-  // User is authenticated if either:
-  // 1. Auth0 confirms authentication, OR
-  // 2. We have a valid stored token (from previous Auth0 login)
   const isAuth = isAuthenticated || isLocalAuthenticated;
 
-  // Show loading spinner while Auth0 is checking authentication
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -64,15 +60,11 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  // If not authenticated, redirect to login
   if (!isAuth) {
     console.warn('🔒 Access denied - redirecting to login');
-    console.log('Auth0 authenticated:', isAuthenticated);
-    console.log('Local token valid:', isLocalAuthenticated);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // User is authenticated - render the protected content
   return <>{children}</>;
 }
 
@@ -90,14 +82,12 @@ function AppContent() {
       <div className="flex flex-1 overflow-hidden">
         {!hideLayout && <Sidebar />}
         
-        {/* Main Content Area with left margin for fixed sidebar and its own scroll */}
         <div 
-        id="app-scroll-container"
-        className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}>
-          
-             <ScrollToTop />
+          id="app-scroll-container"
+          className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}
+        >
+          <ScrollToTop />
           <Routes>
-
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/callback" element={<Callback />} />
@@ -165,7 +155,6 @@ function AppContent() {
               } 
             />
 
-            {/* 🚨 UPDATED ROUTE - Must come before catch-all */}
             <Route 
               path="/agents/select-type/:integrationType/:targetId" 
               element={
@@ -193,9 +182,9 @@ function AppContent() {
               } 
             />
 
-            {/* Catch-all under /agents - MUST BE LAST among /agents routes */}
             <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
             
+            {/* Admin Routes */}
             <Route 
               path="/admin" 
               element={
@@ -205,11 +194,32 @@ function AppContent() {
               } 
             />
 
+            {/* Target Systems Integration Selection */}
             <Route 
               path="/admin/targetsys" 
               element={
                 <ProtectedRoute>
                   <TargetSystemIntegration/>
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Create New Target System (Form) */}
+            <Route 
+              path="/admin/createtarsys" 
+              element={
+                <ProtectedRoute>
+                  <CreateTargetSystem/>
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Show All Target Systems */}
+            <Route 
+              path="/admin/avatarsys" 
+              element={
+                <ProtectedRoute>
+                  <TargetSystemShow />
                 </ProtectedRoute>
               } 
             />
@@ -232,15 +242,6 @@ function AppContent() {
               } 
             />
 
-            {/* <Route 
-              path="/in" 
-              element={
-                <ProtectedRoute>
-                  <IntegrationBay />
-                </ProtectedRoute>
-              } 
-            /> */}
-
             <Route 
               path="/admin/integration/target-systems/:integrationId" 
               element={
@@ -259,14 +260,14 @@ function AppContent() {
               } 
             />
            
-           <Route  
-             path="/audits"
-             element={
-              <ProtectedRoute>
-                <AuditLogs />
-              </ProtectedRoute>
-             }
-           />
+            <Route  
+              path="/audits"
+              element={
+                <ProtectedRoute>
+                  <AuditLogs />
+                </ProtectedRoute>
+              }
+            />
             
             <Route 
               path="/settings" 
@@ -387,7 +388,6 @@ function AppContent() {
 
             <Route path="/logout" element={<Logout />} />
           </Routes>
-          
         </div>
       </div>
     </div>

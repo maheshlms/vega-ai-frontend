@@ -7,22 +7,37 @@ import { IoSettingsOutline, IoLogOutOutline } from "react-icons/io5";
 import { AiOutlineHome } from "react-icons/ai";
 import { FaLink } from "react-icons/fa";
 import { RiAdminLine } from "react-icons/ri";
+import { auth } from "../utils/auth";
 
 const Sidebar = () => {
   const location = useLocation();
 
+  // Check if user has admin role
+  const isAdmin = auth.isAdmin();
 
-
-
-  const menuItems = [
+  // Base menu items (always visible)
+  const baseMenuItems = [
     { icon: AiOutlineHome, value: "Dashboard", path: "/dashboard" },
     { icon: GoPeople, value: "AI Agent", path: "/agents" },
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     // { icon: GoDatabase, value: "Data Uplink", path: "/data" },
     { icon: TbWaveSawTool, value: "Audit Logs", path: "/audits" },
-    { icon: RiAdminLine, value: "Admin", path: "/admin" },
+  ];
+
+  // Admin menu item (conditionally added)
+  const adminMenuItem = { icon: RiAdminLine, value: "Admin", path: "/admin" };
+
+  // Bottom menu items (always visible)
+  const bottomMenuItems = [
     { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
+  ];
+
+  // Construct final menu items
+  const menuItems = [
+    ...baseMenuItems,
+    ...(isAdmin ? [adminMenuItem] : []), // Only add Admin if user is admin
+    ...bottomMenuItems
   ];
 
   return (

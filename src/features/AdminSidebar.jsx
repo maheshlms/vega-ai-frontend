@@ -8,7 +8,7 @@ const AdminSidebar = () => {
 
   const handleNavigate = (type) => {
     if (type === "target") {
-      navigate("/admin/targetsys");
+      navigate("/admin/avatarsys"); // Navigate to TargetSystemShow
     } else if (type === "agent") {
       navigate("/admin/agent");
     }
@@ -104,6 +104,23 @@ const AdminSidebar = () => {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes text {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-text {
+          animation: text 0.2s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

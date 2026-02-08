@@ -62,6 +62,57 @@ export const api = {
     return await response.json();
   },
 
+  // Post-login endpoint - Called after Auth0 authentication
+  postLogin: async (userDetails, accessToken) => {
+    const response = await fetch(`${API_BASE}/api/v1/postlogin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(userDetails)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Post-login failed');
+    }
+
+    return await response.json();
+  },
+
+  // Logout endpoint - Called before clearing local data
+  logoutUser: async (userDetails, sessionId) => {
+    const token = auth.getToken();
+    if (!token) {
+      console.warn('No token available for logout endpoint');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...userDetails,
+          session_id: sessionId
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('Logout endpoint returned non-OK status');
+      }
+
+      return await response.json().catch(() => ({}));
+    } catch (error) {
+      console.error('Error calling logout endpoint:', error);
+      // Don't throw - we still want to complete local logout
+    }
+  },
+
   // Get current user profile
   getProfile: async () => {
     const response = await api.fetchWithAuth('/profile');

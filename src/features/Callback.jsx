@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { auth } from '../utils/auth'
+import { api } from '../utils/api'
 
 export default function Callback() {
   const { isAuthenticated, getAccessTokenSilently, user, isLoading } = useAuth0()
@@ -27,13 +28,32 @@ export default function Callback() {
           console.log('='?.repeat(80))
           
           // Store Auth0 token and user data locally
-          // This is sufficient for frontend auth - backend can verify token independently
           auth.storeAuth0Data(accessToken, user)
+          
+          // Call postlogin endpoint with user details and access token
+          console.log('📡 Calling /api/v1/postlogin endpoint...')
+          try {
+            const userDetails = {
+              email: user.email,
+              name: user.name,
+              sub: user.sub,
+              picture: user.picture
+            }
+            
+            const sessionData = await api.postLogin(userDetails, accessToken)
+            console.log('✅ Post-login successful, session data:', sessionData)
+            
+            // Store session data including session_id and roles
+            auth.storeSessionData(sessionData)
+            
+          } catch (postLoginError) {
+            console.error('⚠️ Post-login endpoint failed:', postLoginError)
+            // Don't block login if postlogin fails - user can still proceed
+          }
           
           console.log('✅ Auth0 token stored in localStorage, redirecting to dashboard...')
           
           // Redirect to dashboard
-          // Don't wait for backend profile call - just proceed with Auth0 user data
           navigate('/dashboard', { replace: true })
         } catch (error) {
           console.error('Error handling Auth0 callback:', error)
