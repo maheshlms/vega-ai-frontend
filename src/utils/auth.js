@@ -123,6 +123,39 @@ export const auth = {
     }
   },
 
+  // Store session data received from backend
+  storeSessionData: (sessionData) => {
+    try {
+      if (sessionData && sessionData.session_id) {
+        localStorage.setItem('sessionId', sessionData.session_id);
+        console.log('💾 Session ID stored:', sessionData.session_id);
+      }
+      
+      // Update roles if provided by backend
+      if (sessionData && sessionData.roles) {
+        const normalizedRoles = normalizeRoles(sessionData.roles);
+        localStorage.setItem('userRoles', JSON.stringify(normalizedRoles));
+        
+        // Update user object with new roles
+        const user = auth.getCurrentUser();
+        if (user) {
+          user.roles = normalizedRoles;
+          user.role = normalizedRoles.includes('admin') ? 'admin' : 'user';
+          localStorage.setItem('user', JSON.stringify(user));
+          localStorage.setItem('userRole', user.role);
+          console.log('👤 Roles updated from session:', normalizedRoles);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to store session data:', error);
+    }
+  },
+
+  // Get session ID
+  getSessionId: () => {
+    return localStorage.getItem('sessionId');
+  },
+
   // Get token type (usually 'Bearer')
   getTokenType: () => {
     return localStorage.getItem('tokenType') || 'bearer';
@@ -173,7 +206,26 @@ export const auth = {
   isAdmin: () => {
     try {
       const user = auth.getCurrentUser();
-      return user?.role === 'admin' || user?.roles?.includes('admin');
+      
+      // Check 1: Direct admin role
+      if (user?.role === 'admin' || user?.roles?.includes('admin')) {
+        return true;
+      }
+      
+      // Check 2: Email contains 'admin'
+      if (user?.email && user.email.toLowerCase().includes('admin')) {
+        return true;
+      }
+      
+      // Check 3: Has admin-level permissions (delete or create permissions)
+      const roles = user?.roles || [];
+      const hasAdminPermissions = roles.some(role => 
+        role.includes('delete:') || 
+        role.includes('create:') ||
+        role === 'admin'
+      );
+      
+      return hasAdminPermissions;
     } catch (error) {
       console.error('❌ Failed to check admin status:', error);
       return false;
@@ -270,6 +322,7 @@ export const auth = {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userRoles');
       localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('sessionId');
       console.log('✅ Auth data cleared successfully');
     } catch (error) {
       console.error('❌ Error during logout:', error);
@@ -295,8 +348,9 @@ export const auth = {
     console.log('Is Authenticated:', auth.isAuthenticated());
     console.log('Is Admin:', auth.isAdmin());
     console.log('Token Expiry:', localStorage.getItem('tokenExpiry'));
+    console.log('Session ID:', auth.getSessionId());
     console.log('='.repeat(80));
   }
 };
 
-export default auth;  
+export default auth;
