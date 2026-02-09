@@ -90,16 +90,17 @@ export const api = {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/v1/logout`, {
+      const url = new URL(`${API_BASE}/api/v1/logout`);
+      if (sessionId) {
+        url.searchParams.append('user_session_id', sessionId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...userDetails,
-          session_id: sessionId
-        })
+        }
       });
 
       if (!response.ok) {
@@ -480,9 +481,18 @@ export const api = {
       }
       
       const data = await response.json();
+      
+      // Convert snake_case to PascalCase for consistency with form expectations
+      const snakeToPascal = (str) => {
+        return str
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join('');
+      };
+      
       return {
         types: data.integrations.map(integration => ({
-          value: integration.value,
+          value: snakeToPascal(integration.value),  // Convert to PascalCase
           name: integration.name,
           description: integration.description
         }))

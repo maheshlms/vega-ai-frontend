@@ -9,8 +9,8 @@ const AdminSidebar = () => {
   const handleNavigate = (type) => {
     if (type === "target") {
       navigate("/admin/avatarsys"); // Navigate to TargetSystemShow
-    } else if (type === "agent") {
-      navigate("/admin/agent");
+    } else if (type === "settings") {
+      navigate("/settings");
     }
   };
 
@@ -63,41 +63,41 @@ const AdminSidebar = () => {
             </div>
           </div>
 
-          {/* AGENTS CARD */}
+          {/* SETTINGS CARD */}
           <div
             className="w-64 h-40 bg-white rounded-xl border border-slate-200
                        shadow-sm relative flex items-center justify-center
                        overflow-hidden cursor-pointer
                        hover:shadow-md transition-shadow"
-            onClick={() => handleNavigate("agent")}
+            onClick={() => handleNavigate("settings")}
           >
             <FaInfoCircle
               className="absolute top-3 right-3 text-blue-600 cursor-pointer
                          hover:text-blue-700 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setActiveCard(activeCard === "agent" ? null : "agent");
+                setActiveCard(activeCard === "settings" ? null : "settings");
               }}
             />
 
             <div
-              key={activeCard === "agent"}
+              key={activeCard === "settings"}
               className="text-center px-4
                          transition-all duration-200 ease-out
                          opacity-0 translate-y-2 animate-text"
             >
-              {activeCard === "agent" ? (
+              {activeCard === "settings" ? (
                 <>
                   <p className="text-sm font-semibold text-slate-800">
-                    AI Agents
+                    Settings
                   </p>
                   <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    Monitor, control, and manage your AI agents and workflows.
+                    Configure system settings and manage configurations.
                   </p>
                 </>
               ) : (
                 <p className="text-slate-800 text-lg font-semibold">
-                  Agents
+                  Settings
                 </p>
               )}
             </div>

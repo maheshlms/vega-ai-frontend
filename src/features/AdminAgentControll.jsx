@@ -15,12 +15,20 @@ import {
 import { IoMdStats } from "react-icons/io";
 import { MdSecurity } from "react-icons/md";
 import api from '../utils/api';
+import { auth } from '../utils/auth';
 
 const AdminAgentControl = () => {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
+  const [agentToPause, setAgentToPause] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState(null);
+  
+  // Check if current user is admin
+  const isAdmin = auth.isAdmin();
 
   // Permission levels
   const permissionLevels = [
@@ -41,12 +49,14 @@ const AdminAgentControl = () => {
           id: agent.id,
           name: agent.name,
           type: agent.type,
-          status: agent.status || 'active',
-          isActive: agent.status === 'active',
+          status: agent.status || 'enabled',
+          isActive: agent.status === 'enabled' || agent.status === 'active',
           permission: agent.permission || 'read', // Default permission
           environment: agent.config?.environment,
           checkInterval: agent.checkInterval,
           lastActivity: agent.lastActivity || new Date().toISOString(),
+          createdBy: agent.created_by || 'Unknown', // This now contains the email
+          lastUsed: agent.last_used_at || new Date().toISOString(),
           tasksCompleted: Math.floor(Math.random() * 100), // Mock data
           successRate: Math.floor(Math.random() * 20) + 80, // Mock data
         }));
@@ -73,9 +83,19 @@ const AdminAgentControl = () => {
 
   // Toggle agent active status
   const handleToggleAgent = useCallback(async (agentId) => {
+    if (isAdmin) {
+      // For admins, show confirmation before pausing
+      const agent = agents.find(a => a.id === agentId);
+      if (agent?.isActive) {
+        setAgentToPause(agent);
+        setShowPauseConfirm(true);
+        return;
+      }
+    }
+    
     try {
       const agent = agents.find(a => a.id === agentId);
-      const newStatus = agent.isActive ? 'inactive' : 'active';
+      const newStatus = agent.isActive ? 'disabled' : 'enabled';
       
       // Update via API (you may need to implement this endpoint)
       // await api.llmRuntime.updateAgentStatus(agentId, newStatus);
@@ -88,7 +108,46 @@ const AdminAgentControl = () => {
     } catch (err) {
       console.error('Failed to toggle agent status', err);
     }
-  }, [agents]);
+  }, [agents, isAdmin]);
+
+  // Confirm pause agent
+  const handleConfirmPause = async () => {
+    if (!agentToPause) return;
+    
+    try {
+      setAgents(prev => prev.map(a => 
+        a.id === agentToPause.id 
+          ? { ...a, isActive: false, status: 'disabled' }
+          : a
+      ));
+      setShowPauseConfirm(false);
+      setAgentToPause(null);
+    } catch (err) {
+      console.error('Failed to pause agent', err);
+    }
+  };
+
+  // Handle delete agent
+  const handleDeleteAgent = (agent) => {
+    setAgentToDelete(agent);
+    setShowDeleteConfirm(true);
+  };
+
+  // Confirm delete agent
+  const handleConfirmDelete = async () => {
+    if (!agentToDelete) return;
+    
+    try {
+      // Delete via API (implement this endpoint)
+      // await api.llmRuntime.deleteAgent(agentToDelete.id);
+      
+      setAgents(prev => prev.filter(a => a.id !== agentToDelete.id));
+      setShowDeleteConfirm(false);
+      setAgentToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete agent', err);
+    }
+  };
 
   // Open permission modal
   const handlePermissionClick = useCallback((agent) => {
@@ -254,9 +313,19 @@ const AdminAgentControl = () => {
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Environment
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {isAdmin && (
+                        <>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Created By
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Last Used
+                          </th>
+                        </>
+                      )}
+                      {/* <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Permission
-                      </th>
+                      </th> */}
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Tasks
                       </th>
@@ -306,8 +375,26 @@ const AdminAgentControl = () => {
                           </span>
                         </td>
 
+                        {/* Created By (Admin Only) */}
+                        {isAdmin && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-slate-700">
+                              {agent.createdBy}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* Last Used (Admin Only) */}
+                        {isAdmin && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-slate-700">
+                              {new Date(agent.lastUsed).toLocaleDateString()} {new Date(agent.lastUsed).toLocaleTimeString()}
+                            </span>
+                          </td>
+                        )}
+
                         {/* Permission */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        {/* <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => handlePermissionClick(agent)}
                             className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${getPermissionColor(agent.permission)} hover:shadow-md transition-all`}
@@ -315,7 +402,7 @@ const AdminAgentControl = () => {
                             <MdSecurity className="text-sm" />
                             {agent.permission}
                           </button>
-                        </td>
+                        </td> */}
 
                         {/* Tasks */}
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -354,37 +441,42 @@ const AdminAgentControl = () => {
                             <span className={`w-2 h-2 rounded-full ${
                               agent.isActive ? 'bg-emerald-500' : 'bg-slate-400'
                             }`}></span>
-                            {agent.isActive ? 'Active' : 'Inactive'}
+                            {agent.isActive ? 'Enabled' : 'Disabled'}
                           </span>
                         </td>
 
                         {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            {/* Toggle Button */}
-                            <button
-                              onClick={() => handleToggleAgent(agent.id)}
-                              className={`p-2 rounded-lg transition-all ${
-                                agent.isActive
-                                  ? 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                                  : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-600'
-                              }`}
-                              title={agent.isActive ? 'Pause agent' : 'Activate agent'}
-                            >
-                              {agent.isActive ? (
-                                <FaPauseCircle className="text-lg" />
-                              ) : (
-                                <FaPlayCircle className="text-lg" />
-                              )}
-                            </button>
+                            {/* Pause/Play Button - Admin Only */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleToggleAgent(agent.id)}
+                                className={`p-2 rounded-lg transition-all ${
+                                  agent.isActive
+                                    ? 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-600'
+                                }`}
+                                title={agent.isActive ? 'Pause agent' : 'Activate agent'}
+                              >
+                                {agent.isActive ? (
+                                  <FaPauseCircle className="text-lg" />
+                                ) : (
+                                  <FaPlayCircle className="text-lg" />
+                                )}
+                              </button>
+                            )}
 
-                            {/* Settings Button */}
-                            <button
-                              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all"
-                              title="Configure agent"
-                            >
-                              <FaCog className="text-lg" />
-                            </button>
+                            {/* Delete Button - Admin Only */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteAgent(agent)}
+                                className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-all"
+                                title="Delete agent"
+                              >
+                                <FaTrash className="text-lg" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -396,6 +488,107 @@ const AdminAgentControl = () => {
           )}
         </div>
       </div>
+
+      {/* PAUSE CONFIRMATION MODAL */}
+      {showPauseConfirm && agentToPause && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 animate-scaleIn">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <FaPauseCircle className="text-white text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Disable Agent?
+                </h2>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+              <p className="text-slate-700 mb-3">
+                Are you sure you want to disable <strong>{agentToPause.name}</strong>? This will stop the agent immediately, acting as a kill switch.
+              </p>
+              <div className="text-sm text-slate-600 space-y-2">
+                <div className="flex gap-2">
+                  <span className="text-orange-600 font-bold">•</span>
+                  <span>The agent won't be able to perform any action</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-orange-600 font-bold">•</span>
+                  <span>No user will be able to use this agent</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowPauseConfirm(false);
+                  setAgentToPause(null);
+                }}
+                className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPause}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors"
+              >
+                Disable Agent
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteConfirm && agentToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 animate-scaleIn">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200">
+              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+                <FaTrash className="text-white text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Delete Agent?
+                </h2>
+                <p className="text-sm text-slate-500">This action is permanent</p>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-slate-700">
+                Are you sure you want to permanently delete <strong>{agentToDelete.name}</strong>? This cannot be undone.
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setAgentToDelete(null);
+                }}
+                className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors"
+              >
+                Delete Agent
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PERMISSION MODAL */}
       {showPermissionModal && selectedAgent && (

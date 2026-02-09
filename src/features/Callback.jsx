@@ -54,7 +54,7 @@ export default function Callback() {
           console.log('✅ Auth0 token stored in localStorage, redirecting to dashboard...')
           
           // Redirect to dashboard
-          navigate('/dashboard', { replace: true })
+          navigate('/agent_dashboard', { replace: true })
         } catch (error) {
           console.error('Error handling Auth0 callback:', error)
           navigate('/login', { replace: true })

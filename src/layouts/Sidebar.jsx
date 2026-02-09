@@ -17,11 +17,11 @@ const Sidebar = () => {
 
   // Base menu items (always visible)
   const baseMenuItems = [
-    { icon: AiOutlineHome, value: "Dashboard", path: "/dashboard" },
+    { icon: AiOutlineHome, value: "Dashboard", path: "/agent_dashboard" },
     { icon: GoPeople, value: "AI Agent", path: "/agents" },
-    { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
     // { icon: GoDatabase, value: "Data Uplink", path: "/data" },
     { icon: TbWaveSawTool, value: "Audit Logs", path: "/audits" },
+    { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
   ];
 
   // Admin menu item (conditionally added)
@@ -29,7 +29,6 @@ const Sidebar = () => {
 
   // Bottom menu items (always visible)
   const bottomMenuItems = [
-    { icon: IoSettingsOutline, value: "Settings", path: "/settings" },
     { icon: IoLogOutOutline, value: "Logout", path: "/logout" }
   ];
 

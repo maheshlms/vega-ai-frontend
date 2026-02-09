@@ -234,6 +234,15 @@ function AppContent() {
             />
 
             <Route 
+              path="/agent_dashboard" 
+              element={
+                <ProtectedRoute>
+                  <AdminAgentControll />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
               path="/integration" 
               element={
                 <ProtectedRoute>

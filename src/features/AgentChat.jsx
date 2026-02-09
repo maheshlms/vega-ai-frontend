@@ -18,6 +18,7 @@ const AgentChat = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const sessionIdRef = useRef(null);  // Use ref for session_id to avoid timing issues with state
 
   // Chat history in the required format: { 'User1': <message>, 'Agent1': <message>, ... }
   const [chatHistory, setChatHistory] = useState({});
@@ -29,7 +30,7 @@ const AgentChat = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const fileInputRef = useRef(null);
   
-  // Approval state
+  // Approval state (for button-based approvals in dev/staging)
   const [pendingApproval, setPendingApproval] = useState(null);
   const [approvalProcessing, setApprovalProcessing] = useState(false);
   
@@ -65,11 +66,16 @@ const AgentChat = () => {
   // Call backend API to get AI response
   const callAgentAPI = async (userMessage) => {
     try {
+      // Use existing session ID or create a new one
+      const currentSessionId = sessionIdRef.current || Date.now().toString();
+      console.log('Sending to backend - sessionIdRef.current:', sessionIdRef.current, 'currentSessionId:', currentSessionId);
+      
       const response = await api.fetchWithAuth('/api/v1/chat', {
         method: 'POST',
         body: JSON.stringify({
           user_id: 'current-user',
-          session_id: Date.now().toString(),
+          session_id: currentSessionId,
+          user_session_id: auth.getSessionId(), // Track to specific user session
           agent_id: agent?.id,
           agent_type: agent?.type || 'license',
           message: userMessage,
@@ -106,6 +112,7 @@ const AgentChat = () => {
   };
 
   // Handle approval button click
+  // Handle send message
   const handleApprovalButtonClick = async (action) => {
     if (!pendingApproval) return;
     
@@ -254,11 +261,15 @@ const AgentChat = () => {
         }
 
         // Call backend API with file data
+        const currentSessionId = sessionIdRef.current || Date.now().toString();
+        console.log('[handleSend] Sending to backend - sessionIdRef.current:', sessionIdRef.current, 'currentSessionId:', currentSessionId);
+        
         const response = await api.fetchWithAuth('/api/v1/chat', {
           method: 'POST',
           body: JSON.stringify({
             user_id: 'current-user',
-            session_id: Date.now().toString(),
+            session_id: currentSessionId,
+            user_session_id: auth.getSessionId(), // Track to specific user session
             agent_id: agent?.id,
             agent_type: agent?.type || 'license',
             message: currentInput,
@@ -276,21 +287,26 @@ const AgentChat = () => {
         
         console.log('Full response data:', data);
         
-        // Check if approval is required - check for approval_metadata from backend
-        if (data.approval_metadata && data.approval_metadata.approval_id) {
-          console.log('Approval triggered with approval_id:', data.approval_metadata.approval_id);
-          console.log('Approval metadata:', data.approval_metadata);
+        // Store session_id from response for future messages
+        if (data.session_id && !sessionIdRef.current) {
+          sessionIdRef.current = data.session_id;
+          console.log('Stored session_id in ref from response:', data.session_id);
+        } else if (!data.session_id) {
+          console.warn('No session_id in response data');
+        } else {
+          console.log('session_id already stored, not updating. Current:', sessionIdRef.current, 'Response has:', data.session_id);
+        }
+        
+        // Check if button approval is required (approval_method == 'button' for dev/staging)
+        // OTP approvals (production) are handled via chat - user enters OTP as a message
+        if (data.approval_metadata && data.approval_metadata.approval_id && data.approval_metadata.approval_method === 'button') {
+          console.log('Button approval triggered with approval_id:', data.approval_metadata.approval_id);
           
           setPendingApproval({
             approval_id: data.approval_metadata.approval_id,
             filename: data.approval_metadata.filename || 'license file',
             expires_at: data.approval_metadata.expires_at,
             session_id: data.session_id
-          });
-        } else {
-          console.log('No approval required:', {
-            has_approval_metadata: !!data.approval_metadata,
-            approval_metadata: data.approval_metadata
           });
         }
         
@@ -347,6 +363,7 @@ const AgentChat = () => {
     setInputValue('');
     setChatHistory({});
     setHeygenScript('');
+    sessionIdRef.current = null; // Reset session for new conversation
   }, []);
 
   const handleBack = useCallback(() => {
@@ -475,7 +492,19 @@ const AgentChat = () => {
                     </div>
                   ))}
                   
-                  {/* Approval Buttons */}
+                  {isTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Button Approval Section (for dev/staging environments) */}
                   {pendingApproval && (
                     <div className="flex justify-start">
                       <div className="bg-green-50 border-2 border-green-300 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[75%]">
@@ -529,17 +558,6 @@ const AgentChat = () => {
                     </div>
                   )}
                   
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
