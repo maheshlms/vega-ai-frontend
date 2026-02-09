@@ -428,20 +428,23 @@ const TargetSystemShow = () => {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <TargetSystemForm
-            system={editingSystem}
-            typeOptions={typeOptions}
-            availableAuthMethods={availableAuthMethods}
-            integrationValue={integrationValue}
-            integrationId={integrationId}
-            integrationName={integrationName}
-            onSubmit={editingSystem ? (data) => handleUpdate(editingSystem._id, data) : handleCreate}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingSystem(null);
-            }}
-          />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl my-auto">
+            <TargetSystemForm
+              system={editingSystem}
+              typeOptions={typeOptions}
+              availableAuthMethods={availableAuthMethods}
+              integrationValue={integrationValue}
+              integrationId={integrationId}
+              integrationName={integrationName}
+              isModal={true}
+              onSubmit={editingSystem ? (data) => handleUpdate(editingSystem._id, data) : handleCreate}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingSystem(null);
+              }}
+            />
+          </div>
         </div>
       )}
 

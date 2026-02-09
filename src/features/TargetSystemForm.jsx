@@ -1,13 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint } from 'react-icons/fa';
 
-const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethods = [], integrationValue = null, integrationId = null, integrationName = null, onSubmit, onCancel }) => {
+const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethods = [], integrationValue = null, integrationId = null, integrationName = null, onSubmit, onCancel, isModal = false }) => {
    // Helper function to convert snake_case to PascalCase
   const snakeToPascal = (str) => {
     return str
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join('');
+  };
+
+  // Helper function to normalize type values for matching
+  const normalizeType = (typeStr) => {
+    if (!typeStr) return '';
+    
+    // Map of possible variations to standard PascalCase (to match select options)
+    const typeMap = {
+      'ping_federate': 'PingFederate',
+      'pingfederate': 'PingFederate',
+      'ping federate': 'PingFederate',
+      'ping-federate': 'PingFederate',
+      'ping_directory': 'PingDirectory',
+      'pingdirectory': 'PingDirectory',
+      'ping directory': 'PingDirectory',
+      'ping-directory': 'PingDirectory',
+      'ping_one': 'PingOne',
+      'pingone': 'PingOne',
+      'ping one': 'PingOne',
+      'ping-one': 'PingOne',
+      'azure_ad': 'AzureAD',
+      'azuread': 'AzureAD',
+      'azure ad': 'AzureAD',
+      'azure-ad': 'AzureAD'
+    };
+    
+    const normalized = typeMap[typeStr.toLowerCase()];
+    if (normalized) return normalized;
+    
+    // If it's already in PascalCase, return as-is
+    if (!typeStr.includes('_') && !typeStr.includes('-') && !typeStr.includes(' ')) {
+      return typeStr;
+    }
+    
+    // If not in map, try converting with snakeToPascal
+    if (typeStr.includes('_') || typeStr.includes('-') || typeStr.includes(' ')) {
+      return snakeToPascal(typeStr);
+    }
+    
+    return typeStr;
   };
 
   // Helper function to convert snake_case to readable label
@@ -62,19 +102,47 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
 
   useEffect(() => {
     if (system) {
-      // Parse credentials based on auth_method
+      console.log('[TargetSystemForm] Loading system data:', system);
+      console.log('[TargetSystemForm] system.type:', system.type);
+      console.log('[TargetSystemForm] system keys:', Object.keys(system));
+      
+      // Note: API does NOT return credentials for security reasons
+      // credentials field will be either missing or contain encrypted_flag
+      // We CANNOT pre-fill sensitive credential fields
       const credentials = system.credentials || {};
+      console.log('[TargetSystemForm] Credentials:', credentials);
+      
+      // Extract host and port from base_url if available
+      let host = system.host || '';
+      let port = system.port || 443;
+      
+      if (!host && system.base_url) {
+        // Parse base_url to extract host and port
+        try {
+          const url = new URL(system.base_url);
+          host = url.hostname;
+          port = url.port ? parseInt(url.port) : 443;
+        } catch (e) {
+          console.error('Failed to parse base_url:', system.base_url, e);
+        }
+      }
+      
+      // Normalize the type to match form options
+      const rawType = system.type;
+      const typeValue = rawType ? normalizeType(rawType) : '';
+      
+      console.log('[TargetSystemForm] Type conversion: raw="' + rawType + '" -> normalized="' + typeValue + '"');
       
       setFormData({
         name: system.name || '',
-        type: system.type || '',
+        type: typeValue,
         integration_id: system.integration_id || '',
         environment: system.environment || 'production',
         auth_method: system.auth_method 
           ? snakeToPascal(system.auth_method)
           : 'BearerToken',
-        host: system.host || '',
-        port: system.port || 443,
+        host: host,
+        port: port,
         engine_port: system.engine_port || 9031,
         username: credentials.username || '',
         password: '', // Don't pre-fill for security
@@ -83,6 +151,8 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
         api_key: '', // Don't pre-fill for security
         description: system.description || ''
       });
+      
+      console.log('[TargetSystemForm] Form data updated with type:', typeValue);
     } else {
       // For new systems, set default port based on type
       if (integrationValue === 'PingFederate' || integrationValue === 'ping_federate') {
@@ -480,10 +550,9 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
       )}
 
       {/* Main Content */}
-      <div className="relative z-10 flex items-start justify-center min-h-screen p-8 ">
-        <div className="w-full max-w-4xl">
-          {/* Back Button */}
-          {onCancel && (
+      <div className={isModal ? 'relative z-10 w-full' : 'relative z-10 flex items-start justify-center min-h-screen p-8'}>
+        <div className={isModal ? 'w-full' : 'w-full max-w-4xl'}>
+          {!isModal && onCancel && (
             <button
               onClick={onCancel}
               className="group text-gray-700 hover:text-gray-900 mb-6 flex items-center gap-2 transition-all duration-300 text-sm font-medium"
@@ -494,7 +563,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
           )}
 
           {/* Form Card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-slideUp">
+          <div className={`bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-slideUp ${isModal ? 'max-h-[90vh] overflow-y-auto' : ''}`}>
             {/* Header */}
             <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-white/50 to-purple-50/30">
               <div>
@@ -552,11 +621,18 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     System Type <span className="text-red-500">*</span>
                   </label>
-                  {integrationName ? (
-                    <div className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl bg-gray-50/70 text-gray-700 font-medium backdrop-blur-sm">
+                  {system ? (
+                    // When editing: Show as read-only text box
+                    <div className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl bg-gray-50/70 text-gray-700 font-medium backdrop-blur-sm cursor-not-allowed">
+                      {formData.type}
+                    </div>
+                  ) : integrationName ? (
+                    // When creating with integrationName passed: Show as read-only
+                    <div className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl bg-gray-50/70 text-gray-700 font-medium backdrop-blur-sm cursor-not-allowed">
                       {integrationName}
                     </div>
                   ) : (
+                    // When creating without integrationName: Show as dropdown
                     <select
                       name="type"
                       value={formData.type}
@@ -574,7 +650,7 @@ const TargetSystemForm = ({ system = null, typeOptions = [], availableAuthMethod
                   )}
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
-                    <span>Select the type of system you're connecting to</span>
+                    <span>{system ? 'System type cannot be changed' : 'Select the type of system you\'re connecting to'}</span>
                   </p>
                 </div>
 
