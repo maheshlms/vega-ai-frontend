@@ -287,19 +287,21 @@ const AuditLogs = () => {
         <div style={{ padding: '24px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Overview</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-            <div style={{ background: 'linear-gradient(to bottom right, #dcfce7, #bbf7d0)', border: '1px solid #86efac', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ background: 'linear-gradient(to bottom right, #dcfce7, #bbf7d0)', border: '1px solid #86efac', borderRadius: '8px', padding: '16px' }}
+            className="shadow-md hover:shadow-xl"
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#86efac', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FaCheckCircle style={{ color: '#166534', fontSize: '18px' }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{stats.events_by_severity?.success || stats.events_by_severity?.["success"] || 0}</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'black' }}>{stats.events_by_severity?.success || stats.events_by_severity?.["success"] || 0}</div>
                   <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px' }}>Successful Events</div>
                 </div>
               </div>
             </div>
             
-            <div style={{ background: 'linear-gradient(to bottom right, #fee2e2, #fecaca)', border: '1px solid #fca5a5', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ background: 'linear-gradient(to bottom right, #fee2e2, #fecaca)', border: '1px solid #fca5a5', borderRadius: '8px', padding: '16px' }}  className="shadow-md hover:shadow-xl">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#fca5a5', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FaExclamationTriangle style={{ color: '#7f1d1d', fontSize: '18px' }} />
@@ -311,7 +313,7 @@ const AuditLogs = () => {
               </div>
             </div>
             
-            <div style={{ background: 'linear-gradient(to bottom right, #fef3c7, #fde68a)', border: '1px solid #fcd34d', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ background: 'linear-gradient(to bottom right, #fef3c7, #fde68a)', border: '1px solid #fcd34d', borderRadius: '8px', padding: '16px' }}  className="shadow-md hover:shadow-xl">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#fcd34d', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FaExclamationTriangle style={{ color: '#78350f', fontSize: '18px' }} />
@@ -323,7 +325,7 @@ const AuditLogs = () => {
               </div>
             </div>
             
-            <div style={{ background: 'linear-gradient(to bottom right, #f3e8ff, #e9d5ff)', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ background: 'linear-gradient(to bottom right, #f3e8ff, #e9d5ff)', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '16px' }}  className="shadow-md hover:shadow-xl">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#d8b4fe', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FaClock style={{ color: '#581c87', fontSize: '18px' }} />
@@ -349,6 +351,7 @@ const AuditLogs = () => {
                 value={filters.event_type}
                 onChange={(e) => setFilters({ ...filters, event_type: e.target.value })}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                
               >
                 <option value="">All Events</option>
                 {eventTypeOptions.map((type) => (

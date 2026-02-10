@@ -5,6 +5,8 @@ import { HiSparkles } from "react-icons/hi2";
 import {Typewriter} from "react-simple-typewriter" ;    
 import api from '../utils/api';
 import { auth } from '../utils/auth';
+import { FaArrowLeft } from "react-icons/fa";
+
 
 const AgentChat = () => {
   const navigate = useNavigate();
@@ -25,6 +27,9 @@ const AgentChat = () => {
 
   // HeyGen state - to be passed to AI Assist page
   const [heygenScript, setHeygenScript] = useState('');
+
+  // **NEW: State to control welcome message visibility**
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
 
   // File upload state
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -216,6 +221,9 @@ const AgentChat = () => {
   // Handle send message
   const handleSend = useCallback(async () => {
     if (inputValue.trim()) {
+      // **NEW: Hide welcome message when first message is sent**
+      setShowWelcomeMessage(false);
+
       const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
       const userKey = `User${userMessageIndex}`;
       
@@ -364,6 +372,8 @@ const AgentChat = () => {
     setChatHistory({});
     setHeygenScript('');
     sessionIdRef.current = null; // Reset session for new conversation
+    // **NEW: Show welcome message again when chat is cleared**
+    setShowWelcomeMessage(true);
   }, []);
 
   const handleBack = useCallback(() => {
@@ -391,13 +401,12 @@ const AgentChat = () => {
         {/* Left side - Back button and title */}
         <div className="flex items-center gap-2">
           <button
-            onClick={handleBack}
-            className="text-gray-800 hover:text-gray-600 transition-colors"
-            aria-label="Go back"
-          >
-            <IoArrowBackCircle className="text-3xl" />
+              onClick={() => handleBack()}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3"
+            >
+             <FaArrowLeft size={16} />
+            <span className="text-sm">Back</span>
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">AI Agents</h1>
         </div>
 
         {/* Right side - Clear chat button */}
@@ -442,21 +451,23 @@ const AgentChat = () => {
               {/* Role */}
               <p className="text-sm text-gray-600">{agent?.description || agent?.role || 'License Agent'}</p>
               
-              {/* Welcome message */}
-              <h2 className="text-2xl font-bold text-gray-900 ">
-                {loadingAgent ? (
-                  'Loading agent...'
-                ) : (
-                  <Typewriter
-                    words ={["How May I Help You ?"]}
-                    cursor
-                    cursorStyle="|"
-                    typeSpeed={70}
-                    deleteSpeed={30}
-                    delaySpeed={1200}
-                  />
-                )}
-              </h2>
+              {/* **NEW: Welcome message - only show if showWelcomeMessage is true** */}
+              {showWelcomeMessage && (
+                <h2 className="text-2xl font-bold text-gray-900 ">
+                  {loadingAgent ? (
+                    'Loading agent...'
+                  ) : (
+                    <Typewriter
+                      words ={["How May I Help You ?"]}
+                      cursor
+                      cursorStyle="|"
+                      typeSpeed={70}
+                      deleteSpeed={30}
+                      delaySpeed={1200}
+                    />
+                  )}
+                </h2>
+              )}
               {agentError && (
                 <p className="text-xs text-red-500">{agentError}</p>
               )}

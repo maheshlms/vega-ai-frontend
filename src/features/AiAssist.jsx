@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { IoArrowBackCircle, IoClose, IoPause, IoPlay, IoStop } from "react-icons/io5";
+import { FaArrowLeft } from "react-icons/fa";
 import StreamingAvatar, {
   AvatarQuality,
   StreamingEvents,
@@ -358,14 +359,13 @@ const AiAssist = () => {
       {/* Header - Fixed height */}
       <div className="px-4 sm:px-10 py-3 sm:py-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleBack}
-            className="text-gray-800 hover:text-gray-600 transition-colors"
-            aria-label="Go back"
-          >
-            <IoArrowBackCircle className="text-2xl sm:text-3xl" />
+            <button
+              onClick={() => handleBack()}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3"
+            >
+             <FaArrowLeft size={16} />
+            <span className="text-sm">Back</span>
           </button>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">AI Agents</h1>
         </div>
 
         <div className="flex items-center gap-2">

@@ -249,10 +249,16 @@ const IntegrationsPage = () => {
           <div className="flex items-center gap-2 mb-1">
             <FaStar className="text-yellow-500" />
             <h1 className="text-2xl font-bold text-gray-900">Integrations MarketPlace</h1>
+             <h2 className="text-gray-600">   (Future Release)</h2> 
           </div>
-          <p className="text-sm text-gray-500">
+          <div className="flex items-center gap-4">
+
+          <p className="text-sm text-gray-500 ">
             Connect your IAM systems and manage integrations
           </p>
+           
+
+          </div>
         </div>
       </div>
 
