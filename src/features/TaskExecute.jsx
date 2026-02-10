@@ -9,6 +9,7 @@ import { CiPause1 } from "react-icons/ci";
 import { BsChatLeftText } from "react-icons/bs";
 import { SiSimpleanalytics } from "react-icons/si";
 import {useNavigate} from "react-router-dom" ;
+import { FaArrowLeft } from "react-icons/fa";
 
 const TaskExecute = () => {
 
@@ -199,13 +200,13 @@ const TaskExecute = () => {
       {/* TOP BAR */}
       <div className="px-4 sm:px-6 lg:px-10 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button 
-            onClick={handleGoBack}
-            className="hover:opacity-70 transition-opacity"
-            aria-label="Go back"
-          >
-            <IoArrowBackCircle className="text-3xl text-gray-700" />
-          </button>
+          <button
+                       onClick={() => handleGoBack()}
+                       className="flex items-center gap-2  mt-4"
+                     >
+                      <FaArrowLeft size={16} />
+                     
+                   </button>
           <div>
             <p className="text-xs sm:text-sm text-gray-500">Create Your AI Agents</p>
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
