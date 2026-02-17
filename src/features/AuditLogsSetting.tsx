@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { IoMdInformationCircle } from "react-icons/io";
 import { MdStorage } from "react-icons/md";
 
+// Type Definitions
 interface AlertState {
     message: string;
     type: 'success' | 'error' | 'info';
@@ -32,6 +33,11 @@ interface ActivityStats {
     apiRequests: number;
 }
 
+type LogLevel = 'Basic' | 'Standard' | 'Detailed';
+type ArchiveLocation = 'AWS S3' | 'Azure Blob Storage' | 'Google Cloud Storage' | 'Local Storage';
+type ReportType = 'SOC 2' | 'GDPR' | 'HIPAA' | 'ISO 27001';
+type ReportFrequency = 'Weekly' | 'Monthly' | 'Quarterly' | 'Annually';
+
 const AuditLogsSetting: React.FC = () => {
     const navigate = useNavigate();
     
@@ -39,14 +45,14 @@ const AuditLogsSetting: React.FC = () => {
     const [alert, setAlert] = useState<AlertState | null>(null);
 
     // Show alert function
-    const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
         setAlert({ message, type });
         setTimeout(() => setAlert(null), 5000);
     };
 
     // Audit Logging States
     const [auditLoggingEnabled, setAuditLoggingEnabled] = useState<boolean>(true);
-    const [logLevel, setLogLevel] = useState<string>('Detailed');
+    const [logLevel, setLogLevel] = useState<LogLevel>('Detailed');
     const [logCategories, setLogCategories] = useState<LogCategories>({
         userAuthentication: true,
         userProvisioning: true,
@@ -62,7 +68,7 @@ const AuditLogsSetting: React.FC = () => {
     const [currentStorage, setCurrentStorage] = useState<StorageState>({ used: 2.4, total: 10 });
     const [autoArchive, setAutoArchive] = useState<boolean>(true);
     const [compressArchived, setCompressArchived] = useState<boolean>(true);
-    const [archiveLocation, setArchiveLocation] = useState<string>('AWS S3');
+    const [archiveLocation, setArchiveLocation] = useState<ArchiveLocation>('AWS S3');
 
     // Activity History Stats
     const [activityStats, setActivityStats] = useState<ActivityStats>({
@@ -75,8 +81,8 @@ const AuditLogsSetting: React.FC = () => {
 
     // Compliance Reports States
     const [automatedReports, setAutomatedReports] = useState<boolean>(true);
-    const [reportType, setReportType] = useState<string>('SOC 2');
-    const [reportFrequency, setReportFrequency] = useState<string>('Monthly');
+    const [reportType, setReportType] = useState<ReportType>('SOC 2');
+    const [reportFrequency, setReportFrequency] = useState<ReportFrequency>('Monthly');
     const [reportRecipients, setReportRecipients] = useState<string>('admin@vega.ai');
 
     // Access Logs States
@@ -90,7 +96,7 @@ const AuditLogsSetting: React.FC = () => {
     const [showScheduleReportModal, setShowScheduleReportModal] = useState<boolean>(false);
 
     // Handle Log Category Change
-    const handleLogCategoryChange = (category: keyof LogCategories) => {
+    const handleLogCategoryChange = (category: keyof LogCategories): void => {
         setLogCategories(prev => ({
             ...prev,
             [category]: !prev[category]
@@ -98,34 +104,34 @@ const AuditLogsSetting: React.FC = () => {
     };
 
     // Handle Save Changes
-    const handleSaveChanges = () => {
+    const handleSaveChanges = (): void => {
         showAlert('Audit & Logs settings saved successfully', 'success');
     };
 
     // Handle Export Logs
-    const handleExportLogs = () => {
+    const handleExportLogs = (): void => {
         showAlert('Exporting logs... Download will start shortly', 'info');
     };
 
     // Handle View Activity Log
-    const handleViewActivityLog = () => {
+    const handleViewActivityLog = (): void => {
         showAlert('Opening full activity log...', 'info');
     };
 
     // Handle Generate Report
-    const handleGenerateReport = () => {
+    const handleGenerateReport = (): void => {
         setShowGenerateReportModal(false);
         showAlert('Report generated successfully', 'success');
     };
 
     // Handle Schedule Report
-    const handleScheduleReport = () => {
+    const handleScheduleReport = (): void => {
         setShowScheduleReportModal(false);
         showAlert('Report scheduled successfully', 'success');
     };
 
     // Calculate storage percentage
-    const storagePercentage = (currentStorage.used / currentStorage.total) * 100;
+    const storagePercentage: number = (currentStorage.used / currentStorage.total) * 100;
 
     return (
         <>
@@ -202,7 +208,7 @@ const AuditLogsSetting: React.FC = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">Log Level</label>
                             <select
                                 value={logLevel}
-                                onChange={(e) => setLogLevel(e.target.value)}
+                                onChange={(e) => setLogLevel(e.target.value as LogLevel)}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                             >
                                 <option>Basic</option>
@@ -348,7 +354,7 @@ const AuditLogsSetting: React.FC = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">Archive Location</label>
                             <select
                                 value={archiveLocation}
-                                onChange={(e) => setArchiveLocation(e.target.value)}
+                                onChange={(e) => setArchiveLocation(e.target.value as ArchiveLocation)}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                             >
                                 <option>AWS S3</option>
@@ -448,7 +454,7 @@ const AuditLogsSetting: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
                                 <select
                                     value={reportType}
-                                    onChange={(e) => setReportType(e.target.value)}
+                                    onChange={(e) => setReportType(e.target.value as ReportType)}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 >
                                     <option>SOC 2</option>
@@ -462,7 +468,7 @@ const AuditLogsSetting: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
                                 <select
                                     value={reportFrequency}
-                                    onChange={(e) => setReportFrequency(e.target.value)}
+                                    onChange={(e) => setReportFrequency(e.target.value as ReportFrequency)}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                 >
                                     <option>Weekly</option>
@@ -730,7 +736,7 @@ const AuditLogsSetting: React.FC = () => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
                 @keyframes slide-in-right {
                     from {
                         transform: translateX(100%);

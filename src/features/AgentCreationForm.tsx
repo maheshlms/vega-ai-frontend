@@ -1,18 +1,16 @@
-import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import React from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { FaCheckCircle, FaTimes } from 'react-icons/fa';
 
 interface TargetSystem {
-  id?: string;
   _id?: string;
+  id?: string;
   name: string;
-  type?: string;
-  host?: string;
-  base_url?: string;
-  status?: string;
-  environment?: string;
+  status: string;
   integration_id?: string;
+  base_url?: string;
+  host?: string;
 }
 
 interface FormData {
@@ -28,30 +26,52 @@ interface LocationState {
   integrationType?: string;
 }
 
+interface AgentCreationPayload {
+  name: string;
+  type: string;
+  status: string;
+  description: string;
+  checkInterval: number;
+  config: {
+    environment: string;
+    notificationWindow: number;
+    slackChannel: string;
+    targetId: string;
+    targetSystemName: string;
+    agentTypeId?: string;
+  };
+}
+
+interface TargetSystemsResponse {
+  systems?: TargetSystem[];
+}
+
 const AgentCreationForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { agentTypeId } = useParams<{ agentTypeId: string }>();
-  const integrationDataFromState = location.state as LocationState;
+  const { agentTypeId } = useParams<{ agentTypeId?: string }>();
+  const integrationDataFromState = location.state as LocationState | undefined;
   
+  // Get integration ID from navigation state
   const integrationIdForFilter = integrationDataFromState?.integrationId;
   const integrationType = integrationDataFromState?.integrationType;
   
-  const [showSuccess, setShowSuccess] = useState<boolean>(false);
-  const [formData, setFormData] = useState<FormData>({
+  const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
+  const [formData, setFormData] = React.useState<FormData>({
     agentName: '',
     environment: '',
     notificationWindow: 30,
     slackChannel: '#alerts',
     selectedTargetSystem: null
   });
-  const [submitting, setSubmitting] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
-  const [availableTargetSystems, setAvailableTargetSystems] = useState<TargetSystem[]>([]);
-  const [loadingTargetSystems, setLoadingTargetSystems] = useState<boolean>(false);
+  const [submitting, setSubmitting] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string>('');
+  const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
+  const [loadingTargetSystems, setLoadingTargetSystems] = React.useState<boolean>(false);
 
-  useEffect(() => {
-    const fetchTargetSystemsByEnvironment = async () => {
+  // Fetch target systems when environment changes
+  React.useEffect(() => {
+    const fetchTargetSystemsByEnvironment = async (): Promise<void> => {
       if (!formData.environment) {
         setAvailableTargetSystems([]);
         return;
@@ -65,17 +85,20 @@ const AgentCreationForm: React.FC = () => {
 
       setLoadingTargetSystems(true);
       try {
-        const response = await api.targetSystems.list({ 
+        const response: TargetSystem[] | TargetSystemsResponse = await api.targetSystems.list({ 
           environment: formData.environment,
           limit: 50 
         });
         
         const systems = Array.isArray(response) ? response : response.systems || [];
         
-        let connectedSystems = systems.filter((sys: TargetSystem) => sys.status === 'connected');
+        // Filter to only show connected systems
+        let connectedSystems = systems.filter(sys => sys.status === 'connected');
         
+        // IMPORTANT: Filter by integration_id
+        // This ensures Ping Directory agents only see Ping Directory target systems
         console.log('[AgentCreationForm] Filtering by integration_id:', integrationIdForFilter);
-        connectedSystems = connectedSystems.filter((sys: TargetSystem) => {
+        connectedSystems = connectedSystems.filter(sys => {
           console.log('[AgentCreationForm] System:', sys.name, 'integration_id:', sys.integration_id, 'matches:', sys.integration_id === integrationIdForFilter);
           return sys.integration_id === integrationIdForFilter;
         });
@@ -92,20 +115,22 @@ const AgentCreationForm: React.FC = () => {
     fetchTargetSystemsByEnvironment();
   }, [formData.environment, integrationIdForFilter]);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'notificationWindow' ? parseInt(value) || 0 : value,
+      // Reset selected target system when environment changes
       ...(name === 'environment' ? { selectedTargetSystem: null } : {})
     }));
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
 
+    // Validate target system selection
     if (!formData.selectedTargetSystem) {
       setError('Please select a target system');
       setSubmitting(false);
@@ -113,16 +138,18 @@ const AgentCreationForm: React.FC = () => {
     }
 
     try {
-      const payload = {
+      const payload: AgentCreationPayload = {
         name: formData.agentName,
         type: agentTypeId || 'license',
+        status: 'active',
         description: `${agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} agent for ${formData.environment || 'environment'} (target ${formData.selectedTargetSystem._id || formData.selectedTargetSystem.id})`,
         checkInterval: 3600,
         config: {
           environment: formData.environment,
           notificationWindow: formData.notificationWindow,
           slackChannel: formData.slackChannel,
-          targetId: formData.selectedTargetSystem._id || formData.selectedTargetSystem.id,
+          // targetId: formData.selectedTargetSystem._id || formData.selectedTargetSystem.id,
+          targetId: String(formData.selectedTargetSystem._id || formData.selectedTargetSystem.id), // Ensure it's a string
           targetSystemName: formData.selectedTargetSystem.name,
           agentTypeId: agentTypeId
         }
@@ -316,7 +343,7 @@ const AgentCreationForm: React.FC = () => {
                       <select
                         name="targetSystem"
                         value={formData.selectedTargetSystem?._id || formData.selectedTargetSystem?.id || ''}
-                        onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                        onChange={(e) => {
                           const selectedSystem = availableTargetSystems.find(
                             sys => (sys._id || sys.id) === e.target.value
                           );

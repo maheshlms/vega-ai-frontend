@@ -4,19 +4,25 @@ import { useNavigate } from 'react-router-dom';
 import { IoMdInformationCircle } from "react-icons/io";
 import { MdWebhook } from "react-icons/md";
 
-// Type definitions
+type AlertType = 'success' | 'error' | 'info';
+
 interface Alert {
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: AlertType;
 }
 
-interface ApiKey {
+interface APIKey {
     id: number;
     name: string;
     key: string;
     created: string;
     lastUsed: string;
     visible: boolean;
+}
+
+interface CurrentUsage {
+    used: number;
+    total: number;
 }
 
 interface Webhook {
@@ -34,7 +40,7 @@ interface ConnectedApp {
     status: string;
 }
 
-interface NewWebhook {
+interface NewWebhookForm {
     name: string;
     url: string;
     events: string[];
@@ -47,13 +53,13 @@ const ApiIntegrationSetting: React.FC = () => {
     const [alert, setAlert] = useState<Alert | null>(null);
 
     // Show alert function
-    const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+    const showAlert = (message: string, type: AlertType = 'success'): void => {
         setAlert({ message, type });
         setTimeout(() => setAlert(null), 5000);
     };
 
     // API Keys States
-    const [apiKeys, setApiKeys] = useState<ApiKey[]>([
+    const [apiKeys, setApiKeys] = useState<APIKey[]>([
         {
             id: 1,
             name: 'Production API Key',
@@ -76,7 +82,7 @@ const ApiIntegrationSetting: React.FC = () => {
     const [rateLimitingEnabled, setRateLimitingEnabled] = useState<boolean>(true);
     const [requestsPerHour, setRequestsPerHour] = useState<string>('1000');
     const [requestsPerMinute, setRequestsPerMinute] = useState<string>('100');
-    const [currentUsage, setCurrentUsage] = useState<{ used: number; total: number }>({ used: 247, total: 1000 });
+    const [currentUsage, setCurrentUsage] = useState<CurrentUsage>({ used: 247, total: 1000 });
     const [alertAt80Percent, setAlertAt80Percent] = useState<boolean>(true);
 
     // Webhooks States
@@ -111,7 +117,7 @@ const ApiIntegrationSetting: React.FC = () => {
     const [showDeleteKeyModal, setShowDeleteKeyModal] = useState<boolean>(false);
     const [showAddWebhookModal, setShowAddWebhookModal] = useState<boolean>(false);
     const [showTestWebhookModal, setShowTestWebhookModal] = useState<boolean>(false);
-    const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
+    const [selectedKey, setSelectedKey] = useState<APIKey | null>(null);
     const [selectedWebhook, setSelectedWebhook] = useState<Webhook | null>(null);
 
     // New API Key Form
@@ -119,7 +125,7 @@ const ApiIntegrationSetting: React.FC = () => {
     const [newKeyType, setNewKeyType] = useState<string>('Production');
 
     // New Webhook Form
-    const [newWebhook, setNewWebhook] = useState<NewWebhook>({
+    const [newWebhook, setNewWebhook] = useState<NewWebhookForm>({
         name: '',
         url: '',
         events: []
@@ -140,7 +146,7 @@ const ApiIntegrationSetting: React.FC = () => {
 
     // Handle Create API Key
     const handleCreateAPIKey = (): void => {
-        const newKey: ApiKey = {
+        const newKey: APIKey = {
             id: apiKeys.length + 1,
             name: newKeyName,
             key: `vega_pk_${newKeyType === 'Production' ? 'live' : 'test'}_${Math.random().toString(36).substring(2, 15)}`,
@@ -156,10 +162,8 @@ const ApiIntegrationSetting: React.FC = () => {
 
     // Handle Regenerate API Key
     const handleRegenerateKey = (): void => {
-        if (!selectedKey) return;
-        
         setApiKeys(apiKeys.map(key => 
-            key.id === selectedKey.id 
+            key.id === selectedKey?.id 
                 ? { ...key, key: `vega_pk_live_${Math.random().toString(36).substring(2, 15)}`, created: new Date().toLocaleDateString() }
                 : key
         ));
@@ -169,9 +173,7 @@ const ApiIntegrationSetting: React.FC = () => {
 
     // Handle Delete API Key
     const handleDeleteKey = (): void => {
-        if (!selectedKey) return;
-        
-        setApiKeys(apiKeys.filter(key => key.id !== selectedKey.id));
+        setApiKeys(apiKeys.filter(key => key.id !== selectedKey?.id));
         setShowDeleteKeyModal(false);
         showAlert('API key deleted successfully', 'success');
     };
@@ -815,7 +817,7 @@ const ApiIntegrationSetting: React.FC = () => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style >{`
                 @keyframes slide-in-right {
                     from {
                         transform: translateX(100%);
