@@ -7,17 +7,16 @@ import api from '../utils/api';
 /**
  * Only allow Ping products in UI
  */
-const ALLOWED_INTEGRATIONS = [
+const ALLOWED_INTEGRATIONS: string[] = [
   'pingfederate',
   'ping_federate',
   'pingdirectory',
   'ping_directory',
   'pingone',
   'ping_one',
-  // 'slack'
+  'slack'
 ];
 
-// Type Definitions
 interface Integration {
   _id?: string;
   id?: string;
@@ -46,15 +45,11 @@ interface CategoryData {
   items: IntegrationItem[];
 }
 
-interface IntegrationsMap {
-  [key: string]: Integration;
-}
-
-interface CategorizedIntegrations {
+interface IntegrationsData {
   [key: string]: CategoryData;
 }
 
-interface ApiResponse {
+interface IntegrationsResponse {
   integrations?: Integration[];
   categories?: {
     [key: string]: Integration[];
@@ -64,10 +59,10 @@ interface ApiResponse {
 interface IntegrationCardProps {
   item: IntegrationItem;
 }
-   
-const AvailableIntegration: React.FC = () => {
+
+const TargetSystemIntegration: React.FC = () => {
   const navigate = useNavigate();
-  const [integrationsData, setIntegrationsData] = useState<CategorizedIntegrations>({});
+  const [integrationsData, setIntegrationsData] = useState<IntegrationsData>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,17 +70,17 @@ const AvailableIntegration: React.FC = () => {
     const fetchIntegrations = async (): Promise<void> => {
       try {
         setLoading(true);
-        const response: ApiResponse = await api.integrations.list();
+        const response: IntegrationsResponse = await api.integrations.list();
 
         // Map integrations by value for ID lookup
-        const integrationsMap: IntegrationsMap = {};
+        const integrationsMap: Record<string, Integration> = {};
         if (Array.isArray(response.integrations)) {
           response.integrations.forEach(intg => {
             integrationsMap[intg.value] = intg;
           });
         }
         
-        const categorized: CategorizedIntegrations = {};
+        const categorized: IntegrationsData = {};
 
         if (response.categories) {
           Object.entries(response.categories).forEach(([category, items]) => {
@@ -132,7 +127,7 @@ const AvailableIntegration: React.FC = () => {
   }, []);
 
   const getCategoryIcon = (category: string): IconType => {
-    const map: { [key: string]: IconType } = {
+    const map: Record<string, IconType> = {
       'OIDC Provider': FaShieldAlt,
       'Identity Datastores / Directories': FaServer
     };
@@ -140,14 +135,14 @@ const AvailableIntegration: React.FC = () => {
   };
 
   const getDefaultLogo = (value: string): string | null => {
-    const logos: { [key: string]: string } = {
+    const logos: Record<string, string> = {
       pingfederate: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       ping_federate: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       pingdirectory: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       ping_directory: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       pingone: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       ping_one: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
-      // slack: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg',
+      slack: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg',
     };
 
     const normalized = value?.toLowerCase().replace(/[-_\s]/g, '');
@@ -155,12 +150,14 @@ const AvailableIntegration: React.FC = () => {
   };
 
   const handleIntegrationSelect = (id: string, name: string, value: string, authMethods: string[]): void => {
-    // Normalize the value to use as integration type in URL
-    const integrationType = value.toLowerCase().replace(/[-_\s]/g, '');
-    
-    // Navigate to agent type selection with both target ID and integration type
-    navigate(`/agents/select-type/${integrationType}/${id}`, {
-      state: { integrationName: name, integrationValue: value, authMethods }
+    // Navigate to form creation page with integration details
+    navigate(`/admin/createtarsys`, {
+      state: { 
+        integrationId: id,
+        integrationName: name, 
+        integrationValue: value, 
+        authMethods 
+      }
     });
   };
 
@@ -204,19 +201,18 @@ const AvailableIntegration: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-6">
-            <button
-            onClick={() => navigate('/agents')}
-            className="group text-sm text-gray-500 hover:text-gray-900  flex items-center gap-2 transition-colors"
-          >
-            <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
-            <span>Back </span>
-          </button>
+        <button
+          onClick={() => navigate('/admin/avatarsys')}
+          className="group text-sm text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-4"
+        >
+          <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
+          <span>Back to Target Systems</span>
+        </button>
         <div className="flex items-center gap-2 mb-1">
-          {/* <FaStar className="text-yellow-500" /> */}
-          <h1 className="text-2xl font-semibold text-gray-900">Available Integrations</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Available Integrations </h1>
         </div>
         <p className="text-sm text-gray-500">
-          Connect Ping Identity systems and manage target integrations
+          Choose the type of system you want to connect
         </p>
       </div>
 
@@ -271,4 +267,4 @@ const AvailableIntegration: React.FC = () => {
   );
 };
 
-export default AvailableIntegration;
+export default TargetSystemIntegration;

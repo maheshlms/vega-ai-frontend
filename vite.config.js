@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react() ,  tailwindcss()],
+  resolve: {
+    extensions: ['.tsx', '.ts', '.jsx', '.js']
+  },
   server: {
     // Bind to all interfaces so it's reachable via localhost and LAN IP
     host: true, // equivalent to '0.0.0.0'

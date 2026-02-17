@@ -1,9 +1,8 @@
-import React, { useState, useEffect, CSSProperties } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaCheckCircle, FaExclamationTriangle, FaClock, FaDownload, FaSync } from 'react-icons/fa';
 import api from '../utils/api';
 import { auth } from '../utils/auth';
 
-// Type definitions
 interface AuditLog {
   id?: string;
   timestamp: string;
@@ -46,9 +45,8 @@ interface ApiFilters {
   sort_order: string;
 }
 
-interface CurrentUser {
-  email?: string;
-}
+type SortOrder = 'ascending' | 'descending';
+type ExportScope = 'current' | 'all';
 
 const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -65,10 +63,10 @@ const AuditLogs: React.FC = () => {
     skip: 0
   });
 
-  const [sortOrder, setSortOrder] = useState<string>('descending');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('descending');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
-  const [exportScope, setExportScope] = useState<'current' | 'all'>('current');
+  const [exportScope, setExportScope] = useState<ExportScope>('current');
   const [hasAuditReadPermission, setHasAuditReadPermission] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>('');
 
@@ -76,7 +74,7 @@ const AuditLogs: React.FC = () => {
     console.log('AuditLogs component mounted');
     
     // Check user permissions and set email filter if needed
-    const currentUser: CurrentUser | null = auth.getCurrentUser();
+    const currentUser = auth.getCurrentUser();
     if (currentUser) {
       setUserEmail(currentUser.email || '');
       
@@ -99,7 +97,7 @@ const AuditLogs: React.FC = () => {
       if (!hasPermission && currentUser.email) {
         setFilters(prev => ({
           ...prev,
-          user_email: currentUser.email || ''
+          user_email: currentUser.email
         }));
       }
     } else {
@@ -149,7 +147,7 @@ const AuditLogs: React.FC = () => {
       try {
         const logsData = await api.audit.queryLogs(apiFilters);
         if (logsData && typeof logsData === 'object') {
-          if ('logs' in logsData && logsData.logs) {
+          if (logsData.logs) {
             // New response format with paginated logs
             setLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
           } else if (Array.isArray(logsData)) {
@@ -191,7 +189,7 @@ const AuditLogs: React.FC = () => {
   const fetchEventTypes = async (): Promise<void> => {
     try {
       const types = await api.audit.getEventTypes();
-      const typeList: string[] = types.event_types || types || [];
+      const typeList = types.event_types || types || [];
       setEventTypeOptions(typeList);
       console.log('Event types loaded:', typeList);
     } catch (err) {
@@ -216,7 +214,7 @@ const AuditLogs: React.FC = () => {
     }
   };
 
-  const handleExport = async (format: string = 'csv', scope: 'current' | 'all' = exportScope): Promise<void> => {
+  const handleExport = async (format: string = 'csv', scope: ExportScope = exportScope): Promise<void> => {
     try {
       setLoading(true);
       const apiFilters: ApiFilters = {
@@ -404,6 +402,7 @@ const AuditLogs: React.FC = () => {
                 value={filters.event_type}
                 onChange={(e) => setFilters({ ...filters, event_type: e.target.value })}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                
               >
                 <option value="">All Events</option>
                 {eventTypeOptions.map((type) => (
@@ -435,17 +434,7 @@ const AuditLogs: React.FC = () => {
                 disabled={!hasAuditReadPermission}
                 placeholder="Filter by email..."
                 title={!hasAuditReadPermission ? 'You can only view your own logs' : ''}
-                style={{ 
-                  width: '100%', 
-                  padding: '8px 12px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '14px', 
-                  boxSizing: 'border-box', 
-                  backgroundColor: !hasAuditReadPermission ? '#f3f4f6' : 'white', 
-                  cursor: !hasAuditReadPermission ? 'not-allowed' : 'text', 
-                  opacity: !hasAuditReadPermission ? 0.7 : 1 
-                }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', backgroundColor: !hasAuditReadPermission ? '#f3f4f6' : 'white', cursor: !hasAuditReadPermission ? 'not-allowed' : 'text', opacity: !hasAuditReadPermission ? 0.7 : 1 }}
               />
             </div>
 
@@ -589,8 +578,8 @@ const AuditLogs: React.FC = () => {
                     fontWeight: '500',
                     transition: 'background-color 0.2s'
                   }}
-                  onMouseEnter={(e) => currentPage !== 1 && ((e.target as HTMLButtonElement).style.backgroundColor = '#1d4ed8')}
-                  onMouseLeave={(e) => currentPage !== 1 && ((e.target as HTMLButtonElement).style.backgroundColor = '#2563eb')}
+                  onMouseEnter={(e) => currentPage !== 1 && (e.currentTarget.style.backgroundColor = '#1d4ed8')}
+                  onMouseLeave={(e) => currentPage !== 1 && (e.currentTarget.style.backgroundColor = '#2563eb')}
                 >
                   ← Previous
                 </button>
@@ -608,8 +597,8 @@ const AuditLogs: React.FC = () => {
                     fontWeight: '500',
                     transition: 'background-color 0.2s'
                   }}
-                  onMouseEnter={(e) => currentPage < getTotalPages() && ((e.target as HTMLButtonElement).style.backgroundColor = '#1d4ed8')}
-                  onMouseLeave={(e) => currentPage < getTotalPages() && ((e.target as HTMLButtonElement).style.backgroundColor = '#2563eb')}
+                  onMouseEnter={(e) => currentPage < getTotalPages() && (e.currentTarget.style.backgroundColor = '#1d4ed8')}
+                  onMouseLeave={(e) => currentPage < getTotalPages() && (e.currentTarget.style.backgroundColor = '#2563eb')}
                 >
                   Next →
                 </button>
@@ -633,7 +622,7 @@ const AuditLogs: React.FC = () => {
                   name="exportScope"
                   value="current"
                   checked={exportScope === 'current'}
-                  onChange={(e) => setExportScope(e.target.value as 'current' | 'all')}
+                  onChange={(e) => setExportScope(e.target.value as ExportScope)}
                   style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                 />
                 <div>
@@ -648,7 +637,7 @@ const AuditLogs: React.FC = () => {
                   name="exportScope"
                   value="all"
                   checked={exportScope === 'all'}
-                  onChange={(e) => setExportScope(e.target.value as 'current' | 'all')}
+                  onChange={(e) => setExportScope(e.target.value as ExportScope)}
                   style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                 />
                 <div>
@@ -673,8 +662,8 @@ const AuditLogs: React.FC = () => {
                   fontWeight: '500',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => !loading && ((e.target as HTMLButtonElement).style.backgroundColor = '#d1d5db')}
-                onMouseLeave={(e) => !loading && ((e.target as HTMLButtonElement).style.backgroundColor = '#e5e7eb')}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#d1d5db')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#e5e7eb')}
               >
                 Cancel
               </button>
@@ -692,8 +681,8 @@ const AuditLogs: React.FC = () => {
                   fontWeight: '500',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => !loading && ((e.target as HTMLButtonElement).style.backgroundColor = '#1d4ed8')}
-                onMouseLeave={(e) => !loading && ((e.target as HTMLButtonElement).style.backgroundColor = '#2563eb')}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#1d4ed8')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#2563eb')}
               >
                 {loading ? 'Exporting...' : 'Export to CSV'}
               </button>

@@ -3,10 +3,11 @@ import { FaLongArrowAltLeft, FaTimes, FaCheckCircle, FaExclamationCircle } from 
 import { useNavigate } from 'react-router-dom';
 import { IoMdInformationCircle } from "react-icons/io";
 
-// Type definitions
+type AlertType = 'success' | 'error' | 'info';
+
 interface Alert {
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: AlertType;
 }
 
 interface Permissions {
@@ -23,6 +24,8 @@ interface Permissions {
     modifySystemSettings: boolean;
 }
 
+type PermissionKey = keyof Permissions;
+
 const AiAgentsSetting: React.FC = () => {
     const navigate = useNavigate();
     
@@ -30,7 +33,7 @@ const AiAgentsSetting: React.FC = () => {
     const [alert, setAlert] = useState<Alert | null>(null);
 
     // Show alert function
-    const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+    const showAlert = (message: string, type: AlertType = 'success'): void => {
         setAlert({ message, type });
         setTimeout(() => setAlert(null), 5000);
     };
@@ -69,7 +72,7 @@ const AiAgentsSetting: React.FC = () => {
     const [enableAutoExecution, setEnableAutoExecution] = useState<boolean>(false);
 
     // Handle permission change
-    const handlePermissionChange = (permission: keyof Permissions): void => {
+    const handlePermissionChange = (permission: PermissionKey): void => {
         setPermissions(prev => ({
             ...prev,
             [permission]: !prev[permission]
@@ -465,7 +468,7 @@ const AiAgentsSetting: React.FC = () => {
                 </div>
             </div>
 
-            <style jsx>{`
+            <style >{`
                 @keyframes slide-in-right {
                     from {
                         transform: translateX(100%);

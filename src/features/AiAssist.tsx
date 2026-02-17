@@ -1,767 +1,647 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IoArrowBackCircle, IoClose, IoPause, IoPlay, IoStop } from "react-icons/io5";
+import { IoClose, IoPause, IoPlay, IoStop } from "react-icons/io5";
 import { FaArrowLeft, FaMicrophone, FaPaperPlane } from "react-icons/fa";
-import StreamingAvatar, {
-  AvatarQuality,
-  StreamingEvents,
-  TaskType,
-  VoiceEmotion,
-} from '@heygen/streaming-avatar';
+import {
+  Room,
+  RoomEvent,
+  RemoteTrack,
+  Track,
+  RemoteTrackPublication,
+  RemoteParticipant,
+  DataPacket_Kind,
+} from 'livekit-client';
 
-// Type definitions
-interface ConversationMessage {
-  type: 'user' | 'assistant';
-  text: string;
-}
+// Female avatar name hints — picks first match from public list
+const FEMALE_HINTS = ['ann', 'judy', 'june', 'elenora', 'sarah', 'emma', 'lisa', 'anna', 'amy', 'kate', 'jessica', 'sophia', 'olivia', 'ella', 'silas'];
 
-interface LocationState {
-  script?: string;
-  chatHistory?: Record<string, any>;
-}
+interface LocationState { script?: string; chatHistory?: Record<string, any>; }
+interface ConvMsg       { type: 'user' | 'assistant'; text: string; }
+interface AiMsg         { role: 'user' | 'assistant'; content: string; }
 
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
+interface SpeechRecognitionEvent extends Event { results: SpeechRecognitionResultList; resultIndex: number; }
+interface SpeechRecognitionErrorEvent extends Event { error: string; message: string; }
+interface SpeechRecognitionResultList { length: number; item(i: number): SpeechRecognitionResult; [i: number]: SpeechRecognitionResult; }
+interface SpeechRecognitionResult { length: number; item(i: number): SpeechRecognitionAlternative; [i: number]: SpeechRecognitionAlternative; isFinal: boolean; }
+interface SpeechRecognitionAlternative { transcript: string; confidence: number; }
 interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
+  continuous: boolean; interimResults: boolean; lang: string;
+  start(): void; stop(): void; abort(): void;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror:  ((e: SpeechRecognitionErrorEvent) => void) | null;
+  onend:    (() => void) | null;
+  onstart:  (() => void) | null;
 }
-
+interface SpeechRecognitionConstructor { new(): SpeechRecognition; }
 declare global {
   interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════ */
 const AiAssist: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Get script from navigation state
-  const scriptFromChat = (location.state as LocationState)?.script || 'Hello! I am Astra, your Ping Federate assistant. How can I help you today?';
-  const chatHistory = (location.state as LocationState)?.chatHistory || {};
 
-  // HeyGen states
-  const [isLoadingSession, setIsLoadingSession] = useState<boolean>(false);
-  const [isAvatarActive, setIsAvatarActive] = useState<boolean>(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [caption, setCaption] = useState<string>('');
-  const [showCaption, setShowCaption] = useState<boolean>(true);
-  const [debug, setDebug] = useState<string>('');
+  const scriptFromChat =
+    (location.state as LocationState)?.script ||
+    'Hello! I am Astra, your Ping Federate assistant. How can I help you today?';
 
-  // Advanced features states
-  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
-  const [userInput, setUserInput] = useState<string>('');
-  const [isListening, setIsListening] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [sessionDuration, setSessionDuration] = useState<number>(0);
-  const [showChat, setShowChat] = useState<boolean>(false);
+  /* ── state ── */
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const [isAvatarActive,   setIsAvatarActive]   = useState(false);
+  const [isPlaying,        setIsPlaying]        = useState(false);
+  const [isPaused,         setIsPaused]         = useState(false);
+  const [caption,          setCaption]          = useState('');
+  const [showCaption,      setShowCaption]      = useState(true);
+  const [debug,            setDebug]            = useState('');
+  const [conversation,     setConversation]     = useState<ConvMsg[]>([]);
+  const [userInput,        setUserInput]        = useState('');
+  const [isListening,      setIsListening]      = useState(false);
+  const [isProcessing,     setIsProcessing]     = useState(false);
+  const [sessionDuration,  setSessionDuration]  = useState(0);
+  const [showChat,         setShowChat]         = useState(false);
+  const [hasVideo,         setHasVideo]         = useState(false);
+  const [audioBlocked,     setAudioBlocked]     = useState(false);
 
-  const avatar = useRef<any>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hasSpokenInitialScript = useRef<boolean>(false);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  /* ── refs ── */
+  const roomRef           = useRef<Room | null>(null);
+  const sessionIdRef      = useRef<string | null>(null);
+  const sessionTokenRef   = useRef<string | null>(null);
+  const videoRef          = useRef<HTMLVideoElement>(null);
+  // ✅ We collect ALL audio tracks into one MediaStream — no more overwriting
+  const audioTracksRef    = useRef<MediaStreamTrack[]>([]);
+  const audioElRef        = useRef<HTMLAudioElement | null>(null);
+  const hasSpokenInit     = useRef(false);
+  const recognitionRef    = useRef<SpeechRecognition | null>(null);
+  const timerRef          = useRef<NodeJS.Timeout | null>(null);
+  const chatEndRef        = useRef<HTMLDivElement>(null);
+  const hasStartedRef     = useRef(false);
 
-  // Initialize Speech Recognition
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* Audio helpers                                                            */
+  /* ─────────────────────────────────────────────────────────────────────── */
 
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        setUserInput(transcript);
-        setIsListening(false);
-        handleSendQuestion(transcript);
-      };
+  /** Rebuild the audio element srcObject from all collected tracks */
+  const rebuildAudio = useCallback(() => {
+    if (!audioTracksRef.current.length) return;
 
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        setDebug('Voice recognition failed');
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, []);
-
-  // Session timer
-  useEffect(() => {
-    if (isAvatarActive) {
-      sessionTimerRef.current = setInterval(() => {
-        setSessionDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (sessionTimerRef.current) {
-        clearInterval(sessionTimerRef.current);
-      }
-      setSessionDuration(0);
+    // Create audio element lazily so it's not in the React tree
+    // (avoids autoplay policy issues with elements created before user gesture)
+    if (!audioElRef.current) {
+      audioElRef.current = new Audio();
+      audioElRef.current.autoplay = true;
+      audioElRef.current.volume   = 1.0;
     }
 
-    return () => {
-      if (sessionTimerRef.current) {
-        clearInterval(sessionTimerRef.current);
-      }
-    };
-  }, [isAvatarActive]);
+    const ms = new MediaStream(audioTracksRef.current);
+    audioElRef.current.srcObject = ms;
 
-  // Auto-scroll chat
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [conversation]);
-
-  // Automatically start avatar session when component mounts
-  useEffect(() => {
-    startSession();
-    
-    // Cleanup on unmount
-    return () => {
-      if (avatar.current) {
-        avatar.current.stopAvatar().catch(console.error);
-      }
-      if (sessionTimerRef.current) {
-        clearInterval(sessionTimerRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Speak the script once avatar is ready
-  useEffect(() => {
-    if (isAvatarActive && scriptFromChat && !hasSpokenInitialScript.current) {
-      hasSpokenInitialScript.current = true;
-      
-      setTimeout(() => {
-        handleSpeak(scriptFromChat);
-        setConversation([{ type: 'assistant', text: scriptFromChat }]);
-      }, 500);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAvatarActive]);
-
-  // Handle video stream when it's set
-  useEffect(() => {
-    if (stream && videoRef.current) {
-      console.log('Setting video stream:', stream);
-      videoRef.current.srcObject = stream;
-      mediaStreamRef.current = stream;
-      
-      videoRef.current.play().catch(error => {
-        console.error('Error playing video:', error);
+    audioElRef.current.play()
+      .then(() => { setAudioBlocked(false); console.log('🔊 Audio playing'); })
+      .catch(err => {
+        console.warn('Audio autoplay blocked:', err);
+        setAudioBlocked(true);
       });
+  }, []);
+
+  const handleUnmuteAudio = useCallback(() => {
+    if (audioElRef.current) {
+      audioElRef.current.play()
+        .then(() => setAudioBlocked(false))
+        .catch(console.error);
     }
-  }, [stream]);
+  }, []);
 
-  // Fetch HeyGen access token
-  const fetchAccessToken = async (): Promise<string> => {
-    try {
-      const HEYGEN_API_KEY = import.meta.env.VITE_HEYGEN_API_KEY;
-      
-      if (!HEYGEN_API_KEY) {
-        throw new Error('VITE_HEYGEN_API_KEY not found in .env file');
-      }
-
-      console.log('🔑 Requesting HeyGen token...');
-
-      const response = await fetch(
-        'https://api.heygen.com/v1/streaming.create_token',
-        {
-          method: 'POST',
-          headers: {
-            'x-api-key': HEYGEN_API_KEY,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('HeyGen API error:', errorText);
-        throw new Error(`HeyGen API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Token received');
-      return data.data.token;
-      
-    } catch (error) {
-      console.error('Error fetching access token:', error);
-      throw error;
-    }
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* API helpers                                                              */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const getApiKey = (): string => {
+    const key = import.meta.env.VITE_LIVEAVATAR_API_KEY || import.meta.env.VITE_HEYGEN_API_KEY;
+    if (!key) throw new Error('NO_API_KEY');
+    return key;
   };
 
-  // Get AI response with conversation history
-  const getAIResponse = async (question: string): Promise<string> => {
+  /** Fetch avatars and pick a female one by name */
+  const fetchAvatarInfo = async (apiKey: string): Promise<{ id: string; voiceId: string | null; name: string }> => {
+    setDebug('Fetching avatars...');
+    const res  = await fetch('https://api.liveavatar.com/v1/avatars/public', {
+      headers: { 'X-API-KEY': apiKey, accept: 'application/json' },
+    });
+    const data = await res.json();
+    const list: any[] = data?.data?.results ?? [];
+    if (!list.length) throw new Error('NO_AVATARS');
+
+    // Try to find a female avatar by name
+    const female = list.find((a: any) =>
+      FEMALE_HINTS.some(hint => (a.name ?? '').toLowerCase().includes(hint))
+    );
+    const chosen = female ?? list[0];
+    console.log('✅ Avatar chosen:', chosen.name, '|', chosen.id);
+    return {
+      id:      chosen.id ?? chosen.avatar_id,
+      voiceId: chosen.default_voice?.id ?? null,
+      name:    chosen.name ?? 'Avatar',
+    };
+  };
+
+  const createSessionToken = async (apiKey: string, avatarId: string, voiceId: string | null) => {
+    setDebug('Creating session token...');
+    const res = await fetch('https://api.liveavatar.com/v1/sessions/token', {
+      method: 'POST',
+      headers: { 'X-API-KEY': apiKey, accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'FULL',
+        avatar_id: avatarId,
+        avatar_persona: { language: 'en', voice_id: voiceId },
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`SESSION_TOKEN_${res.status}: ${text}`);
+    const parsed = JSON.parse(text);
+    return { session_id: parsed.data.session_id as string, session_token: parsed.data.session_token as string };
+  };
+
+  const startLiveAvatarSession = async (token: string) => {
+    setDebug('Starting session...');
+    const res = await fetch('https://api.liveavatar.com/v1/sessions/start', {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`SESSION_START_${res.status}: ${text}`);
+    const parsed = JSON.parse(text);
+    return {
+      livekit_url:          parsed.data.livekit_url as string,
+      livekit_client_token: parsed.data.livekit_client_token as string,
+    };
+  };
+
+  const stopServerSession = async (token: string) => {
     try {
-      // Build conversation history for context (last 6 messages)
-      const messages = conversation.slice(-6).map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.text
-      }));
-
-      // Add current question
-      messages.push({
-        role: 'user',
-        content: question
-      });
-
-      const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-
-      if (!ANTHROPIC_API_KEY) {
-        throw new Error('VITE_ANTHROPIC_API_KEY not found in .env file');
-      }
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      await fetch('https://api.liveavatar.com/v1/sessions/stop', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          messages: messages,
-          system: 'You are Astra, a helpful Ping Federate assistant. Keep responses conversational and concise (2-3 sentences max) as they will be spoken through an avatar. You can reference previous parts of the conversation.'
-        })
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.content[0].text;
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      return "I'm sorry, I encountered an error processing your question. Please try again.";
-    }
+    } catch (e) { console.warn('Stop session failed:', e); }
   };
 
-  // Start avatar session
-  const startSession = async (): Promise<void> => {
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* LiveKit data channel                                                     */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const publishCommand = useCallback(async (payload: Record<string, any>) => {
+    const room = roomRef.current;
+    if (!room || room.state !== 'connected') { console.warn('Room not connected'); return; }
+    const data = new TextEncoder().encode(JSON.stringify(payload));
+    await room.localParticipant.publishData(data, { kind: DataPacket_Kind.RELIABLE, topic: 'agent-control' });
+    console.log('📤 agent-control:', payload);
+  }, []);
+
+  const handleSpeak = useCallback(async (text: string) => {
+    if (!text.trim() || !isAvatarActive) return;
+    setCaption(text); setShowCaption(true); setDebug('Speaking…');
+    await publishCommand({ event_type: 'avatar.speak_text', session_id: sessionIdRef.current, text });
+  }, [isAvatarActive, publishCommand]);
+
+  const handleInterrupt = useCallback(async () => {
+    await publishCommand({ event_type: 'avatar.interrupt', session_id: sessionIdRef.current });
+    setIsPlaying(false); setIsPaused(false);
+  }, [publishCommand]);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* endSession                                                               */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const endSession = useCallback(async () => {
+    if (roomRef.current) {
+      try { await roomRef.current.disconnect(); } catch (_) {}
+      roomRef.current = null;
+    }
+    const token = sessionTokenRef.current;
+    if (token) await stopServerSession(token);
+
+    if (videoRef.current)     { videoRef.current.srcObject = null; }
+    if (audioElRef.current)   { audioElRef.current.srcObject = null; audioElRef.current.pause(); }
+
+    audioTracksRef.current  = [];
+    sessionTokenRef.current = null;
+    sessionIdRef.current    = null;
+    setHasVideo(false);
+    setIsAvatarActive(false);
+    setIsPlaying(false);
+    setIsPaused(false);
+    setCaption('');
+    hasSpokenInit.current = false;
+    setDebug('Session ended');
+  }, []);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* startSession                                                             */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const startSession = useCallback(async () => {
     setIsLoadingSession(true);
-    setDebug('Initializing avatar...');
-    
+    audioTracksRef.current = []; // reset tracks
+
     try {
-      const newToken = await fetchAccessToken();
-      
-      avatar.current = new StreamingAvatar({
-        token: newToken,
+      if (sessionTokenRef.current) await stopServerSession(sessionTokenRef.current);
+      if (roomRef.current) { try { await roomRef.current.disconnect(); } catch (_) {} roomRef.current = null; }
+
+      const apiKey = getApiKey();
+      const { id: avatarId, voiceId } = await fetchAvatarInfo(apiKey);
+      const { session_id, session_token } = await createSessionToken(apiKey, avatarId, voiceId);
+      const { livekit_url, livekit_client_token } = await startLiveAvatarSession(session_token);
+
+      sessionIdRef.current    = session_id;
+      sessionTokenRef.current = session_token;
+
+      setDebug('Connecting to LiveKit...');
+
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      roomRef.current = room;
+
+      /* ── Track subscription ── */
+      room.on(RoomEvent.TrackSubscribed, (
+        track: RemoteTrack,
+        _pub: RemoteTrackPublication,
+        _participant: RemoteParticipant,
+      ) => {
+        console.log('Track subscribed:', track.kind, track.sid);
+
+        if (track.kind === Track.Kind.Video) {
+          // ✅ srcObject approach — video element always in DOM
+          if (videoRef.current) {
+            videoRef.current.srcObject = new MediaStream([track.mediaStreamTrack]);
+            videoRef.current.play().catch(e => console.warn('video play err:', e));
+          }
+          setHasVideo(true);
+          setDebug('Stream connected ✅');
+
+        } else if (track.kind === Track.Kind.Audio) {
+          // ✅ AUDIO FIX: Collect every audio track into an array,
+          // then rebuild a single MediaStream with ALL tracks.
+          // This prevents later tracks from silently overwriting earlier ones.
+          audioTracksRef.current.push(track.mediaStreamTrack);
+          console.log(`🎵 Audio track added (total: ${audioTracksRef.current.length})`);
+          rebuildAudio();
+
+          // Also handle track ending — rebuild without it
+          track.mediaStreamTrack.addEventListener('ended', () => {
+            audioTracksRef.current = audioTracksRef.current.filter(
+              t => t.id !== track.mediaStreamTrack.id
+            );
+            rebuildAudio();
+          });
+        }
       });
 
-      // Set up event listeners
-      avatar.current.on(StreamingEvents.AVATAR_START_TALKING, (e: any) => {
-        console.log('Avatar started talking', e);
-        setIsPlaying(true);
-        setIsPaused(false);
-        setDebug('Avatar speaking...');
+      room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+        if (track.kind === Track.Kind.Video) {
+          if (videoRef.current) videoRef.current.srcObject = null;
+          setHasVideo(false);
+        } else if (track.kind === Track.Kind.Audio) {
+          // Remove unsubscribed track and rebuild
+          audioTracksRef.current = audioTracksRef.current.filter(
+            t => t.id !== track.mediaStreamTrack.id
+          );
+          rebuildAudio();
+        }
       });
 
-      avatar.current.on(StreamingEvents.AVATAR_STOP_TALKING, (e: any) => {
-        console.log('Avatar stopped talking', e);
-        setIsPlaying(false);
-        setDebug('Avatar ready');
+      room.on(RoomEvent.Disconnected, () => {
+        setDebug('Disconnected'); setIsAvatarActive(false); setHasVideo(false);
       });
 
-      avatar.current.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-        console.log('Stream disconnected');
-        setDebug('Stream disconnected');
-        endSession();
+      /* ── Server events ── */
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array, _p: any, _k: any, topic?: string) => {
+        try {
+          const msg  = JSON.parse(new TextDecoder().decode(payload));
+          const type = msg.event_type ?? msg.type ?? '';
+          console.log(`📩 [${topic ?? 'no-topic'}] ${type}`, msg);
+
+          if      (type === 'avatar.speak_started' || type === 'avatar_start_talking')
+            { setIsPlaying(true);  setIsPaused(false); setDebug('Speaking…'); }
+          else if (type === 'avatar.speak_ended'   || type === 'avatar_stop_talking')
+            { setIsPlaying(false); setDebug('Ready'); }
+          else if (type === 'avatar.transcription' || type === 'avatar.transcription.chunk')
+            { if (msg.text) setCaption(msg.text); }
+          else if (type === 'user.transcription')
+            { if (msg.text) setUserInput(msg.text); }
+          else if (type === 'session.stopped')
+            { setDebug(`Session stopped: ${msg.end_reason}`); endSession(); }
+        } catch (_) {}
       });
 
-      avatar.current.on(StreamingEvents.STREAM_READY, (event: any) => {
-        console.log('Stream ready:', event.detail);
-        setStream(event.detail);
-        setDebug('Stream connected');
-      });
-
-      console.log('🎭 Starting avatar session...');
-
-      const res = await avatar.current.createStartAvatar({
-        quality: AvatarQuality.High,
-        voice: {
-          rate: 1.0,
-          emotion: VoiceEmotion.FRIENDLY,
-        },
-        language: 'en',
-        disableIdleTimeout: false,
-      });
-
-      console.log('✅ Avatar session started:', res);
+      await room.connect(livekit_url, livekit_client_token);
+      console.log('✅ Connected to LiveKit room');
       setIsAvatarActive(true);
-      setDebug('Avatar ready');
-      
-    } catch (error: any) {
-      console.error('❌ Error starting avatar session:', error);
-      setDebug(`Error: ${error.message}`);
-      
-      let errorMessage = 'Failed to start avatar session. ';
-      
-      if (error.message.includes('400')) {
-        errorMessage += 'Configuration error. Please check your avatar settings or use default avatar.';
-      } else if (error.message.includes('API key')) {
-        errorMessage += 'Invalid API key. Please check your .env file.';
-      } else if (error.message.includes('401')) {
-        errorMessage += 'Authentication failed. Your API key may be invalid or expired.';
-      } else if (error.message.includes('403')) {
-        errorMessage += 'Access forbidden. Your account may not have permission for streaming avatars.';
-      }
-      
-      alert(errorMessage);
+      setDebug('Avatar ready ✅');
+
+    } catch (err: any) {
+      console.error('startSession error:', err);
+      setDebug(`Error: ${err.message}`);
+      let msg = '';
+      if (err.message === 'NO_API_KEY')                     msg = '❌ API key missing!\n\nAdd VITE_LIVEAVATAR_API_KEY to .env, then restart.';
+      else if (err.message === 'NO_AVATARS')                msg = '❌ No avatars found.\n\nGo to https://app.liveavatar.com → Avatars.';
+      else if (err.message.startsWith('SESSION_TOKEN_401')) msg = '❌ API key rejected (401).\n\nCheck your VITE_LIVEAVATAR_API_KEY in .env.';
+      else                                                   msg = `❌ Error: ${err.message}`;
+      if (msg) alert(msg);
     } finally {
       setIsLoadingSession(false);
     }
-  };
+  }, [endSession, rebuildAudio]);
 
-  // End avatar session
-  const endSession = async (): Promise<void> => {
-    if (!avatar.current) {
-      setDebug('No avatar session to end');
-      return;
-    }
-
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* Claude AI response                                                       */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const getAIResponse = useCallback(async (question: string): Promise<string> => {
     try {
-      await avatar.current.stopAvatar();
-      
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-        mediaStreamRef.current = null;
-      }
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      
-      setStream(null);
-      setIsAvatarActive(false);
-      setIsPlaying(false);
-      setIsPaused(false);
-      setCaption('');
-      setDebug('Avatar session ended');
-      hasSpokenInitialScript.current = false;
-    } catch (error: any) {
-      console.error('Error ending avatar session:', error);
-      setDebug(`Error ending session: ${error.message}`);
-    }
-  };
-
-  // Make avatar speak
-  const handleSpeak = useCallback(async (textToSpeak: string): Promise<void> => {
-    if (!avatar.current || !isAvatarActive) {
-      console.error('Avatar not initialized');
-      setDebug('Avatar not initialized');
-      return;
-    }
-
-    if (!textToSpeak || textToSpeak.trim() === '') {
-      console.warn('Empty text provided');
-      return;
-    }
-
-    setCaption(textToSpeak);
-    setShowCaption(true);
-    setDebug('Preparing to speak...');
-
-    try {
-      await avatar.current.speak({
-        text: textToSpeak,
-        taskType: TaskType.REPEAT,
-        taskMode: 'sync',
+      const msgs: AiMsg[] = [
+        ...conversation.slice(-6).map(m => ({
+          role: (m.type === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+          content: m.text,
+        })),
+        { role: 'user', content: question },
+      ];
+      const key = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      if (!key) throw new Error('VITE_ANTHROPIC_API_KEY missing');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          messages: msgs,
+          system: 'You are Astra, a helpful Ping Federate assistant. Keep responses conversational and concise (2-3 sentences max).',
+        }),
       });
-      console.log('✅ Speaking command sent');
-      setDebug('Speaking...');
-    } catch (error: any) {
-      console.error('Error making avatar speak:', error);
-      setDebug(`Error: ${error.message}`);
+      if (!res.ok) throw new Error(`Anthropic ${res.status}`);
+      const d = await res.json();
+      return d.content[0].text;
+    } catch (e) {
+      console.error('AI error:', e);
+      return "I'm sorry, I encountered an error. Please try again.";
     }
+  }, [conversation]);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* Send question                                                            */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const handleSendQuestion = useCallback(async (question: string) => {
+    if (!question.trim() || !isAvatarActive || isProcessing) return;
+    if (isPlaying) await handleInterrupt();
+
+    setConversation(p => [...p, { type: 'user', text: question.trim() }]);
+    setUserInput(''); setIsProcessing(true); setDebug('Thinking…');
+
+    try {
+      const reply = await getAIResponse(question.trim());
+      setConversation(p => [...p, { type: 'assistant', text: reply }]);
+      await handleSpeak(reply);
+      setDebug('Ready');
+    } catch (_) {
+      const err = "I'm sorry, there was an error. Please try again.";
+      setConversation(p => [...p, { type: 'assistant', text: err }]);
+      await handleSpeak(err);
+    } finally { setIsProcessing(false); }
+  }, [isAvatarActive, isProcessing, isPlaying, getAIResponse, handleSpeak, handleInterrupt]);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* Effects                                                                  */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    recognitionRef.current = new SR();
+    recognitionRef.current.continuous     = false;
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.lang           = 'en-US';
+    recognitionRef.current.onresult = (e: SpeechRecognitionEvent) => {
+      const t = e.results[0][0].transcript;
+      setUserInput(t); setIsListening(false); handleSendQuestion(t);
+    };
+    recognitionRef.current.onerror = () => setIsListening(false);
+    recognitionRef.current.onend   = () => setIsListening(false);
+  }, [handleSendQuestion]);
+
+  useEffect(() => {
+    if (isAvatarActive) { timerRef.current = setInterval(() => setSessionDuration(s => s + 1), 1000); }
+    else { if (timerRef.current) clearInterval(timerRef.current); setSessionDuration(0); }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isAvatarActive]);
 
-  // Handle sending a question
-  const handleSendQuestion = async (question: string): Promise<void> => {
-    if (!question || !question.trim() || !isAvatarActive || isProcessing) return;
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversation]);
 
-    const trimmedQuestion = question.trim();
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    startSession();
+    return () => { endSession(); };
+  }, []); // eslint-disable-line
 
-    // Interrupt if avatar is speaking
-    if (isPlaying) {
-      try {
-        await avatar.current.interrupt();
-      } catch (error) {
-        console.error('Error interrupting:', error);
-      }
+  useEffect(() => {
+    if (isAvatarActive && scriptFromChat && !hasSpokenInit.current) {
+      hasSpokenInit.current = true;
+      setTimeout(() => {
+        handleSpeak(scriptFromChat);
+        setConversation([{ type: 'assistant', text: scriptFromChat }]);
+      }, 1000);
     }
+  }, [isAvatarActive, scriptFromChat, handleSpeak]);
 
-    // Add user message to conversation
-    setConversation(prev => [...prev, { type: 'user', text: trimmedQuestion }]);
-    setUserInput('');
-    setIsProcessing(true);
-    setDebug('Processing question...');
+  useEffect(() => {
+    const cleanup = () => {
+      const token = sessionTokenRef.current;
+      if (token) fetch('https://api.liveavatar.com/v1/sessions/stop', {
+        method: 'POST', keepalive: true,
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      }).catch(() => {});
+    };
+    window.addEventListener('beforeunload', cleanup);
+    return () => window.removeEventListener('beforeunload', cleanup);
+  }, []);
 
-    try {
-      // Get AI response
-      const aiResponse = await getAIResponse(trimmedQuestion);
-      
-      // Add AI response to conversation
-      setConversation(prev => [...prev, { type: 'assistant', text: aiResponse }]);
-      
-      // Make avatar speak the response
-      await handleSpeak(aiResponse);
-      
-      setDebug('Response delivered');
-    } catch (error) {
-      console.error('Error handling question:', error);
-      setDebug('Error processing question');
-      
-      const errorMsg = "I'm sorry, I encountered an error. Please try again.";
-      setConversation(prev => [...prev, { type: 'assistant', text: errorMsg }]);
-      await handleSpeak(errorMsg);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Start voice input
-  const startListening = (): void => {
-    if (recognitionRef.current && !isListening && !isProcessing) {
-      // Interrupt avatar if speaking
-      if (isPlaying) {
-        avatar.current?.interrupt().catch(console.error);
-      }
-      setIsListening(true);
-      setDebug('Listening...');
-      recognitionRef.current.start();
-    }
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* UI handlers                                                              */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const startListening = () => {
+    if (!recognitionRef.current || isListening || isProcessing) return;
+    if (isPlaying) handleInterrupt();
+    setIsListening(true); setDebug('Listening…');
+    recognitionRef.current.start();
   };
 
   const handleBack = useCallback(() => {
-    if (avatar.current && isAvatarActive) {
-      endSession();
-    }
+    if (isAvatarActive) endSession();
     navigate('/agents/agentchat');
-  }, [navigate, isAvatarActive]);
+  }, [navigate, isAvatarActive, endSession]);
 
   const handleClearChat = useCallback(async () => {
-    if (avatar.current && isAvatarActive) {
-      try {
-        await avatar.current.interrupt();
-        setIsPlaying(false);
-        setIsPaused(false);
-        setCaption('');
-        setShowCaption(false);
-        setConversation([]);
-        setDebug('Cleared');
-      } catch (error) {
-        console.error('Error clearing:', error);
-      }
-    }
-  }, [isAvatarActive]);
+    if (!isAvatarActive) return;
+    await handleInterrupt();
+    setCaption(''); setShowCaption(false); setConversation([]); setDebug('Cleared');
+  }, [isAvatarActive, handleInterrupt]);
 
   const handlePause = useCallback(async () => {
-    if (!avatar.current || !isPlaying) {
-      console.log('Cannot pause - avatar not playing');
-      return;
-    }
-    
-    try {
-      await avatar.current.interrupt();
-      setIsPaused(true);
-      setIsPlaying(false);
-      setDebug('Paused');
-    } catch (error: any) {
-      console.error('Error pausing avatar:', error);
-      setDebug(`Error pausing: ${error.message}`);
-    }
-  }, [isPlaying]);
+    if (!isPlaying) return;
+    await handleInterrupt(); setIsPaused(true);
+  }, [isPlaying, handleInterrupt]);
 
   const handlePlay = useCallback(async () => {
-    if (!avatar.current || !isAvatarActive) {
-      alert('Avatar is not initialized. Please wait for the avatar to load.');
-      return;
-    }
-    
-    try {
-      if (!isPlaying && scriptFromChat) {
-        await handleSpeak(scriptFromChat);
-      }
-    } catch (error: any) {
-      console.error('Error in handlePlay:', error);
-      setDebug(`Error: ${error.message}`);
-    }
-  }, [isPaused, isPlaying, scriptFromChat, isAvatarActive, handleSpeak]);
+    if (!isAvatarActive || isPlaying) return;
+    await handleSpeak(caption || scriptFromChat);
+  }, [isPlaying, isAvatarActive, caption, scriptFromChat, handleSpeak]);
 
   const handleStop = useCallback(async () => {
-    if (!avatar.current) {
-      return;
-    }
-    
-    try {
-      await avatar.current.interrupt();
-      setIsPlaying(false);
-      setIsPaused(false);
-      setCaption('');
-      setShowCaption(false);
-      setDebug('Stopped');
-    } catch (error: any) {
-      console.error('Error stopping avatar:', error);
-      setDebug(`Error stopping: ${error.message}`);
-    }
-  }, []);
-
-  const handleCloseCaption = useCallback(() => {
-    setShowCaption(false);
-  }, []);
+    await handleInterrupt(); setCaption(''); setShowCaption(false);
+  }, [handleInterrupt]);
 
   const handleRestartSession = useCallback(() => {
-    if (isAvatarActive) {
-      endSession().then(() => {
-        setTimeout(() => startSession(), 1000);
-      });
-    } else {
-      startSession();
-    }
-  }, [isAvatarActive]);
+    if (isAvatarActive) { endSession().then(() => setTimeout(startSession, 1000)); }
+    else { startSession(); }
+  }, [isAvatarActive, endSession, startSession]);
 
-  // Format session duration
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* Render — exact same UI as before                                         */
+  /* ─────────────────────────────────────────────────────────────────────── */
   return (
     <div className="w-full h-screen flex flex-col bg-[#F9FAFB] overflow-hidden">
-      {/* Header - Fixed height */}
+
+      {/* Header */}
       <div className="px-4 sm:px-10 py-3 sm:py-4 flex items-center justify-between flex-shrink-0 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleBack()}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
-          >
-            <FaArrowLeft size={16} />
-            <span className="text-sm">Back</span>
-          </button>
-        </div>
+        <button onClick={handleBack} className="flex items-center gap-2 text-blue-600 hover:text-blue-700">
+          <FaArrowLeft size={16} /><span className="text-sm">Back</span>
+        </button>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Session Timer */}
           {isAvatarActive && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-              <span className="text-xs font-medium text-gray-600">⏱️ {formatDuration(sessionDuration)}</span>
+              <span className="text-xs font-medium text-gray-600">⏱️ {fmt(sessionDuration)}</span>
             </div>
           )}
-
-          {/* Session Status Indicator */}
           {isAvatarActive && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <span className="text-xs font-medium text-green-700">Live</span>
             </div>
           )}
-
-          {/* Toggle Chat Button */}
-          <button
-            onClick={() => setShowChat(!showChat)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm font-medium"
-          >
+          {audioBlocked && (
+            <button onClick={handleUnmuteAudio}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-xs sm:text-sm font-medium animate-pulse">
+              🔇 Tap to Unmute
+            </button>
+          )}
+          <button onClick={() => setShowChat(v => !v)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm font-medium">
             💬 {showChat ? 'Hide' : 'Show'} Chat
           </button>
-          
-          <button
-            onClick={handleClearChat}
-            className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg flex items-center gap-2 transition-colors"
-            aria-label="Clear chat"
-          >
-            <IoClose className="text-sm sm:text-base md:text-lg" />
+          <button onClick={handleClearChat}
+            className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg flex items-center gap-2 transition-colors">
+            <IoClose className="text-sm sm:text-base" />
             <span className="text-xs sm:text-sm font-medium">Clear</span>
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Side - Avatar */}
+
+        {/* Avatar side */}
         <div className={`${showChat ? 'w-1/2' : 'w-full'} flex items-center justify-center px-4 py-4 sm:py-6 transition-all duration-300`}>
-          <div className="w-full max-w-2xl flex flex-col items-center justify-center gap-3 sm:gap-4 md:gap-5">
-            
-            {/* Avatar Container */}
-            <div className="flex justify-center flex-shrink-0">
-              <div className="relative">
-                {!stream ? (
-                  <div className="w-35 h-35 xs:w-48 xs:h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-white bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+          <div className="w-full max-w-2xl flex flex-col items-center justify-center gap-4">
+
+            {/* Avatar circle — video always in DOM */}
+            <div className="relative">
+              <div className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-full overflow-hidden shadow-2xl border-4 border-white bg-gray-900 relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                  style={{ display: hasVideo ? 'block' : 'none' }}
+                />
+                {!hasVideo && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
                     {isLoadingSession ? (
                       <div className="flex flex-col items-center gap-3">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                        <p className="text-white text-sm font-medium">Loading Avatar...</p>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
+                        <p className="text-white text-sm font-medium">Loading Avatar…</p>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3">
                         <div className="text-white text-6xl">👤</div>
-                        <button
-                          onClick={handleRestartSession}
-                          className="bg-white text-purple-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
-                        >
+                        <button onClick={handleRestartSession}
+                          className="bg-white text-purple-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
                           Start Session
                         </button>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="w-35 h-35 xs:w-48 xs:h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-white bg-gray-900">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                      onLoadedMetadata={(e) => {
-                        console.log('Video metadata loaded');
-                        (e.target as HTMLVideoElement).play().catch(err => console.error('Play error:', err));
-                      }}
-                      onError={(e) => {
-                        console.error('Video error:', e);
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Status Indicators on Avatar */}
-                {isPlaying && (
-                  <div className="absolute -top-2 -right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                    🎤 Speaking
-                  </div>
-                )}
-                {isListening && (
-                  <div className="absolute -top-2 -right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                    🎙️ Listening
-                  </div>
-                )}
-                {isProcessing && (
-                  <div className="absolute -top-2 -right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                    ⚡ Processing
-                  </div>
                 )}
               </div>
+
+              {isPlaying    && <div className="absolute -top-2 -right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">🎤 Speaking</div>}
+              {isListening  && <div className="absolute -top-2 -right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">🎙️ Listening</div>}
+              {isProcessing && <div className="absolute -top-2 -right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">⚡ Processing</div>}
             </div>
 
-            {/* Caption Box */}
+            {/* Caption */}
             {showCaption && caption && !showChat && (
-              <div className="relative w-full max-w-xl lg:max-w-2xl flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-md border border-gray-200 p-3 sm:p-4 md:p-5 relative">
-                  <button
-                    onClick={handleCloseCaption}
-                    className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label="Close caption"
-                  >
-                    <IoClose className="text-base sm:text-lg md:text-xl" />
-                  </button>
-
-                  <p className="text-gray-700 text-xs sm:text-sm md:text-base leading-relaxed pr-6 sm:pr-8">
-                    "{caption}"
-                  </p>
+              <div className="relative w-full max-w-xl">
+                <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 relative">
+                  <button onClick={() => setShowCaption(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"><IoClose /></button>
+                  <p className="text-gray-700 text-sm leading-relaxed pr-6">"{caption}"</p>
                 </div>
               </div>
             )}
 
-            {/* Control Buttons */}
-            <div className="flex justify-center items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
-              <button
-                onClick={handlePause}
-                disabled={!isPlaying || !isAvatarActive}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-lg flex items-center gap-1 sm:gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg text-xs sm:text-sm md:text-base"
-                aria-label="Pause"
-              >
-                <IoPause className="text-sm sm:text-base md:text-lg" />
-                <span className="font-medium">Pause</span>
+            {/* Controls */}
+            <div className="flex gap-3">
+              <button onClick={handlePause} disabled={!isPlaying || !isAvatarActive}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-sm font-medium">
+                <IoPause /> Pause
               </button>
-
-              <button
-                onClick={handlePlay}
-                disabled={isPlaying || !isAvatarActive}
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-lg flex items-center gap-1 sm:gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg text-xs sm:text-sm md:text-base"
-                aria-label="Play"
-              >
-                <IoPlay className="text-sm sm:text-base md:text-lg" />
-                <span className="font-medium">{isPaused ? 'Resume' : 'Play'}</span>
+              <button onClick={handlePlay} disabled={isPlaying || !isAvatarActive}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-sm font-medium">
+                <IoPlay /> {isPaused ? 'Resume' : 'Play'}
               </button>
-
-              <button
-                onClick={handleStop}
-                disabled={!isAvatarActive}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-lg flex items-center gap-1 sm:gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg text-xs sm:text-sm md:text-base"
-                aria-label="Stop"
-              >
-                <IoStop className="text-sm sm:text-base md:text-lg" />
-                <span className="font-medium">Stop</span>
+              <button onClick={handleStop} disabled={!isAvatarActive}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-sm font-medium">
+                <IoStop /> Stop
               </button>
             </div>
 
-            {/* Debug Info */}
             {import.meta.env.DEV && debug && (
-              <div className="mt-2 px-4 py-2 bg-gray-800 text-white text-xs rounded-lg max-w-lg text-center">
-                {debug}
-              </div>
+              <div className="px-4 py-2 bg-gray-800 text-white text-xs rounded-lg max-w-lg text-center">{debug}</div>
             )}
           </div>
         </div>
 
-        {/* Right Side - Chat Interface */}
+        {/* Chat side */}
         {showChat && (
           <div className="w-1/2 border-l border-gray-200 flex flex-col bg-white">
-            {/* Chat Header */}
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
               <h3 className="text-lg font-semibold text-gray-800">Conversation</h3>
               <p className="text-xs text-gray-600 mt-1">Ask questions and get AI-powered responses</p>
             </div>
 
-            {/* Conversation History */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {conversation.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div className="text-gray-400">
+                <div className="flex items-center justify-center h-full text-center text-gray-400">
+                  <div>
                     <div className="text-4xl mb-2">💬</div>
                     <p className="text-sm">Start a conversation</p>
-                    <p className="text-xs mt-1">Type a message or use voice input</p>
+                    <p className="text-xs mt-1">Type or use voice input</p>
                   </div>
                 </div>
               ) : (
                 <>
-                  {conversation.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          msg.type === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
+                  {conversation.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
                         <div className="text-xs font-semibold mb-1 opacity-75">
                           {msg.type === 'user' ? '👤 You' : '🤖 Astra'}
                         </div>
@@ -774,37 +654,29 @@ const AiAssist: React.FC = () => {
               )}
             </div>
 
-            {/* Input Area */}
             <div className="border-t border-gray-200 p-4 bg-gray-50">
               <div className="flex gap-2">
                 <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendQuestion(userInput)}
-                  placeholder="Type your question..."
+                  type="text" value={userInput}
+                  onChange={e => setUserInput(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && !isProcessing && handleSendQuestion(userInput)}
+                  placeholder="Type your question…"
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   disabled={isProcessing || isListening || !isAvatarActive}
                 />
-                <button
-                  onClick={() => handleSendQuestion(userInput)}
+                <button onClick={() => handleSendQuestion(userInput)}
                   disabled={isProcessing || !userInput.trim() || isListening || !isAvatarActive}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <FaPaperPlane />
                 </button>
-                <button
-                  onClick={startListening}
+                <button onClick={startListening}
                   disabled={isProcessing || isListening || !isAvatarActive}
-                  className={`${
-                    isListening ? 'bg-red-600 animate-pulse' : 'bg-green-600 hover:bg-green-700'
-                  } text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
+                  className={`${isListening ? 'bg-red-600 animate-pulse' : 'bg-green-600 hover:bg-green-700'} text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}>
                   <FaMicrophone />
                 </button>
               </div>
               {!isAvatarActive && (
-                <p className="text-xs text-red-600 mt-2">Avatar not active. Please wait for initialization.</p>
+                <p className="text-xs text-red-600 mt-2">Avatar not active. Please wait…</p>
               )}
             </div>
           </div>

@@ -1,9 +1,9 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react'
 import { FaPlus, FaTrash } from "react-icons/fa6";
 import { GoPeople, GoGraph } from "react-icons/go";
 import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
 import { MdOutlineStar } from "react-icons/md";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'
 import api from '../utils/api';
 import { IconType } from 'react-icons';
 
@@ -20,18 +20,35 @@ interface Agent {
   isDefault: boolean;
 }
 
-interface TargetSystem {
-  id?: string;
-  _id?: string;
-  type?: string;
-}
-
 interface StatData {
   icon: IconType;
   value: string;
   description: string;
   sub: string;
   iconcolor: string;
+}
+
+interface TargetSystem {
+  id?: string;
+  _id?: string;
+  type: string;
+}
+
+interface RemoteAgent {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  checkInterval?: number;
+  status?: string;
+  config?: {
+    environment?: string;
+  };
+  killswitch_activated?: boolean;
+}
+
+interface TargetSystemMap {
+  [key: string]: string;
 }
 
 const Agents: React.FC = () => {
@@ -53,17 +70,17 @@ const Agents: React.FC = () => {
         .join(' ');
     };
 
-    const fetchAgents = async () => {
+    const fetchAgents = async (): Promise<void> => {
       try {
         // Fetch target systems to create ID->Type mapping
-        let targetSystemMap: Record<string, string> = {};
+        let targetSystemMap: TargetSystemMap = {};
         try {
-          const targetSystems = await api.targetSystems.list();
+          const targetSystems: TargetSystem[] = await api.targetSystems.list();
           if (Array.isArray(targetSystems)) {
-            targetSystems.forEach((system: TargetSystem) => {
-              const id = system.id || system._id;
-              if (id && system.type) {
-                targetSystemMap[id] = system.type;
+            targetSystems.forEach(system => {
+              const systemId = system.id || system._id;
+              if (systemId) {
+                targetSystemMap[systemId] = system.type;
               }
             });
           }
@@ -71,35 +88,37 @@ const Agents: React.FC = () => {
           console.warn('Failed to fetch target systems for mapping:', err);
         }
 
-        const remoteAgents = await api.llmRuntime.listAgents();
-        const normalized: Agent[] = (remoteAgents || []).map((agent: any) => {
-          // Extract target ID from description
-          let systemTypeName = `${agent.type} Agent`;
-          
-          // Try to extract target ID from description (format: "...agent (target <UUID>)")
-          const targetMatch = (agent.description || '').match(/\(target\s+([a-f0-9\-]+)\)/);
-          if (targetMatch) {
-            const targetId = targetMatch[1];
-            const systemType = targetSystemMap[targetId];
-            if (systemType) {
-              // Format the system type name
-              systemTypeName = `${formatSystemTypeName(systemType)} Agent`;
+        const remoteAgents: RemoteAgent[] = await api.llmRuntime.listAgents();
+        const normalized: Agent[] = (remoteAgents || [])
+          .filter(agent => !agent.killswitch_activated) // Filter out killed agents
+          .map((agent) => {
+            // Extract target ID from description
+            let systemTypeName = `${agent.type} Agent`;
+            
+            // Try to extract target ID from description (format: "...agent (target <UUID>)")
+            const targetMatch = (agent.description || '').match(/\(target\s+([a-f0-9\-]+)\)/);
+            if (targetMatch) {
+              const targetId = targetMatch[1];
+              const systemType = targetSystemMap[targetId];
+              if (systemType) {
+                // Format the system type name
+                systemTypeName = `${formatSystemTypeName(systemType)} Agent`;
+              }
             }
-          }
 
-          return {
-            id: agent.id,
-            name: agent.name,
-            role: systemTypeName,
-            type: agent.type,
-            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
-            tasks: agent.checkInterval ? Math.max(1, Math.floor(86400 / agent.checkInterval)).toString() : '0',
-            success: agent.status === 'active' ? '100%' : '0%',
-            status: agent.status || 'active',
-            environment: agent.config?.environment,
-            isDefault: false
-          };
-        });
+            return {
+              id: agent.id,
+              name: agent.name,
+              role: systemTypeName,
+              type: agent.type,
+              image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+              tasks: agent.checkInterval ? Math.max(1, Math.floor(86400 / agent.checkInterval)).toString() : '0',
+              success: agent.status === 'active' ? '100%' : '0%',
+              status: agent.status || 'active',
+              environment: agent.config?.environment,
+              isDefault: false
+            };
+          });
 
         setAgents(normalized);
       } catch (err) {
@@ -114,11 +133,11 @@ const Agents: React.FC = () => {
     fetchAgents();
   }, []);
 
-  const handleCreateAgent = useCallback(() => {
-    navigate('/agents/select-target');
+  const handleCreateAgent = useCallback((): void => {
+    navigate('/agents/select-target')
   }, [navigate]);
 
-  // Recalculate stats based on actual agents
+  // Recalculate stats based on actual agents (excluding killed agents)
   const totalAgents = agents.length;
   const activeAgents = agents.filter(a => a.status === 'active').length;
   const totalTasks = agents.reduce((sum, agent) => sum + parseInt(agent.tasks || '0'), 0);
@@ -130,21 +149,21 @@ const Agents: React.FC = () => {
     { icon: GoGraph, value: "97.5%", description: "Avg Success Rate", sub: "+2.3% improvement", iconcolor: "#F97316" }
   ];
 
-  const handleExecute = useCallback(() => {
+  const handleExecute = useCallback((): void => {
     navigate('/agents/agentchat/execute');
   }, [navigate]);
 
   // Handle delete button click
-  const handleDeleteClick = useCallback((e: React.MouseEvent, agent: Agent) => {
+  const handleDeleteClick = useCallback((e: React.MouseEvent<HTMLButtonElement>, agent: Agent): void => {
     e.stopPropagation(); // Prevent card click from firing
     setAgentToDelete(agent);
     setShowDeleteModal(true);
   }, []);
 
   // Confirm delete
-  const confirmDelete = useCallback(() => {
+  const confirmDelete = useCallback((): void => {
     if (agentToDelete) {
-      const removeAgent = async () => {
+      const removeAgent = async (): Promise<void> => {
         try {
           await api.llmRuntime.deleteAgent(agentToDelete.id);
           setAgents(prev => prev.filter(a => a.id !== agentToDelete.id));
@@ -162,7 +181,7 @@ const Agents: React.FC = () => {
   }, [agentToDelete]);
 
   // Cancel delete
-  const cancelDelete = useCallback(() => {
+  const cancelDelete = useCallback((): void => {
     setShowDeleteModal(false);
     setAgentToDelete(null);
   }, []);
@@ -309,13 +328,13 @@ const Agents: React.FC = () => {
                   onClick={() => navigate(`/agents/${agent.id}/chat`, { state: { agent } })}
                 >
                   {/* Delete Button - Top Left */}
-                  <button
+                  {/* <button
                     onClick={(e) => handleDeleteClick(e, agent)}
                     className="absolute top-3 left-3 w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
                     title="Delete agent"
                   >
                     <FaTrash className="text-sm" />
-                  </button>
+                  </button> */}
 
                   {/* Green Active Dot - Top Right */}
                   {agent.status === 'active' && (
@@ -331,8 +350,8 @@ const Agents: React.FC = () => {
                         src={agent.image} 
                         alt={agent.name}
                         className="w-full h-full object-cover rounded-full"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop';
+                        onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop';
                         }}
                       />
                     </div>

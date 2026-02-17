@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../utils/api";
 
-// Type definitions
 interface Agent {
   id: string;
   name: string;
@@ -14,13 +12,15 @@ interface Agent {
 interface IntegrationData {
   title: string;
   subtitle: string;
-  theme: "blue" | "emerald" | "violet";
+  theme: ThemeType;
   agents: Agent[];
 }
 
 interface AgentTypesData {
   [key: string]: IntegrationData;
 }
+
+type ThemeType = 'blue' | 'emerald' | 'violet';
 
 interface ThemeColors {
   headerBg: string;
@@ -31,18 +31,15 @@ interface ThemeColors {
   progressBar: string;
 }
 
-interface ThemeConfig {
-  blue: ThemeColors;
-  emerald: ThemeColors;
-  violet: ThemeColors;
-}
+type ThemeConfig = {
+  [key in ThemeType]: ThemeColors;
+};
 
 const AgentTypeSelection: React.FC = () => {
   const navigate = useNavigate();
-  const { integrationType, targetId } = useParams<{
-    integrationType?: string;
-    targetId?: string;
-  }>();
+  const params = useParams();
+  const integrationType = params.integrationType;
+  const targetId = params.targetId;
 
   const [integrationId, setIntegrationId] = useState<string>(
     integrationType || "pingfederate"
