@@ -21,14 +21,17 @@ interface System {
   integration_id?: string;
   environment?: string;
   auth_method?: string;
-  host?: string;
-  port?: number;
+  host?: string;  // Deprecated: use hostname
+  hostname?: string;  // Backend returns this field
+  port?: number;  // Deprecated: use default_port
+  default_port?: number;  // Backend returns this field
   base_url?: string;
   engine_port?: number;
   description?: string;
   credentials?: {
-    username?: string;
-    client_id?: string;
+    username?: string;  // For basic_auth (non-sensitive)
+    client_id?: string;  // For bearer_token (non-sensitive)
+    // Note: passwords, secrets, and api_keys are never returned by backend
     [key: string]: any;
   };
 }
@@ -193,12 +196,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       console.log('[TargetSystemForm] system keys:', Object.keys(system));
       
       const credentials = system.credentials || {};
-      console.log('[TargetSystemForm] Credentials:', credentials);
+      console.log('[TargetSystemForm] Credentials from backend:', credentials);
+      console.log('[TargetSystemForm] Username:', credentials.username, 'Client ID:', credentials.client_id);
       
-      // Extract host and port from base_url if available
-      let host = system.host || '';
-      let port = system.port || 443;
+      // Extract host and port - backend returns hostname and default_port
+      console.log('[TargetSystemForm] Raw from backend - hostname:', system.hostname, 'default_port:', system.default_port, 'base_url:', system.base_url);
+      let host = system.hostname || system.host || '';
+      let port = system.default_port || system.port || 443;
       
+      // Fallback: parse from base_url if host/port not available
       if (!host && system.base_url) {
         try {
           const url = new URL(system.base_url);
@@ -208,6 +214,8 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           console.error('Failed to parse base_url:', system.base_url, e);
         }
       }
+      
+      console.log('[TargetSystemForm] Final extracted host:', host, 'port:', port);
       
       // Normalize the type to match form options
       const rawType = system.type;
@@ -249,10 +257,23 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: (name === 'port' || name === 'engine_port') ? parseInt(value) || 0 : value
-    }));
+    
+    // Handle port inputs - allow only numeric characters and convert to number
+    if (name === 'port' || name === 'engine_port') {
+      // Remove any non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Convert to number (or 0 if empty)
+      const numValue = numericValue === '' ? 0 : parseInt(numericValue, 10);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Handle AuthMethod change to set defaults
@@ -292,23 +313,59 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         setLoading(false);
         return;
       }
-      if (formData.auth_method === 'BearerToken' && (!formData.client_id || !formData.client_secret)) {
-        setError('Client ID and Client Secret are required for BearerToken');
+      
+      // Validate port number
+      const portNum = Number(formData.port);
+      if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+        setError('Port must be a valid number between 1 and 65535');
         setLoading(false);
         return;
       }
-
-      // Validate auth-specific fields
-      if (formData.auth_method === 'BasicAuth' && (!formData.username || !formData.password)) {
-        setError('Username and Password are required for BasicAuth');
-        setLoading(false);
-        return;
+      
+      // Validate engine_port if present
+      if (formData.engine_port) {
+        const enginePortNum = Number(formData.engine_port);
+        if (isNaN(enginePortNum) || enginePortNum < 1 || enginePortNum > 65535) {
+          setError('Engine port must be a valid number between 1 and 65535');
+          setLoading(false);
+          return;
+        }
       }
+      
+      // For CREATE mode, validate all auth fields are present
+      // For EDIT mode, only validate if user is changing the credentials (non-empty values)
+      if (!system) {
+        // CREATE mode - all auth fields required
+        if (formData.auth_method === 'BearerToken' && (!formData.client_id || !formData.client_secret)) {
+          setError('Client ID and Client Secret are required for BearerToken');
+          setLoading(false);
+          return;
+        }
 
-      if (formData.auth_method === 'APIKey' && !formData.api_key) {
-        setError('API Key is required for APIKey authentication');
-        setLoading(false);
-        return;
+        if (formData.auth_method === 'BasicAuth' && (!formData.username || !formData.password)) {
+          setError('Username and Password are required for BasicAuth');
+          setLoading(false);
+          return;
+        }
+
+        if (formData.auth_method === 'APIKey' && !formData.api_key) {
+          setError('API Key is required for APIKey authentication');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // EDIT mode - only validate non-secret fields (username, client_id always required if present)
+        if (formData.auth_method === 'BearerToken' && !formData.client_id) {
+          setError('Client ID is required');
+          setLoading(false);
+          return;
+        }
+
+        if (formData.auth_method === 'BasicAuth' && !formData.username) {
+          setError('Username is required');
+          setLoading(false);
+          return;
+        }
       }
 
       // Convert type to snake_case for API
@@ -348,19 +405,22 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       let credentials: SubmitData['credentials'] = {};
       
       if (formData.auth_method === 'BasicAuth') {
-        credentials = {
-          username: formData.username,
-          password: formData.password
-        };
+        credentials.username = formData.username;
+        // Only include password if it's provided (for create) or changed (for edit)
+        if (formData.password || !system) {
+          credentials.password = formData.password;
+        }
       } else if (formData.auth_method === 'BearerToken') {
-        credentials = {
-          client_id: formData.client_id,
-          client_secret: formData.client_secret
-        };
+        credentials.client_id = formData.client_id;
+        // Only include client_secret if it's provided (for create) or changed (for edit)
+        if (formData.client_secret || !system) {
+          credentials.client_secret = formData.client_secret;
+        }
       } else if (formData.auth_method === 'APIKey') {
-        credentials = {
-          api_key: formData.api_key
-        };
+        // Only include api_key if it's provided (for create) or changed (for edit)
+        if (formData.api_key || !system) {
+          credentials.api_key = formData.api_key;
+        }
       }
 
       // Build submit data in the format expected by API
@@ -473,6 +533,12 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 required
                 className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
               />
+              {system && (
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <span>ℹ️</span>
+                  <span>Username is required - enter new username to replace existing</span>
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -515,6 +581,12 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 required
                 className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
               />
+              {system && (
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <span>ℹ️</span>
+                  <span>Client ID is required - enter new client ID to replace existing</span>
+                </p>
+              )}
             </div>
 
             {/* Client Secret */}
@@ -796,13 +868,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                     Port
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     name="port"
                     value={formData.port}
                     onChange={handleChange}
                     placeholder="443"
-                    min="1"
-                    max="65535"
                     className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
                   />
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
@@ -818,13 +890,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       Engine Port
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       name="engine_port"
                       value={formData.engine_port}
                       onChange={handleChange}
                       placeholder="9031"
-                      min="1"
-                      max="65535"
                       className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
                     />
                     <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">

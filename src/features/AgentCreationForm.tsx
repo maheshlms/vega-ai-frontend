@@ -10,7 +10,8 @@ interface TargetSystem {
   status: string;
   integration_id?: string;
   base_url?: string;
-  host?: string;
+  host?: string;  // Deprecated: use hostname
+  hostname?: string;  // Backend returns this field
 }
 
 interface FormData {
@@ -358,7 +359,7 @@ const AgentCreationForm: React.FC = () => {
                         <option value="">Select a target system...</option>
                         {availableTargetSystems.map((system) => {
                           const systemId = system._id || system.id;
-                          const url = system.base_url || system.host || 'n/a';
+                          const url = system.base_url || system.hostname || system.host || 'n/a';
                           
                           return (
                             <option key={systemId} value={systemId}>
@@ -381,7 +382,7 @@ const AgentCreationForm: React.FC = () => {
                               {formData.selectedTargetSystem.name}
                             </p>
                             <p className="text-xs text-green-700 truncate">
-                              {formData.selectedTargetSystem.base_url || formData.selectedTargetSystem.host}
+                              {formData.selectedTargetSystem.base_url || formData.selectedTargetSystem.hostname || formData.selectedTargetSystem.host}
                             </p>
                           </div>
                         </div>

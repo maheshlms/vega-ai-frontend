@@ -66,7 +66,7 @@ const AgentTypeSelection: React.FC = () => {
       theme: "blue",
       agents: [
         { id: "license", name: "License", description: "License monitoring & renewal", icon: "🎫", active: true },
-        { id: "certificate", name: "Certificate", description: "SSL/TLS certificate management", icon: "📄", active: false },
+        { id: "certificate", name: "Certificate", description: "SSL/TLS certificate management", icon: "📄", active: true },
         { id: "adapter", name: "Adapter Config", description: "Configure authentication adapters", icon: "🔧", active: false },
         { id: "connection", name: "Connection", description: "Manage federation connections", icon: "🔗", active: false },
         { id: "protocol", name: "Protocol", description: "Protocol handler configuration", icon: "📋", active: false },

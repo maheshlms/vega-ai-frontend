@@ -3,13 +3,23 @@ import { IoClose, IoSettings } from 'react-icons/io5';
 import { FaUser, FaPalette, FaBell, FaGlobe, FaPlug, FaKey, FaCog } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { IoSettingsOutline } from "react-icons/io5";
+import { IconType } from 'react-icons';
 
-const SettingsDropdown = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
+interface SettingsItem {
+  icon: IconType;
+  label: string;
+  description: string;
+  color: string;
+  bgColor: string;
+  action: () => void;
+}
+
+const SettingsDropdown: React.FC = () => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const settingsItems = [
+  const settingsItems: SettingsItem[] = [
     {
       icon: FaUser,
       label: 'Account Settings',
@@ -70,8 +80,8 @@ const SettingsDropdown = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -85,7 +95,7 @@ const SettingsDropdown = () => {
     };
   }, [isOpen]);
 
-  const handleItemClick = (action) => {
+  const handleItemClick = (action: () => void): void => {
     action();
     setIsOpen(false);
   };
@@ -98,7 +108,7 @@ const SettingsDropdown = () => {
         className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="Settings"
       >
-         <IoSettingsOutline size={24} className="text-navbar-icon" />
+        <IoSettingsOutline size={24} className="text-navbar-icon" />
       </button>
 
       {/* Dropdown Menu */}

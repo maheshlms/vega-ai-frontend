@@ -181,6 +181,46 @@ export const auth = {
     }
   },
 
+  // Store native authentication data (username/password login)
+  storeNativeAuthData: (accessToken: string, userData: any): void => {
+    try {
+      console.log('🔐 [AUTH UTIL] Storing native auth token in localStorage');
+      
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('tokenType', 'bearer');
+      
+      // Extract roles from user data
+      const roles = normalizeRoles(userData?.roles || userData?.permissions || []);
+      const role = roles.includes('admin') ? 'admin' : 'user';
+      
+      // Store user info
+      const user: User = {
+        username: userData.username,
+        email: userData.email,
+        name: userData.full_name || userData.username,
+        picture: userData.picture || undefined,
+        sub: userData.id,
+        role: role,
+        roles: roles,
+        is_active: userData.is_active !== undefined ? userData.is_active : true,
+      };
+      
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userRoles', JSON.stringify(roles));
+      
+      // Calculate token expiry (default 2 hours as per backend)
+      const expiryDate = new Date(Date.now() + (2 * 60 * 60 * 1000));
+      localStorage.setItem('tokenExpiry', expiryDate.toISOString());
+      
+      console.log('✅ Native auth data stored successfully');
+      console.log('👤 User:', user.username, '| Role:', role, '| Roles:', roles);
+    } catch (error) {
+      console.error('❌ Failed to store native auth data:', error);
+      throw new Error('Failed to store authentication data');
+    }
+  },
+
   // Get session ID
   getSessionId: (): string | null => {
     return localStorage.getItem('sessionId');
