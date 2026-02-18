@@ -60,7 +60,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
       icon: FaChartBar,
       label: 'View Dashboard',
       shortcut: 'Ctrl + D',
-      action: () => navigate('/dashboard')
+      action: () => navigate('/agent_dashboard')
     },
     {
       icon: FaBolt,
@@ -90,7 +90,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
       icon: '📊',
       name: 'Dashboard',
       description: 'View analytics and statistics',
-      action: () => navigate('/dashboard')
+      action: () => navigate('/agent_dashboard')
     },
     {
       type: 'page',

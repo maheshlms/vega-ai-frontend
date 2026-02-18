@@ -536,7 +536,7 @@ const TargetSystems: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-gray-600">Host:</span>
-                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.host}</span>
+                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.hostname || system.host}</span>
                   </div>
                   <div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(system.status)}`}>

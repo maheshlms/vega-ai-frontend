@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline } from "react-icons/io5";
+import { IoArrowBackCircle, IoClose, IoSend, IoMicOutline, IoAttachOutline, IoDownloadOutline } from "react-icons/io5";
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { HiSparkles } from "react-icons/hi2";
 import { Typewriter } from "react-simple-typewriter";    
@@ -15,6 +15,15 @@ interface Message {
   files?: string[];
   isError?: boolean;
   isSuccess?: boolean;
+  file_path?: string;
+  filename?: string;
+  metadata?: {
+    type?: string;
+    csr_content?: string;
+    keypair_id?: string;
+    filename?: string;
+    [key: string]: any;
+  };
 }
 
 interface Agent {
@@ -75,6 +84,9 @@ const AgentChat: React.FC = () => {
   // Approval state (for button-based approvals in dev/staging)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const [approvalProcessing, setApprovalProcessing] = useState<boolean>(false);
+  
+  // Download state
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
   
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -144,13 +156,90 @@ const AgentChat: React.FC = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const files = Array.from(e.target.files || []);
+    console.log('[handleFileSelect] Files selected:', files.length, files.map(f => f.name));
     if (files.length > 0) {
-      setAttachedFiles(prev => [...prev, ...files]);
+      // Only allow one file at a time - replace existing file
+      const newFile = files[0];
+      setAttachedFiles([newFile]);
+      console.log('[handleFileSelect] Set single file:', newFile.name);
+    }
+    // Reset the file input value so the same file can be selected again
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
   const handleRemoveFile = (index: number): void => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // Handle file download from metadata (e.g., CSR files)
+  const handleDownloadFromMetadata = useCallback((content: string, filename: string, mimeType: string = 'application/octet-stream') => {
+    try {
+      // Create a blob from the content
+      const blob = new Blob([content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('File downloaded:', filename);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      alert('Failed to download file. Please try again.');
+    }
+  }, []);
+
+  // Handle file download
+  const handleDownloadFile = async (message: Message): Promise<void> => {
+    if (!message.file_path) return;
+    
+    setDownloadingFileId(message.id);
+    
+    try {
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+      const downloadUrl = `${backendUrl}${message.file_path}`;
+      
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = message.filename || 'download.txt';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('File downloaded successfully:', message.filename);
+    } catch (error: any) {
+      console.error('Error downloading file:', error);
+      alert(`Failed to download file: ${error.message}`);
+    } finally {
+      setDownloadingFileId(null);
+    }
   };
 
   // Handle approval button click
@@ -256,6 +345,9 @@ const AgentChat: React.FC = () => {
 
   // Handle send message
   const handleSend = useCallback(async () => {
+    console.log('[handleSend] START - inputValue:', inputValue.trim().substring(0, 50), 'attachedFiles count:', attachedFiles.length);
+    console.log('[handleSend] attachedFiles:', attachedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    
     if (inputValue.trim()) {
       // **NEW: Hide welcome message when first message is sent**
       setShowWelcomeMessage(false);
@@ -287,14 +379,21 @@ const AgentChat: React.FC = () => {
       setAttachedFiles([]);
       setIsTyping(true);
 
+
       try {
         // Convert files to base64 and include in request
         const filesData: FileData[] = [];
         for (const file of filesToSend) {
           const base64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
+            reader.onload = () => {
+              console.log('[handleSend] File converted successfully:', file.name);
+              resolve(reader.result as string);
+            };
+            reader.onerror = (error) => {
+              console.error('[handleSend] File conversion ERROR:', file.name, error);
+              reject(error);
+            };
             reader.readAsDataURL(file);
           });
           filesData.push({
@@ -304,9 +403,21 @@ const AgentChat: React.FC = () => {
           });
         }
 
+        console.log('[handleSend] All files converted. Total filesData:', filesData.length);
+        console.log('[handleSend] filesData summary:', filesData.map(f => ({ name: f.name, type: f.type, dataLength: f.data.length })));
+
         // Call backend API with file data
         const currentSessionId = sessionIdRef.current || Date.now().toString();
         console.log('[handleSend] Sending to backend - sessionIdRef.current:', sessionIdRef.current, 'currentSessionId:', currentSessionId);
+        console.log('[handleSend] Request payload:', {
+          user_id: 'current-user',
+          session_id: currentSessionId,
+          agent_id: agent?.id,
+          agent_type: agent?.type || 'license',
+          message_length: currentInput.length,
+          files_count: filesData.length,
+          files: filesData.map(f => ({ name: f.name, type: f.type }))
+        });
         
         const response = await api.fetchWithAuth('/api/v1/chat', {
           method: 'POST',
@@ -323,10 +434,13 @@ const AgentChat: React.FC = () => {
         });
 
         if (!response.ok) {
+          console.error('[handleSend] API response NOT OK:', response.status, response.statusText);
           throw new Error(`API error: ${response.statusText}`);
         }
 
+        console.log('[handleSend] API response OK, parsing JSON...');
         const data = await response.json();
+        console.log('[handleSend] Response data received:', data);
         const aiResponseText = data.message || 'I could not generate a response. Please try again.';
         
         console.log('Full response data:', data);
@@ -362,7 +476,10 @@ const AgentChat: React.FC = () => {
           id: Date.now() + 1,
           text: aiResponseText,
           sender: 'ai',
-          timestamp: new Date()
+          timestamp: new Date(),
+          file_path: data.file_path,
+          filename: data.filename,
+          metadata: data.metadata
         };
 
         setMessages(prev => [...prev, aiMessage]);
@@ -380,7 +497,8 @@ const AgentChat: React.FC = () => {
         console.log('Agent Response:', aiResponseText);
         console.log('Chat History:', newHistory);
       } catch (error: any) {
-        console.error('Error in chat:', error);
+        console.error('[handleSend] ERROR occurred:', error);
+        console.error('[handleSend] Error details:', { message: error.message, stack: error.stack });
         setIsTyping(false);
         const errorMessage: Message = {
           id: Date.now() + 2,
@@ -391,6 +509,8 @@ const AgentChat: React.FC = () => {
         };
         setMessages(prev => [...prev, errorMessage]);
       }
+    } else {
+      console.log('[handleSend] SKIPPED - No input value (inputValue empty)');
     }
   }, [inputValue, chatHistory, agent, attachedFiles]);
 
@@ -528,10 +648,80 @@ const AgentChat: React.FC = () => {
                             : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                         }`}
                       >
+                        {/* Display file emoji and names when files are attached */}
+                        {message.files && message.files.length > 0 && (
+                          <div className={`mb-2 pb-2 border-b ${
+                            message.sender === 'user' 
+                              ? 'border-blue-400' 
+                              : 'border-gray-300'
+                          }`}>
+                            <div className="flex items-start gap-2">
+                              <span className="text-base">📎</span>
+                              <div className="flex-1">
+                                {message.files.map((filename, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`text-xs ${
+                                      message.sender === 'user' 
+                                        ? 'text-blue-100' 
+                                        : 'text-gray-600'
+                                    }`}
+                                  >
+                                    {filename}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div 
                           className="text-sm leading-relaxed whitespace-pre-wrap break-words"
                           dangerouslySetInnerHTML={{ __html: message.text }}
                         />
+                        
+                        {/* Download button for files with metadata (e.g., CSR files, certificates) */}
+                        {message.metadata?.type && message.metadata?.filename && (
+                          <div className="mt-3 pt-3 border-t border-gray-300">
+                            <button
+                              onClick={() => {
+                                const content = message.metadata?.csr_content || message.metadata?.content || '';
+                                const filename = message.metadata?.filename || 'download.txt';
+                                const mimeType = message.metadata?.type === 'csr_generated' 
+                                  ? 'application/pkcs10' 
+                                  : 'application/octet-stream';
+                                handleDownloadFromMetadata(content, filename, mimeType);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors w-full justify-center"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Download {message.metadata?.filename}
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Download button for files */}
+                        {message.file_path && message.sender === 'ai' && (
+                          <button
+                            onClick={() => handleDownloadFile(message)}
+                            disabled={downloadingFileId === message.id}
+                            className="mt-3 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center"
+                          >
+                            {downloadingFileId === message.id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Downloading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <IoDownloadOutline size={18} />
+                                <span>Download {message.filename || 'File'}</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -636,7 +826,6 @@ const AgentChat: React.FC = () => {
                 ref={fileInputRef}
                 type="file"
                 onChange={handleFileSelect}
-                multiple
                 accept=".lic,.txt,.pem,.crt,.key,.license"
                 style={{ display: 'none' }}
               />
