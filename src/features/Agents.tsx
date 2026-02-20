@@ -328,13 +328,13 @@ const Agents: React.FC = () => {
                   onClick={() => navigate(`/agents/${agent.id}/chat`, { state: { agent } })}
                 >
                   {/* Delete Button - Top Left */}
-                  {/* <button
+                  <button
                     onClick={(e) => handleDeleteClick(e, agent)}
                     className="absolute top-3 left-3 w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
                     title="Delete agent"
                   >
                     <FaTrash className="text-sm" />
-                  </button> */}
+                  </button>
 
                   {/* Green Active Dot - Top Right */}
                   {agent.status === 'active' && (

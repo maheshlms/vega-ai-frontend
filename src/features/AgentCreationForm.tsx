@@ -156,7 +156,8 @@ const AgentCreationForm: React.FC = () => {
         }
       };
 
-      await api.llmRuntime.createAgent(payload);
+      const response = await api.llmRuntime.createAgent(payload);
+      console.log('[AgentCreationForm] Agent created:', response);
       setShowSuccess(true);
     } catch (err: any) {
       console.error('Failed to create agent', err);
@@ -203,7 +204,9 @@ const AgentCreationForm: React.FC = () => {
               Agent Created Successfully!
             </h2>
             <p className="text-gray-600 mb-8">
-              Your {agentTypeId} agent is now active and monitoring
+              {agentTypeId === 'connection' 
+                ? 'Your SP Connection agent is ready to guide you through the setup process'
+                : `Your ${agentTypeId} agent is now active and monitoring`}
             </p>
             
             <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 rounded-xl p-5 mb-8 border border-gray-100">
@@ -219,10 +222,12 @@ const AgentCreationForm: React.FC = () => {
                 <span className="text-sm text-gray-600">Target System</span>
                 <span className="font-semibold text-gray-900">{formData.selectedTargetSystem?.name}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Notification Window</span>
-                <span className="font-semibold text-gray-900">{formData.notificationWindow} days</span>
-              </div>
+              {agentTypeId !== 'connection' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Notification Window</span>
+                  <span className="font-semibold text-gray-900">{formData.notificationWindow} days</span>
+                </div>
+              )}
             </div>
 
             <button
@@ -396,26 +401,28 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 )}
 
-                {/* Notification Window */}
-                <div className="group">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Notification Window (days) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="notificationWindow"
-                    value={formData.notificationWindow}
-                    onChange={handleInputChange}
-                    min="1"
-                    max="365"
-                    required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  />
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <span>💡</span>
-                    <span>Number of days before license expiry to send notifications</span>
-                  </p>
-                </div>
+                {/* Notification Window - Hide for connection agent */}
+                {agentTypeId !== 'connection' && (
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Notification Window (days) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="notificationWindow"
+                      value={formData.notificationWindow}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="365"
+                      required={agentTypeId !== 'connection'}
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                    />
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <span>💡</span>
+                      <span>Number of days before license expiry to send notifications</span>
+                    </p>
+                  </div>
+                )}
 
                 {/* Slack Channel */}
                 <div className="group">
