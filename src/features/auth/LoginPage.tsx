@@ -1,7 +1,7 @@
 import React from 'react';
-import Btn from '../components/Btn';
-import MouseMove from '../effects/MouseMove';
-import FloatingDots from '../effects/FloatingDots';
+import Btn from '../../components/Btn';
+import MouseMove from '../../effects/MouseMove';
+import FloatingDots from '../../effects/FloatingDots';
 import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { useState, useEffect } from 'react';

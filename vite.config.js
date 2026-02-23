@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react() ,  tailwindcss()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js']
   },
@@ -14,7 +14,16 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // Ensure HMR works reliably on Windows
-    hmr: { host: 'localhost' }
+    hmr: { host: 'localhost' },
+    proxy: {
+      // Forwards /heygen-api/* → https://api.heygen.com/* server-side
+      // This bypasses CORS completely — no third-party proxy needed
+      '/heygen-api': {
+        target: 'https://api.heygen.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/heygen-api/, ''),
+      },
+    },
   },
   // Keep preview behavior consistent with dev for quick local checks
   preview: {

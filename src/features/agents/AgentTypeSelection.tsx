@@ -151,24 +151,24 @@ const AgentTypeSelection: React.FC = () => {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className={`${theme.headerBg} border-b border-gray-100`}>
-        <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="max-w-7xl 2xl:max-w-[1920px] mx-auto px-8 2xl:px-20 py-8 2xl:py-12">
           <button
             onClick={() => navigate("/agents/select-target")}
-            className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-2"
+            className="text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2"
           >
             ← Back to Integrations
           </button>
 
-          <h1 className={`text-2xl font-light mt-2 ${theme.accent}`}>
+          <h1 className={`text-2xl 2xl:text-4xl font-light mt-2 2xl:mt-3 ${theme.accent}`}>
             {currentIntegration.title}
           </h1>
-          <p className="text-gray-600">{currentIntegration.subtitle}</p>
+          <p className="text-gray-600 2xl:text-lg">{currentIntegration.subtitle}</p>
         </div>
       </div>
 
       {/* Cards */}
-      <div className="max-w-7xl mx-auto px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl 2xl:max-w-[1920px] mx-auto px-8 2xl:px-20 py-12 2xl:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 2xl:gap-8">
           {currentIntegration.agents.map((agent) => {
             const isActive = agent.active;
 
@@ -193,16 +193,16 @@ const AgentTypeSelection: React.FC = () => {
                   }
                 `}
               >
-                <div className="p-8">
+                <div className="p-8 2xl:p-10">
                   {/* Icon */}
                   <div
                     className={`
-                      w-14 h-14 mb-6 flex items-center justify-center rounded-xl
+                      w-14 h-14 2xl:w-18 2xl:h-18 mb-6 2xl:mb-7 flex items-center justify-center rounded-xl
                       ${isActive ? `bg-gray-50 ${theme.hoverBg}` : `bg-gray-100`}
                     `}
                   >
                     <span
-                      className={`text-4xl ${
+                      className={`text-4xl 2xl:text-5xl ${
                         isActive ? "group-hover:scale-110 transition-transform" : "opacity-40"
                       }`}
                     >
@@ -211,24 +211,24 @@ const AgentTypeSelection: React.FC = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className={`text-xl font-semibold mb-3 ${isActive ? "text-gray-900" : "text-gray-400"}`}>
+                  <h3 className={`text-xl 2xl:text-2xl font-semibold mb-3 2xl:mb-4 ${isActive ? "text-gray-900" : "text-gray-400"}`}>
                     {agent.name}
                   </h3>
 
                   {/* Description */}
-                  <p className={`text-sm mb-6 ${isActive ? "text-gray-600" : "text-gray-400"}`}>
+                  <p className={`text-sm 2xl:text-base mb-6 2xl:mb-7 ${isActive ? "text-gray-600" : "text-gray-400"}`}>
                     {agent.description}
                   </p>
 
                   {/* Action */}
-                  <div className={`text-sm font-medium flex items-center ${isActive ? `text-gray-400 ${theme.actionText}` : "text-gray-300"}`}>
+                  <div className={`text-sm 2xl:text-base font-medium flex items-center ${isActive ? `text-gray-400 ${theme.actionText}` : "text-gray-300"}`}>
                     <span>{isActive ? "Create Agent" : "Coming Soon"}</span>
                     {isActive && <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>}
                   </div>
                 </div>
 
                 {isActive && (
-                  <div className={`h-1 ${theme.progressBar} transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left`} />
+                  <div className={`h-1 2xl:h-1.5 ${theme.progressBar} transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left`} />
                 )}
               </div>
             );

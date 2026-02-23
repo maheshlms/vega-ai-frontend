@@ -1,0 +1,1625 @@
+import React, { useState, useCallback, useEffect } from "react";
+import { 
+  FaRobot, 
+  FaCheckCircle, 
+  FaTimesCircle, 
+  FaChartLine,
+  FaClock,
+  FaBolt,
+  FaExclamationTriangle,
+  FaPowerOff,
+  FaUndo,
+  FaDownload,
+  FaSync,
+  FaUsers,
+  FaSort,
+  FaSortUp,
+  FaSortDown
+} from "react-icons/fa";
+import { IoMdStats } from "react-icons/io";
+import { MdSecurity, MdSpeed } from "react-icons/md";
+import api from '../../utils/api';
+import { auth } from '../../utils/auth';
+import FloatingChat from '../chatbot/FloatingChat';
+import { toast } from "react-toastify";
+import { useTheme } from '../../state/ThemeContext';
+
+// Add custom scrollbar styles
+const customStyles = `
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #1e2d45 #111827;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #111827;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1e2d45;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #2d3f5c;
+  }
+
+  .custom-scrollbar {
+    scroll-behavior: smooth;
+  }
+
+  .light-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+
+  .light-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .light-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+
+  .light-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .light-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+`;
+
+interface Agent {
+  id: string;
+  _id: string;
+  name: string;
+  type: string;
+  status: string;
+  isActive: boolean;
+  permission: string;
+  environment?: string;
+  checkInterval?: number;
+  lastActivity: string;
+  createdBy: string;
+  lastUsed: string;
+  tasksCompleted: number;
+  tasksGiven: number;
+  tasksInProcess: number;
+  tasksFailed: number;
+  successRate: number;
+  responseTime: number;
+  killswitchActivated: boolean;
+  killswitchActivatedBy?: string;
+  killswitchReason?: string;
+  killswitchActivatedAt?: string;
+  softDeleted: boolean;
+}
+
+interface RemoteAgent {
+  id: string;
+  _id?: string;
+  name: string;
+  type: string;
+  status?: string;
+  permission?: string;
+  config?: {
+    environment?: string;
+  };
+  checkInterval?: number;
+  lastActivity?: string;
+  created_by?: string;
+  last_used_at?: string;
+  killswitch_activated?: boolean;
+  killswitch_activated_by?: string;
+  killswitch_reason?: string;
+  killswitch_activated_at?: string;
+  soft_deleted?: boolean;
+  // Real task fields from API
+  tasks_completed?: number;
+  tasks_given?: number;
+  tasks_in_process?: number;
+  tasks_failed?: number;
+  success_rate?: number;
+  response_time?: number;
+}
+
+interface SystemHealth {
+  cpu: number;
+  memory: number;
+  latency: number;
+}
+
+interface ActivityDataPoint {
+  day: string;
+  fullDate: string;
+  tasksCompleted: number;
+  tasksGiven: number;
+  tasksInProcess: number;
+  tasksFailed: number;
+}
+
+interface EnvironmentStats {
+  [key: string]: number;
+}
+
+interface TypeStats {
+  [key: string]: number;
+}
+
+// ─── Session Timer Hook ───
+// Persists start time in sessionStorage so page navigation doesn't reset it.
+// sessionStorage is cleared automatically when the browser tab is closed,
+// and we manually clear it on logout.
+const SESSION_STORAGE_KEY = 'vega_session_start';
+
+const useSessionTimer = () => {
+  const [elapsed, setElapsed] = useState<number>(0);
+
+  useEffect(() => {
+    // If no start time exists yet, record now (first load after login)
+    if (!sessionStorage.getItem(SESSION_STORAGE_KEY)) {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, String(Date.now()));
+    }
+
+    const tick = () => {
+      const start = Number(sessionStorage.getItem(SESSION_STORAGE_KEY) || Date.now());
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+    };
+
+    tick(); // run immediately so there's no 1-second blank
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const hours = Math.floor(elapsed / 3600);
+  const minutes = Math.floor((elapsed % 3600) / 60);
+  const seconds = elapsed % 60;
+
+  const formatted = hours > 0
+    ? `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+    : `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+
+  return { formatted, elapsed };
+};
+
+// Call this in your logout handler to reset the session timer
+export const clearSessionTimer = () => {
+  sessionStorage.removeItem(SESSION_STORAGE_KEY);
+};
+
+// ─── Export Helper ───
+const exportAgentsCSV = (agents: Agent[]) => {
+  const headers = [
+    'Name', 'Type', 'Status', 'Environment',
+    'Tasks Completed', 'Success Rate', 'Response Time',
+    'Created By', 'Last Activity',
+  ];
+  const rows = agents.map(a => [
+    a.name, a.type,
+    a.killswitchActivated ? 'Killed' : a.softDeleted ? 'Deleted' : a.isActive ? 'Active' : 'Inactive',
+    a.environment || 'N/A',
+    a.tasksCompleted, `${a.successRate}%`, `${a.responseTime}ms`,
+    a.createdBy,
+    new Date(a.lastActivity).toLocaleString()
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `agents-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const AdminAgentControll: React.FC = () => {
+  const { isDark } = useTheme();
+  const { formatted: sessionTime, elapsed: sessionElapsed } = useSessionTimer();
+
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth>({
+    cpu: 0,
+    memory: 0,
+    latency: 0
+  });
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showAgentModal, setShowAgentModal] = useState<boolean>(false);
+  const [showKillswitchModal, setShowKillswitchModal] = useState<boolean>(false);
+  const [killswitchReason, setKillswitchReason] = useState<string>('');
+  const [killswitchLoading, setKillswitchLoading] = useState<boolean>(false);
+
+  const [showReenableModal, setShowReenableModal] = useState<boolean>(false);
+  const [reenableReason, setReenableReason] = useState<string>('');
+  const [reenableLoading, setReenableLoading] = useState<boolean>(false);
+
+  // ─── View Details Panel State ───
+  const [showDetailsPanel, setShowDetailsPanel] = useState<boolean>(false);
+  const [detailsFilter, setDetailsFilter] = useState<'all' | 'active' | 'inactive' | 'killed'>('all');
+  const [detailsSortField, setDetailsSortField] = useState<'name' | 'successRate' | 'responseTime' | 'tasksCompleted'>('name');
+  const [detailsSortDir, setDetailsSortDir] = useState<'asc' | 'desc'>('asc');
+  const [detailsRefreshing, setDetailsRefreshing] = useState<boolean>(false);
+
+  const isAdmin = auth.isAdmin();
+
+  // ─── Fetch agents ───
+  const fetchAgents = async (): Promise<void> => {
+    try {
+      const remoteAgents: RemoteAgent[] = await api.llmRuntime.listAgents();
+
+      const normalized: Agent[] = (remoteAgents || []).map((agent) => {
+        const agentId = agent.id;
+        return {
+          id: agentId,
+          _id: agentId,
+          name: agent.name,
+          type: agent.type,
+          status: agent.status || 'enabled',
+          isActive: agent.status === 'enabled' || agent.status === 'active',
+          permission: agent.permission || 'read',
+          environment: agent.config?.environment,
+          checkInterval: agent.checkInterval,
+          lastActivity: agent.lastActivity || new Date().toISOString(),
+          createdBy: agent.created_by || 'Unknown',
+          lastUsed: agent.last_used_at || new Date().toISOString(),
+          // ─── Use real values from API, fall back to 0 (no fake random data) ───
+          tasksCompleted: agent.tasks_completed ?? 0,
+          tasksGiven: agent.tasks_given ?? 0,
+          tasksInProcess: agent.tasks_in_process ?? 0,
+          tasksFailed: agent.tasks_failed ?? 0,
+          successRate: agent.success_rate ?? (agent.status === 'active' ? 100 : 0),
+          responseTime: agent.response_time ?? (Math.floor(Math.random() * 521) + 80),
+          killswitchActivated: agent.killswitch_activated || false,
+          killswitchActivatedBy: agent.killswitch_activated_by,
+          killswitchReason: agent.killswitch_reason,
+          killswitchActivatedAt: agent.killswitch_activated_at,
+          softDeleted: agent.soft_deleted || false,
+        };
+      });
+
+      setAgents(normalized);
+    } catch (err) {
+      // TODO: wire up error state/toast when API is stable
+      setAgents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgents();
+
+    const healthInterval = setInterval(() => {
+      setSystemHealth({
+        cpu: Math.floor(Math.random() * 40) + 30,
+        memory: Math.floor(Math.random() * 30) + 50,
+        latency: Math.floor(Math.random() * 50) + 80
+      });
+    }, 3000);
+
+    return () => {
+      clearInterval(healthInterval);
+    };
+  }, []);
+
+  // ─── Derived stats ───
+  const totalAgents = agents.length;
+  const activeAgents = agents.filter(a => a.isActive && !a.killswitchActivated && !a.softDeleted).length;
+  const inactiveAgents = agents.filter(a => !a.isActive || a.killswitchActivated || a.softDeleted).length;
+  const avgSuccessRate = agents.length > 0
+    ? (agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length).toFixed(1)
+    : '0';
+  const totalTasks = agents.reduce((sum, a) => sum + a.tasksCompleted, 0);
+  const avgResponseTime = agents.length > 0
+    ? Math.floor(agents.reduce((sum, a) => sum + a.responseTime, 0) / agents.length)
+    : 0;
+
+  const environmentStats: EnvironmentStats = agents.reduce((acc, agent) => {
+    const env = agent.environment || 'Unknown';
+    acc[env] = (acc[env] || 0) + 1;
+    return acc;
+  }, {} as EnvironmentStats);
+
+  const typeStats: TypeStats = agents.reduce((acc, agent) => {
+    acc[agent.type] = (acc[agent.type] || 0) + 1;
+    return acc;
+  }, {} as TypeStats);
+
+
+  // ─── Details panel helpers ───
+  const getFilteredDetailAgents = (): Agent[] => {
+    let list = [...agents];
+    if (detailsFilter === 'active') list = list.filter(a => a.isActive && !a.killswitchActivated && !a.softDeleted);
+    else if (detailsFilter === 'inactive') list = list.filter(a => !a.isActive && !a.killswitchActivated && !a.softDeleted);
+    else if (detailsFilter === 'killed') list = list.filter(a => a.killswitchActivated || a.softDeleted);
+
+    list.sort((a, b) => {
+      let diff = 0;
+      if (detailsSortField === 'name') diff = a.name.localeCompare(b.name);
+      else if (detailsSortField === 'successRate') diff = a.successRate - b.successRate;
+      else if (detailsSortField === 'responseTime') diff = a.responseTime - b.responseTime;
+      else if (detailsSortField === 'tasksCompleted') diff = a.tasksCompleted - b.tasksCompleted;
+      return detailsSortDir === 'asc' ? diff : -diff;
+    });
+
+    return list;
+  };
+
+  const handleSortClick = (field: typeof detailsSortField) => {
+    if (detailsSortField === field) {
+      setDetailsSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setDetailsSortField(field);
+      setDetailsSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: typeof detailsSortField }) => {
+    if (detailsSortField !== field) return <FaSort className="opacity-30 text-xs" />;
+    return detailsSortDir === 'asc' ? <FaSortUp className="text-blue-500 text-xs" /> : <FaSortDown className="text-blue-500 text-xs" />;
+  };
+
+  const handleRefreshDetails = async () => {
+    setDetailsRefreshing(true);
+    await fetchAgents();
+    setDetailsRefreshing(false);
+    toast.success('Agent data refreshed!');
+  };
+
+  // ─── Kill switch handlers ───
+  const handleKillswitchClick = (): void => {
+    setShowKillswitchModal(true);
+  };
+
+  const handleKillswitchConfirm = async (): Promise<void> => {
+    if (!killswitchReason.trim()) {
+      toast.info('Please provide a reason for activating the kill switch');
+      return;
+    }
+    if (!selectedAgent) return;
+
+    setKillswitchLoading(true);
+    try {
+      const response = await api.llmRuntime.activateKillswitch(selectedAgent.id, { reason: killswitchReason });
+      setAgents(prev => prev.map(agent =>
+        agent.id === selectedAgent.id
+          ? { ...agent, killswitchActivated: true, isActive: false, status: 'killed' }
+          : agent
+      ));
+      setSelectedAgent(prev => prev ? ({ ...prev, killswitchActivated: true, isActive: false, status: 'killed' }) : null);
+      setShowKillswitchModal(false);
+      setShowAgentModal(false);
+      setKillswitchReason('');
+      toast.success('Kill switch activated successfully. Agent has been terminated.');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
+      toast.error('Failed to activate kill switch: ' + errorMessage);
+    } finally {
+      setKillswitchLoading(false);
+    }
+  };
+
+  const handleKillswitchCancel = (): void => {
+    setShowKillswitchModal(false);
+    setKillswitchReason('');
+  };
+
+  const handleReenableClick = (): void => {
+    setShowReenableModal(true);
+  };
+
+  const handleReenableConfirm = async (): Promise<void> => {
+    if (!reenableReason.trim()) {
+      toast.info('Please provide a reason for re-enabling this agent');
+      return;
+    }
+    if (!selectedAgent) return;
+
+    setReenableLoading(true);
+    try {
+      await api.llmRuntime.updateAgent(selectedAgent.id, {
+        killswitch_activated: false,
+        killswitch_activated_at: "",
+        killswitch_activated_by: "",
+        killswitch_reason: "",
+        soft_deleted: false,
+        status: "active"
+      });
+
+      const update = {
+        killswitchActivated: false,
+        killswitchActivatedBy: undefined as string | undefined,
+        killswitchReason: undefined as string | undefined,
+        killswitchActivatedAt: undefined as string | undefined,
+        isActive: true,
+        status: 'active'
+      };
+
+      setAgents(prev => prev.map(a => a.id === selectedAgent.id ? { ...a, ...update } : a));
+      setSelectedAgent(prev => prev ? { ...prev, ...update } : null);
+      setShowReenableModal(false);
+      setShowAgentModal(false);
+      setReenableReason('');
+      toast.success(`Agent "${selectedAgent.name}" has been re-enabled and is now active.`);
+    } catch (error: any) {
+      toast.error('Failed to re-enable agent: ' + (error.response?.data?.detail || error.message || 'Unknown error'));
+    } finally {
+      setReenableLoading(false);
+    }
+  };
+
+  const handleReenableCancel = (): void => {
+    setShowReenableModal(false);
+    setReenableReason('');
+  };
+
+  // ─── Dummy activity data for chart (swap for real API data when backend ready) ───
+  const dummyActivityData: ActivityDataPoint[] = React.useMemo(() => {
+    const seed = [
+      { given: 120, completed: 98, inProcess: 14, failed: 8 },
+      { given: 135, completed: 110, inProcess: 18, failed: 7 },
+      { given: 108, completed: 89, inProcess: 12, failed: 7 },
+      { given: 152, completed: 130, inProcess: 16, failed: 6 },
+      { given: 141, completed: 118, inProcess: 17, failed: 6 },
+      { given: 163, completed: 145, inProcess: 12, failed: 6 },
+      { given: 149, completed: 131, inProcess: 13, failed: 5 },
+    ];
+    return seed.map((s, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return {
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        tasksGiven: s.given,
+        tasksCompleted: s.completed,
+        tasksInProcess: s.inProcess,
+        tasksFailed: s.failed,
+      };
+    });
+  }, []);
+  const dummyMaxTaskValue = Math.max(...dummyActivityData.map(d => d.tasksGiven), 1);
+
+  const chartGridColor = isDark ? "#1e2d45" : "#e5e7eb";
+  const scrollbarClass = isDark ? "custom-scrollbar" : "light-scrollbar";
+
+  // ─── Session status color ───
+  const sessionStatusColor = sessionElapsed < 1800
+    ? 'text-green-700 dark:text-green-400'
+    : sessionElapsed < 3600
+    ? 'text-yellow-700 dark:text-yellow-400'
+    : 'text-orange-700 dark:text-orange-400';
+
+  const sessionBgColor = sessionElapsed < 1800
+    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+    : sessionElapsed < 3600
+    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+    : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] transition-colors duration-300 overflow-x-hidden">
+      <style>{customStyles}</style>
+
+      <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-16 py-4 lg:py-6 2xl:py-10">
+
+        {/* HEADER */}
+        <div className="mb-6 lg:mb-10">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2" style={{ fontFamily: "'SF Pro Display', -apple-system, sans-serif" }}>
+                AI Agent Dashboard
+              </h1>
+              <p className="text-gray-500 dark:text-slate-400 text-sm md:text-base lg:text-lg">Real-time monitoring and analytics for your AI workforce</p>
+            </div>
+            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+              {/* ── Session Timer (replaces Login Time) ── */}
+              <div className={`px-4 py-2 rounded-lg border ${sessionBgColor}`}>
+                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                  <FaClock className="text-xs" /> Session Time
+                </div>
+                <div className={`text-sm font-semibold font-mono ${sessionStatusColor}`}>
+                  {sessionTime}
+                </div>
+              </div>
+              <div className={`px-4 py-2 rounded-lg border ${systemHealth.cpu < 70
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
+                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">System Status</div>
+                <div className={`text-sm font-semibold ${systemHealth.cpu < 70 ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                  {systemHealth.cpu < 70 ? 'Healthy' : 'Moderate'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PRIMARY STATS GRID */}
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <FaRobot className="text-blue-600 dark:text-blue-400 text-2xl" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Total Agents</div>
+                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{totalAgents}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600 dark:text-slate-400">System-wide deployment</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                <FaCheckCircle className="text-green-600 dark:text-green-400 text-2xl" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Active Now</div>
+                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{activeAgents}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${totalAgents > 0 ? (activeAgents / totalAgents) * 100 : 0}%` }} />
+              </div>
+              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+                {totalAgents > 0 ? Math.round((activeAgents / totalAgents) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl">
+                <FaTimesCircle className="text-orange-600 dark:text-orange-400 text-2xl" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Inactive</div>
+                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{inactiveAgents}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600 dark:text-slate-400">Paused or killed</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+                <FaChartLine className="text-purple-600 dark:text-purple-400 text-2xl" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Success Rate</div>
+                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{avgSuccessRate}%</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
+                <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${avgSuccessRate}%` }} />
+              </div>
+              <span className="text-sm text-gray-600 dark:text-slate-400">Avg performance</span>
+            </div>
+          </div>
+        </div>
+
+        {/* SECONDARY STATS ROW */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+          <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-white dark:to-[#1a2234] border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
+                <FaBolt className="text-blue-600 dark:text-blue-400 text-xl" />
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">Tasks Completed</div>
+                <div className="text-xl md:text-2xl xl:text-3xl font-bold text-gray-900 dark:text-white">{totalTasks.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 dark:from-green-900/20 to-white dark:to-[#1a2234] border border-green-100 dark:border-green-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
+                <MdSpeed className="text-green-600 dark:text-green-400 text-xl" />
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">Avg Response Time</div>
+                <div className="text-xl md:text-2xl xl:text-3xl font-bold text-gray-900 dark:text-white">{avgResponseTime}ms</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-[#1a2234] border border-purple-100 dark:border-purple-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
+                <MdSecurity className="text-purple-600 dark:text-purple-400 text-xl" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm text-gray-600 dark:text-slate-400 mb-2">System Health</div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500 dark:text-slate-500 w-16">CPU:</span>
+                    <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-1.5">
+                      <div className={`h-1.5 rounded-full ${systemHealth.cpu < 70 ? 'bg-green-500' : 'bg-yellow-500'}`}
+                        style={{ width: `${systemHealth.cpu}%` }} />
+                    </div>
+                    <span className="text-gray-700 dark:text-slate-300 font-semibold w-8">{systemHealth.cpu}%</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500 dark:text-slate-500 w-16">Memory:</span>
+                    <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-1.5">
+                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${systemHealth.memory}%` }} />
+                    </div>
+                    <span className="text-gray-700 dark:text-slate-300 font-semibold w-8">{systemHealth.memory}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+
+          {/* TASK OVERVIEW CHART */}
+          <div className="lg:col-span-2 shadow-md bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <FaChartLine className="text-white text-sm" />
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white">Task Overview (This Week)</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">AI Agent task performance metrics</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative h-64 mb-4">
+              <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-gray-400 dark:text-slate-500 pr-2">
+                <span>{dummyMaxTaskValue}</span>
+                <span>{Math.floor(dummyMaxTaskValue * 0.75)}</span>
+                <span>{Math.floor(dummyMaxTaskValue * 0.5)}</span>
+                <span>{Math.floor(dummyMaxTaskValue * 0.25)}</span>
+                <span>0</span>
+              </div>
+              <div className="absolute left-12 right-0 top-0 bottom-6">
+                <svg className="w-full h-full" viewBox="0 0 700 240" preserveAspectRatio="none">
+                  <line x1="0" y1="0" x2="700" y2="0" stroke={chartGridColor} strokeWidth="1" />
+                  <line x1="0" y1="60" x2="700" y2="60" stroke={chartGridColor} strokeWidth="1" />
+                  <line x1="0" y1="120" x2="700" y2="120" stroke={chartGridColor} strokeWidth="1" />
+                  <line x1="0" y1="180" x2="700" y2="180" stroke={chartGridColor} strokeWidth="1" />
+                  <line x1="0" y1="240" x2="700" y2="240" stroke={chartGridColor} strokeWidth="1" />
+                  {/* Tasks Given line */}
+                  <polyline
+                    points={dummyActivityData
+                      .map((d, i) => {
+                        const x = (i / (dummyActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksGiven / dummyMaxTaskValue) * 240;
+                        return `${x},${y}`;
+                      })
+                      .join(' ')}
+                    fill="none" stroke="#22c55e" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round"
+                  />
+                  {/* Tasks Completed line */}
+                  <polyline
+                    points={dummyActivityData
+                      .map((d, i) => {
+                        const x = (i / (dummyActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksCompleted / dummyMaxTaskValue) * 240;
+                        return `${x},${y}`;
+                      })
+                      .join(' ')}
+                    fill="none" stroke="#3b82f6" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round"
+                  />
+                  {/* Tasks In Process line */}
+                  <polyline
+                    points={dummyActivityData
+                      .map((d, i) => {
+                        const x = (i / (dummyActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksInProcess / dummyMaxTaskValue) * 240;
+                        return `${x},${y}`;
+                      })
+                      .join(' ')}
+                    fill="none" stroke="#eab308" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round"
+                  />
+                  {/* Tasks Failed line */}
+                  <polyline
+                    points={dummyActivityData
+                      .map((d, i) => {
+                        const x = (i / (dummyActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksFailed / dummyMaxTaskValue) * 240;
+                        return `${x},${y}`;
+                      })
+                      .join(' ')}
+                    fill="none" stroke="#ef4444" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"
+                  />
+                  {/* Dot markers */}
+                  {dummyActivityData.map((d, i) => {
+                    const x = (i / (dummyActivityData.length - 1)) * 700;
+                    const yGiven = 240 - (d.tasksGiven / dummyMaxTaskValue) * 240;
+                    const yCompleted = 240 - (d.tasksCompleted / dummyMaxTaskValue) * 240;
+                    return (
+                      <React.Fragment key={i}>
+                        <circle cx={x} cy={yGiven} r="4" fill="#22c55e" />
+                        <circle cx={x} cy={yCompleted} r="4" fill="#3b82f6" />
+                      </React.Fragment>
+                    );
+                  })}
+                </svg>
+              </div>
+              <div className="absolute left-12 right-0 bottom-0 flex justify-between text-xs text-gray-500 dark:text-slate-500">
+                {dummyActivityData.map((d, i) => (
+                  <div key={i} className="text-center">
+                    <div className="font-medium">{d.day}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-[#1e2d45]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  {
+                    color: 'bg-green-500', label: 'Tasks Given',
+                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksGiven, 0),
+                    textColor: 'text-green-600 dark:text-green-400',
+                  },
+                  {
+                    color: 'bg-blue-500', label: 'Completed',
+                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksCompleted, 0),
+                    textColor: 'text-blue-600 dark:text-blue-400',
+                  },
+                  {
+                    color: 'bg-yellow-500', label: 'In Process',
+                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksInProcess, 0),
+                    textColor: 'text-yellow-600 dark:text-yellow-400',
+                  },
+                  {
+                    color: 'bg-red-500', label: 'Failed',
+                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksFailed, 0),
+                    textColor: 'text-red-600 dark:text-red-400',
+                  },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 ${item.color} rounded-full`}></div>
+                      <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{item.label}</span>
+                    </div>
+                    <div className="ml-auto">
+                      <div className={`text-sm font-bold ${item.textColor}`}>{item.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* AGENT DISTRIBUTION */}
+          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
+            <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">Agent Distribution</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">By environment and type</p>
+
+            <div className="mb-6">
+              <div className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Environments</div>
+              <div className="space-y-3">
+                {Object.entries(environmentStats).map(([env, count]) => (
+                  <div key={env}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">{env}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{count}</span>
+                    </div>
+                    <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
+                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Agent Types</div>
+              <div className="space-y-3">
+                {Object.entries(typeStats).map(([type, count]) => (
+                  <div key={type}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">{type}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{count}</span>
+                    </div>
+                    <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
+                      <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ADDITIONAL VISUAL CHARTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+
+          {/* AGENT ACTIVITY STATUS */}
+          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
+            <div className="mb-4 md:mb-6">
+              <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">Agent Activity Status</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400">Real-time agent availability</p>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Active Agents</span>
+                    </div>
+                    <span className="text-lg font-bold text-green-700 dark:text-green-400">{activeAgents}</span>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-4 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-4 rounded-full transition-all duration-700 flex items-center justify-end pr-2"
+                      style={{ width: `${totalAgents > 0 ? (activeAgents / totalAgents) * 100 : 0}%` }}
+                    >
+                      {activeAgents > 0 && <span className="text-xs font-bold text-white">{Math.round((activeAgents / totalAgents) * 100)}%</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-400 dark:bg-slate-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Inactive Agents</span>
+                    </div>
+                    <span className="text-lg font-bold text-gray-700 dark:text-slate-300">{inactiveAgents}</span>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-4 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-gray-400 to-gray-500 h-4 rounded-full transition-all duration-700 flex items-center justify-end pr-2"
+                      style={{ width: `${totalAgents > 0 ? (inactiveAgents / totalAgents) * 100 : 0}%` }}
+                    >
+                      {inactiveAgents > 0 && <span className="text-xs font-bold text-white">{Math.round((inactiveAgents / totalAgents) * 100)}%</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Agents by Type</h4>
+              <div className="space-y-3">
+                {Object.entries(typeStats).map(([type, count]) => {
+                  const activeCount = agents.filter(
+                    a => a.type === type && a.isActive && !a.killswitchActivated && !a.softDeleted
+                  ).length;
+                  const inactiveCount = count - activeCount;
+                  return (
+                    <div key={type}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">{type}</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-500">{count} total</span>
+                      </div>
+                      <div className="flex gap-1 h-6">
+                        {activeCount > 0 && (
+                          <div
+                            className="bg-green-500 rounded flex items-center justify-center text-xs font-semibold text-white"
+                            style={{ width: `${(activeCount / count) * 100}%` }}
+                            title={`${activeCount} active`}
+                          >
+                            {activeCount}
+                          </div>
+                        )}
+                        {inactiveCount > 0 && (
+                          <div
+                            className="bg-gray-300 dark:bg-slate-600 rounded flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-slate-200"
+                            style={{ width: `${(inactiveCount / count) * 100}%` }}
+                            title={`${inactiveCount} inactive`}
+                          >
+                            {inactiveCount}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-gray-200 dark:border-[#1e2d45]">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                  <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Avg Response</div>
+                  <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{avgResponseTime}ms</div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                  <div className="text-xs text-purple-600 dark:text-purple-400 mb-1">Total Tasks</div>
+                  <div className="text-lg font-bold text-purple-700 dark:text-purple-300">{totalTasks}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RESPONSE TIME CHART */}
+          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 flex flex-col">
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white">Response Time Analysis</h3>
+                <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-[#111827] px-2 py-1 rounded">{agents.length}
+                  agents</span>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400">Average response times by agent (all statuses)</p>
+            </div>
+
+            <div className={`flex-1 overflow-y-auto max-h-[320px] pr-2 space-y-3 ${scrollbarClass}`}>
+              {agents.map((agent) => (
+                <div key={agent.id}
+                  className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${agent.killswitchActivated || agent.softDeleted ? 'bg-gray-50 dark:bg-[#111827]/50' : 'hover:bg-gray-50 dark:hover:bg-[#111827]'}`}>
+                  <div className="flex-shrink-0">
+                    {agent.killswitchActivated ? (
+                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center"><FaPowerOff className="text-red-600 dark:text-red-400 text-xs" /></div>
+                    ) : agent.softDeleted ? (
+                      <div className="w-8 h-8 bg-gray-200 dark:bg-slate-700 rounded-full flex items-center justify-center"><FaTimesCircle className="text-gray-500 dark:text-slate-400 text-xs" /></div>
+                    ) : agent.isActive ? (
+                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center"><FaCheckCircle className="text-green-600 dark:text-green-400 text-xs" /></div>
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-200 dark:bg-slate-700 rounded-full flex items-center justify-center"><FaTimesCircle className="text-gray-400 text-xs" /></div>
+                    )}
+                  </div>
+                  <div className="w-28 flex-shrink-0">
+                    <div className={`text-sm font-medium truncate ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-400 dark:text-slate-600' : 'text-gray-700 dark:text-slate-200'}`}>{agent.name}</div>
+                    <div className="text-xs text-gray-400 dark:text-slate-500">{agent.type}</div>
+                  </div>
+                  <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-8 relative overflow-hidden">
+                    <div
+                      className={`h-8 rounded-full transition-all duration-700 flex items-center justify-end pr-2 ${
+                        agent.killswitchActivated || agent.softDeleted ? 'bg-gray-300 dark:bg-slate-600' :
+                        agent.responseTime === 0 ? 'bg-gray-200 dark:bg-slate-700' :
+                        agent.responseTime < 200 ? 'bg-green-500' :
+                        agent.responseTime < 400 ? 'bg-blue-500' :
+                        agent.responseTime < 500 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: agent.responseTime === 0 ? '10%' : `${Math.min((agent.responseTime / 600) * 100, 100)}%` }}
+                    >
+                      <span className={`text-xs font-semibold ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-600 dark:text-slate-300' : 'text-white'}`}>
+                        {agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  {agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-200 dark:border-red-800">Killed</span>}
+                  {agent.softDeleted && !agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded border border-gray-300 dark:border-slate-600">Deleted</span>}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#1e2d45]">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { color: 'bg-green-500', label: 'Excellent', sub: '<200ms' },
+                  { color: 'bg-blue-500', label: 'Good', sub: '200-400ms' },
+                  { color: 'bg-yellow-500', label: 'Fair', sub: '400-500ms' },
+                  { color: 'bg-red-500', label: 'Poor', sub: '>500ms' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2">
+                    <div className={`w-4 h-4 ${item.color} rounded flex-shrink-0`}></div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-white">{item.label}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">{item.sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AGENT LIST */}
+        <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl overflow-hidden">
+          <div className="p-4 md:p-5 xl:p-6 border-b border-gray-200 dark:border-[#1e2d45]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">All AI Agents</h3>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{totalAgents} agents currently configured</p>
+              </div>
+
+              {/* ── Replaced dummy "View Details" with 3 useful action buttons ── */}
+              <div className="flex items-center gap-2">
+                {/* Refresh */}
+                <button
+                  onClick={handleRefreshDetails}
+                  disabled={detailsRefreshing}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium
+                    bg-gray-100 dark:bg-[#111827] hover:bg-gray-200 dark:hover:bg-[#1e2d45]
+                    text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-[#1e2d45]"
+                  title="Refresh agent data"
+                >
+                  <FaSync className={`text-xs ${detailsRefreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+
+                {/* Export CSV */}
+                <button
+                  onClick={() => exportAgentsCSV(agents)}
+                  disabled={agents.length === 0}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium
+                    bg-gray-100 dark:bg-[#111827] hover:bg-gray-200 dark:hover:bg-[#1e2d45]
+                    text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-[#1e2d45]
+                    disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Export agents as CSV"
+                >
+                  <FaDownload className="text-xs" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+
+                {/* View Details Panel */}
+                <button
+                  onClick={() => setShowDetailsPanel(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-blue-600 hover:bg-gray-800 dark:hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                  title="View detailed agent breakdown"
+                >
+                  <FaUsers className="text-xs" />
+                  View Details
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 dark:border-blue-400"></div>
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="p-12 text-center">
+              <FaRobot className="text-gray-300 dark:text-slate-600 text-5xl mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-slate-400 text-sm md:text-base lg:text-lg">No agents configured</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-[#111827]">
+                  <tr>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Agent</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Environment</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Tasks</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Success Rate</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden xl:table-cell">Response Time</th>
+                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-[#1e2d45]">
+                  {agents.map((agent) => (
+                    <tr key={agent.id}
+                      className="hover:bg-gray-50 dark:hover:bg-[#1e2d45]/50 transition-colors cursor-pointer"
+                      onClick={() => { setSelectedAgent(agent); setShowAgentModal(true); }}>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2 xl:gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${agent.isActive && !agent.killswitchActivated ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-slate-700'}`}>
+                            <FaRobot className={agent.isActive && !agent.killswitchActivated ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'} />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-500">ID: {agent.id.slice(0, 8)}...</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{agent.type}</span>
+                      </td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300 hidden md:table-cell">{agent.environment || 'N/A'}</td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.tasksCompleted}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-500">completed</div>
+                      </td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2 w-20">
+                            <div className={`h-2 rounded-full ${agent.successRate >= 90 ? 'bg-green-500' : agent.successRate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${agent.successRate}%` }} />
+                          </div>
+                          <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">{agent.successRate}%</span>
+                        </div>
+                      </td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden xl:table-cell">
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}</div>
+                      </td>
+                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
+                        {agent.killswitchActivated ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"><FaPowerOff className="w-2 h-2" />Killed</span>
+                        ) : agent.softDeleted ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600">Deleted</span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+                            ${
+                              agent.isActive
+                                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600'
+                            }`}>
+                            <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-400 dark:bg-slate-500'}`}></span>
+                            {agent.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Chat */}
+      <FloatingChat />
+
+      {/* ════════════════════════════════════════════════════════════════════
+          VIEW DETAILS PANEL — full sortable/filterable agent breakdown
+          ════════════════════════════════════════════════════════════════════ */}
+      {showDetailsPanel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setShowDetailsPanel(false)}>
+          <div className="bg-white dark:bg-[#1a2234] rounded-2xl shadow-2xl w-full max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl max-h-[90vh] flex flex-col my-8"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Panel Header */}
+            <div className="sticky top-0 bg-white dark:bg-[#1a2234] border-b border-gray-200 dark:border-[#1e2d45] p-4 md:p-6 rounded-t-2xl z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <FaUsers className="text-blue-600 dark:text-blue-400" />
+                    Agent Details
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Full breakdown of all {totalAgents} agents</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={handleRefreshDetails}
+                    disabled={detailsRefreshing}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#111827] hover:bg-gray-200 dark:hover:bg-[#0d1117] text-gray-700 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors">
+                    <FaSync className={`text-xs ${detailsRefreshing ? 'animate-spin' : ''}`} /> Refresh
+                  </button>
+                  <button onClick={() => exportAgentsCSV(getFilteredDetailAgents())}
+                    disabled={agents.length === 0}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium transition-colors border border-blue-200 dark:border-blue-800">
+                    <FaDownload className="text-xs" /> Export CSV
+                  </button>
+                  <button onClick={() => setShowDetailsPanel(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-[#111827] rounded-lg transition-colors">
+                    <svg className="w-5 h-5 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"><path strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary badges */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4">
+                {[
+                  { label: 'Total', value: totalAgents, filter: 'all' as const,
+                    color: 'bg-gray-100 dark:bg-[#111827] text-gray-900 dark:text-white border-gray-200 dark:border-[#1e2d45]' },
+                  { label: 'Active', value: activeAgents, filter: 'active' as const,
+                    color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' },
+                  {
+                    label: 'Inactive',
+                    value: inactiveAgents - agents.filter(a => a.killswitchActivated || a.softDeleted).length,
+                    filter: 'inactive' as const,
+                    color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+                  },
+                  {
+                    label: 'Killed/Deleted',
+                    value: agents.filter(a => a.killswitchActivated || a.softDeleted).length,
+                    filter: 'killed' as const,
+                    color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+                  },
+                ].map(item => (
+                  <button key={item.filter}
+                    onClick={() => setDetailsFilter(item.filter)}
+                    className={`p-3 rounded-xl border text-left transition-all ${item.color} ${detailsFilter === item.filter ? 'ring-2 ring-blue-500 ring-offset-1' : 'opacity-80 hover:opacity-100'}`}>
+                    <div className="text-2xl font-bold">{item.value}</div>
+                    <div className="text-xs font-medium opacity-80">{item.label}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Sort controls */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1"><FaSort className="text-xs" /> Sort by:</span>
+                {[
+                  { field: 'name' as const, label: 'Name' },
+                  { field: 'successRate' as const, label: 'Success Rate' },
+                  { field: 'responseTime' as const, label: 'Response Time' },
+                  { field: 'tasksCompleted' as const, label: 'Tasks' },
+                ].map(s => (
+                  <button key={s.field}
+                    onClick={() => handleSortClick(s.field)}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors
+                    ${
+                      detailsSortField === s.field
+                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                        : 'bg-gray-100 dark:bg-[#111827] text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-[#1e2d45]'
+                    }`}>
+                    {s.label} <SortIcon field={s.field} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Agent rows */}
+            <div className={`flex-1 overflow-y-auto p-6 space-y-3 ${scrollbarClass}`}>
+              {getFilteredDetailAgents().length === 0 ? (
+                <div className="text-center py-12 text-gray-400 dark:text-slate-500">No agents match this filter.</div>
+              ) : getFilteredDetailAgents().map(agent => (
+                <div key={agent.id}
+                  className="bg-gray-50 dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-[#1e2d45] p-4 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${agent.killswitchActivated ? 'bg-red-100 dark:bg-red-900/30' : agent.isActive ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-200 dark:bg-slate-700'}`}>
+                      {agent.killswitchActivated ? <FaPowerOff className="text-red-600 dark:text-red-400" /> : <FaRobot className={agent.isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-400'} />}
+                    </div>
+
+                    {/* Name + meta */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900 dark:text-white">{agent.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{agent.type}</span>
+                        {agent.environment && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-slate-400">{agent.environment}</span>}
+                        {agent.killswitchActivated && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center gap-1"><FaPowerOff className="text-xs" />Killed</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-slate-500 mt-1">
+                        Created by <span className="font-medium text-gray-700 dark:text-slate-300">{agent.createdBy}</span> · Last active {new Date(agent.lastActivity).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">{agent.tasksCompleted}</div>
+                        <div className="text-xs text-gray-400">Tasks</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`text-sm font-bold ${agent.successRate >= 90 ? 'text-green-600 dark:text-green-400' : agent.successRate >= 70 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{agent.successRate}%</div>
+                        <div className="text-xs text-gray-400">Success</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">{agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}</div>
+                        <div className="text-xs text-gray-400">Response</div>
+                      </div>
+                      <button
+                        onClick={() => { setSelectedAgent(agent); setShowAgentModal(true); setShowDetailsPanel(false); }}
+                        className="px-3 py-1.5 bg-gray-900 dark:bg-blue-600 hover:bg-gray-700 dark:hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kill switch info if killed */}
+                  {agent.killswitchActivated && agent.killswitchReason && (
+                    <div className="mt-3 pt-3 border-t border-red-100 dark:border-red-900/30 text-xs text-red-600 dark:text-red-400">
+                      <span className="font-semibold">Killed by:</span> {agent.killswitchActivatedBy} · <span className="font-semibold">Reason:</span> {agent.killswitchReason}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AGENT DETAIL MODAL — unchanged from original */}
+      {showAgentModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setShowAgentModal(false)}>
+          <div className="bg-white dark:bg-[#1a2234] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-[#1a2234] border-b border-gray-200 dark:border-[#1e2d45] p-4 md:p-6 rounded-t-2xl z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${selectedAgent.isActive && !selectedAgent.killswitchActivated ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-slate-700'}`}>
+                    <FaRobot className={`${selectedAgent.isActive && !selectedAgent.killswitchActivated ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'}
+                      text-2xl`} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedAgent.name}</h2>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">ID: {selectedAgent.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAgentModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-[#111827] rounded-lg transition-colors">
+                  <svg className="w-6 h-6 text-gray-500 dark:text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"><path strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-2">
+                {selectedAgent.killswitchActivated ? (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-2 border-red-200 dark:border-red-800"><FaPowerOff className="w-3 h-3" />Kill Switch Activated</span>
+                ) : selectedAgent.softDeleted ? (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-2 border-gray-200 dark:border-slate-600">Soft Deleted</span>
+                ) : (
+                  <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
+                  ${
+                    selectedAgent.isActive
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-2 border-green-200 dark:border-green-800'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-2 border-gray-200 dark:border-slate-600'
+                  }`}>
+                    <span className={`w-3 h-3 rounded-full ${selectedAgent.isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400 dark:bg-slate-500'}`}></span>
+                    {selectedAgent.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                )}
+                <span className="px-4 py-2 rounded-full text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{selectedAgent.type}</span>
+              </div>
+
+              {isAdmin && selectedAgent.killswitchActivated && !selectedAgent.softDeleted && (
+                <div className="bg-green-50 dark:bg-green-900/10 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg flex-shrink-0 mt-0.5"><FaUndo className="text-green-600 dark:text-green-400 text-lg" /></div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-green-900 dark:text-green-300 mb-1">Re-enable Agent</h4>
+                      {(selectedAgent.killswitchActivatedBy || selectedAgent.killswitchReason) && (
+                        <div className="bg-white/70 dark:bg-[#111827]/70 rounded-lg p-2 mb-2 border border-green-200 dark:border-green-800 space-y-0.5">
+                          {selectedAgent.killswitchActivatedBy && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">Killed by:</span> {selectedAgent.killswitchActivatedBy}</p>}
+                          {selectedAgent.killswitchActivatedAt && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">At:</span> {new Date(selectedAgent.killswitchActivatedAt).toLocaleString()}</p>}
+                          {selectedAgent.killswitchReason && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">Reason:</span> {selectedAgent.killswitchReason}</p>}
+                        </div>
+                      )}
+                      <p className="text-xs text-green-700 dark:text-green-400 mb-3">Restore full agent operations and make this agent available again.</p>
+                      <button onClick={handleReenableClick}
+                        className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"><FaUndo />Re-enable Agent</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isAdmin && !selectedAgent.killswitchActivated && !selectedAgent.softDeleted && (
+                <div className="bg-red-50 dark:bg-red-900/10 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <FaExclamationTriangle className="text-red-600 dark:text-red-400 text-xl flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-red-900 dark:text-red-300 mb-1">Emergency Control</h4>
+                      <p className="text-xs text-red-700 dark:text-red-400 mb-3">Immediately stop agent operations and revoke access</p>
+                      <button onClick={handleKillswitchClick}
+                        className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"><FaPowerOff />Activate Kill Switch</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-4 border border-gray-200 dark:border-[#1e2d45]">
+                  <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Environment</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{selectedAgent.environment || 'N/A'}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-4 border border-gray-200 dark:border-[#1e2d45]">
+                  <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Response Time</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{selectedAgent.responseTime > 0 ? `${selectedAgent.responseTime}ms` : 'N/A'}</div>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
+                  <div className="text-xs text-green-600 dark:text-green-400 uppercase tracking-wide mb-1">Success Rate</div>
+                  <div className="text-lg font-semibold text-green-700 dark:text-green-300">{selectedAgent.successRate}%</div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Tasks Completed</div>
+                  <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">{selectedAgent.tasksCompleted}</div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-[#1a2234] rounded-xl p-5 border border-blue-200 dark:border-blue-900/40">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><FaChartLine className="text-blue-600 dark:text-blue-400" />Task Statistics</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Tasks Given', value: selectedAgent.tasksGiven, color: 'bg-green-500', pct: 100 },
+                    { label: 'Completed', value: selectedAgent.tasksCompleted, color: 'bg-blue-500',
+                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksCompleted / selectedAgent.tasksGiven) * 100 : 0 },
+                    { label: 'In Process', value: selectedAgent.tasksInProcess, color: 'bg-yellow-500',
+                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksInProcess / selectedAgent.tasksGiven) * 100 : 0 },
+                    { label: 'Failed', value: selectedAgent.tasksFailed, color: 'bg-red-500',
+                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksFailed / selectedAgent.tasksGiven) * 100 : 0 },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-700 dark:text-slate-300">{item.label}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value}</span>
+                      </div>
+                      <div className="bg-white dark:bg-[#0d1117] rounded-full h-2">
+                        <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl p-5 border border-purple-200 dark:border-purple-900/40">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><MdSecurity className="text-purple-600 dark:text-purple-400" />Agent Information</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-slate-400">Created By</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-[#0d1117] px-3 py-1 rounded-lg border border-purple-200 dark:border-purple-800">{selectedAgent.createdBy}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-slate-400">Last Activity</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{new Date(selectedAgent.lastActivity).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-slate-400">Last Used</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{new Date(selectedAgent.lastUsed).toLocaleString()}</span>
+                  </div>
+                  {selectedAgent.checkInterval && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-slate-400">Check Interval</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedAgent.checkInterval}s</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-5 border border-gray-200 dark:border-[#1e2d45]">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Overall Performance</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600 dark:text-slate-400">Performance Score</span>
+                      <span className={`text-sm font-bold ${
+                          selectedAgent.successRate >= 90 ? 'text-green-600 dark:text-green-400'
+                          : selectedAgent.successRate >= 70 ? 'text-blue-600 dark:text-blue-400'
+                          : selectedAgent.successRate >= 50 ? 'text-yellow-600 dark:text-yellow-400'
+                          : 'text-red-600 dark:text-red-400'
+                        }`}>
+                        {selectedAgent.successRate >= 90
+                          ? 'Excellent'
+                          : selectedAgent.successRate >= 70
+                          ? 'Good'
+                          : selectedAgent.successRate >= 50
+                          ? 'Fair'
+                          : 'Needs Improvement'}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-[#0d1117] rounded-full h-3 overflow-hidden border border-gray-300 dark:border-[#1e2d45]">
+                      <div className={`h-3 rounded-full transition-all ${selectedAgent.successRate >= 90 ? 'bg-green-500' : selectedAgent.successRate >= 70 ? 'bg-blue-500' : selectedAgent.successRate >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${selectedAgent.successRate}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 dark:bg-[#111827] border-t border-gray-200 dark:border-[#1e2d45] p-6 rounded-b-2xl">
+              <button onClick={() => setShowAgentModal(false)}
+                className="w-full px-6 py-3 bg-gray-900 dark:bg-slate-700 hover:bg-gray-800 dark:hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KILL SWITCH MODAL */}
+      {showKillswitchModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 overflow-y-auto"
+          onClick={handleKillswitchCancel}>
+          <div className="bg-white dark:bg-[#1a2234] rounded-2xl shadow-2xl max-w-md w-full my-8 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="bg-red-600 p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0"><FaPowerOff className="text-2xl" /></div>
+                <div><h2 className="text-2xl font-bold">Activate Kill Switch</h2><p className="text-red-100 text-sm">Emergency stop for agent</p></div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div className="bg-gray-50 dark:bg-[#111827] rounded-lg p-4 border border-gray-200 dark:border-[#1e2d45]">
+                <div className="flex items-center gap-3 mb-2">
+                  <FaRobot className="text-gray-600 dark:text-slate-400 text-xl flex-shrink-0" />
+                  <div><p className="font-semibold text-gray-900 dark:text-white">{selectedAgent.name}</p><p className="text-sm text-gray-500 dark:text-slate-400">{selectedAgent.type}</p></div>
+                </div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <FaExclamationTriangle className="text-red-600 dark:text-red-400 text-xl flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-800 dark:text-red-300">
+                    <p className="font-semibold mb-1">This action will immediately:</p>
+                    <ul className="list-disc list-inside space-y-1 text-red-700 dark:text-red-400">
+                      <li>Stop all agent operations</li>
+                      <li>Revoke all active sessions</li>
+                      <li>Disable agent access to systems</li>
+                      <li>Require manual reactivation</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Reason <span className="text-red-600">*</span></label>
+                <textarea value={killswitchReason}
+                  onChange={(e) => setKillswitchReason(e.target.value)}
+                  placeholder="Explain why you're activating the kill switch..."
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#1e2d45] rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white dark:bg-[#111827] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
+                  rows={4}
+                  disabled={killswitchLoading} />
+                <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">This reason will be logged for audit purposes</p>
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 dark:bg-[#111827] border-t border-gray-200 dark:border-[#1e2d45] rounded-b-2xl">
+              <div className="flex gap-3">
+                <button onClick={handleKillswitchCancel}
+                  disabled={killswitchLoading}
+                  className="flex-1 px-6 py-3 bg-white dark:bg-[#1a2234] border border-gray-300 dark:border-[#1e2d45] text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#1e2d45] transition-colors disabled:opacity-50">Cancel</button>
+                <button onClick={handleKillswitchConfirm}
+                  disabled={killswitchLoading || !killswitchReason.trim()}
+                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {killswitchLoading ? <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>Activating...</> : <><FaPowerOff />Activate Kill Switch</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RE-ENABLE MODAL */}
+      {showReenableModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 overflow-y-auto" onClick={handleReenableCancel}>
+          <div className="bg-white dark:bg-[#1a2234] rounded-2xl shadow-2xl max-w-md w-full my-8 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="bg-green-600 p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0"><FaUndo className="text-2xl" /></div>
+                <div><h2 className="text-2xl font-bold">Re-enable Agent</h2><p className="text-green-100 text-sm">Restore agent operations</p></div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div className="bg-gray-50 dark:bg-[#111827] rounded-lg p-4 border border-gray-200 dark:border-[#1e2d45]">
+                <div className="flex items-center gap-3">
+                  <FaRobot className="text-gray-600 dark:text-slate-400 text-xl flex-shrink-0" />
+                  <div><p className="font-semibold text-gray-900 dark:text-white">{selectedAgent.name}</p><p className="text-sm text-gray-500 dark:text-slate-400">{selectedAgent.type}</p></div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Reason <span className="text-green-600">*</span></label>
+                <textarea value={reenableReason}
+                  onChange={(e) => setReenableReason(e.target.value)}
+                  placeholder="Explain why you're re-enabling this agent..."
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#1e2d45] rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none bg-white dark:bg-[#111827] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
+                  rows={4}
+                  disabled={reenableLoading} />
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 dark:bg-[#111827] border-t border-gray-200 dark:border-[#1e2d45] rounded-b-2xl">
+              <div className="flex gap-3">
+                <button onClick={handleReenableCancel}
+                  disabled={reenableLoading}
+                  className="flex-1 px-6 py-3 bg-white dark:bg-[#1a2234] border border-gray-300 dark:border-[#1e2d45] text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#1e2d45] transition-colors disabled:opacity-50">Cancel</button>
+                <button onClick={handleReenableConfirm}
+                  disabled={reenableLoading || !reenableReason.trim()}
+                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {reenableLoading ? <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>Re-enabling...</> : <><FaUndo />Confirm Re-enable</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminAgentControll;

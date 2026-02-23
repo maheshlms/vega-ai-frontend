@@ -25,7 +25,7 @@ import { RiRobotFill } from 'react-icons/ri';
 import { FaUsersCog, FaPlug } from 'react-icons/fa';
 import { FaArrowRightLong } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../utils/UserContext';
+import { useUser } from '../../utils/UserContext';
 
 interface TopCard {
   key: string;
