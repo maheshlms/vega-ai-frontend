@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import TargetSystemForm from './TargetSystemForm';
-import api from '../utils/api';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 // Type Definitions
@@ -20,14 +20,14 @@ interface TargetSystemData {
 const CreateTargetSystem: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get integration details from route state
   const locationState = location.state as LocationState | undefined;
   const integrationId = locationState?.integrationId;
   const integrationName = locationState?.integrationName;
   const integrationValue = locationState?.integrationValue;
   const authMethods = locationState?.authMethods || [];
-  
+
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleCreate = async (data: TargetSystemData): Promise<void> => {
@@ -37,7 +37,6 @@ const CreateTargetSystem: React.FC = () => {
       const result = await api.targetSystems.create(data);
       console.log('[CreateTargetSystem] Create successful:', result);
       toast.success('Target system created successfully!');
-      // Navigate back to the target systems list
       navigate('/admin/avatarsys');
     } catch (err) {
       console.error('[CreateTargetSystem] Error creating target system:', err);
@@ -60,7 +59,7 @@ const CreateTargetSystem: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header — commented out, preserved as-is */}
       {/* <div className="bg-white border-b border-gray-200 px-6 py-6 ">
         <button
           onClick={() => navigate('/admin/targetsys')}
@@ -80,8 +79,8 @@ const CreateTargetSystem: React.FC = () => {
       </div> */}
 
       {/* Form Container */}
-      <div className="px-6 py-8 flex justify-center">
-        <div className="w-full max-w-2xl">
+      <div className="px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20 py-6 sm:py-8 lg:py-10 xl:py-12 2xl:py-16 flex justify-center">
+        <div className="w-full max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
           <TargetSystemForm
             system={null}
             typeOptions={[]}

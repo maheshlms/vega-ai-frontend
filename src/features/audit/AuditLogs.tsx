@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaCheckCircle, FaExclamationTriangle, FaClock, FaDownload, FaSync } from 'react-icons/fa';
-import api from '../utils/api';
-import { auth } from '../utils/auth';
+import api from '../../utils/api';
+import { auth } from '../../utils/auth';
 
 interface AuditLog {
   id?: string;

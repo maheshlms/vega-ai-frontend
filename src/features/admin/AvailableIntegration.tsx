@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaStar, FaPlug, FaShieldAlt, FaServer } from 'react-icons/fa';
 import { IconType } from 'react-icons';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 /**
  * Only allow Ping products in UI
@@ -64,7 +64,7 @@ interface ApiResponse {
 interface IntegrationCardProps {
   item: IntegrationItem;
 }
-   
+
 const AvailableIntegration: React.FC = () => {
   const navigate = useNavigate();
   const [integrationsData, setIntegrationsData] = useState<CategorizedIntegrations>({});
@@ -77,14 +77,13 @@ const AvailableIntegration: React.FC = () => {
         setLoading(true);
         const response: ApiResponse = await api.integrations.list();
 
-        // Map integrations by value for ID lookup
         const integrationsMap: IntegrationsMap = {};
         if (Array.isArray(response.integrations)) {
           response.integrations.forEach(intg => {
             integrationsMap[intg.value] = intg;
           });
         }
-        
+
         const categorized: CategorizedIntegrations = {};
 
         if (response.categories) {
@@ -147,18 +146,13 @@ const AvailableIntegration: React.FC = () => {
       ping_directory: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       pingone: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
       ping_one: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',
-      // slack: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg',
     };
-
     const normalized = value?.toLowerCase().replace(/[-_\s]/g, '');
     return logos[value] || logos[normalized] || null;
   };
 
   const handleIntegrationSelect = (id: string, name: string, value: string, authMethods: string[]): void => {
-    // Normalize the value to use as integration type in URL
     const integrationType = value.toLowerCase().replace(/[-_\s]/g, '');
-    
-    // Navigate to agent type selection with both target ID and integration type
     navigate(`/agents/select-type/${integrationType}/${id}`, {
       state: { integrationName: name, integrationValue: value, authMethods }
     });
@@ -167,31 +161,38 @@ const AvailableIntegration: React.FC = () => {
   const IntegrationCard: React.FC<IntegrationCardProps> = ({ item }) => (
     <div
       onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
     >
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center p-2">
+      {/* Logo + Title row */}
+      <div className="flex items-start gap-3 2xl:gap-4 mb-4 2xl:mb-5">
+        <div className="w-12 h-12 2xl:w-16 2xl:h-16 bg-gray-100 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
           {item.logo ? (
             <img src={item.logo} alt={item.name} className="w-full h-full object-contain" />
           ) : (
-            <FaPlug className="text-gray-400" />
+            <FaPlug className="text-gray-400 2xl:text-xl" />
           )}
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900">{item.name}</h3>
-            <FaCheckCircle className="text-green-500 text-sm" />
+            {/* Full name shown — no truncation */}
+            <h3 className="font-semibold text-gray-900 text-base 2xl:text-xl">
+              {item.name}
+            </h3>
+            <FaCheckCircle className="text-green-500 text-sm 2xl:text-base flex-shrink-0" />
           </div>
-          <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+          <p className="text-xs 2xl:text-sm text-gray-500 mt-1">
+            {item.description}
+          </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {/* Badges */}
+      <div className="flex flex-wrap gap-2 2xl:gap-3">
         {item.badges.map((badge, i) => (
           <span
             key={i}
-            className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300"
+            className="px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium bg-blue-100 text-blue-700 border border-blue-300"
           >
             {badge}
           </span>
@@ -202,35 +203,36 @@ const AvailableIntegration: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6">
-            <button
-            onClick={() => navigate('/agents')}
-            className="group text-sm text-gray-500 hover:text-gray-900  flex items-center gap-2 transition-colors"
-          >
-            <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
-            <span>Back </span>
-          </button>
-        <div className="flex items-center gap-2 mb-1">
-          {/* <FaStar className="text-yellow-500" /> */}
-          <h1 className="text-2xl font-semibold text-gray-900">Available Integrations</h1>
-        </div>
-        <p className="text-sm text-gray-500">
+
+      {/* Header — pixel-perfect match to image 2 at 1920×1080 */}
+      <div className="bg-white border-b border-gray-200 px-6 2xl:px-16 py-6 2xl:py-10">
+        <button
+          onClick={() => navigate('/agents')}
+          className="group text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-3 2xl:mb-5"
+        >
+          <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
+          <span>Back</span>
+        </button>
+
+        <h1 className="text-2xl 2xl:text-4xl font-semibold text-gray-900 mb-1">
+          Available Integrations
+        </h1>
+        <p className="text-sm 2xl:text-base text-gray-500">
           Connect Ping Identity systems and manage target integrations
         </p>
       </div>
 
       {/* Loading */}
       {loading && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
+        <div className="flex justify-center py-12 2xl:py-20">
+          <div className="animate-spin h-8 w-8 2xl:h-12 2xl:w-12 border-b-2 border-blue-600 rounded-full" />
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="px-6 py-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+        <div className="px-6 2xl:px-16 py-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm 2xl:text-base text-red-700">
             Failed to load integrations: {error}
           </div>
         </div>
@@ -238,30 +240,38 @@ const AvailableIntegration: React.FC = () => {
 
       {/* Content */}
       {!loading && !error && (
-        <div className="px-6 py-6 space-y-8">
+        <div className="px-6 2xl:px-16 py-6 2xl:py-10 space-y-8 2xl:space-y-14">
           {Object.values(integrationsData).map((category, index) => {
             const Icon = category.icon;
             return (
               <div key={index}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Icon className="text-gray-600" />
+
+                {/* Category header */}
+                <div className="flex items-center gap-3 2xl:gap-4 mb-4 2xl:mb-6">
+                  <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="text-gray-600 text-base 2xl:text-xl" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
+                    <h2 className="text-lg 2xl:text-2xl font-semibold text-gray-900">
                       {category.category}
                     </h2>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs 2xl:text-sm text-gray-500">
                       {category.items.length} integration{category.items.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/*
+                  Grid:
+                  - 1920×1080 (xl and below): max 3 cols, ~460px wide cards — matches image 2
+                  - 2560+ (2xl): 4 cols, everything scales up
+                */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 2xl:gap-6">
                   {category.items.map(item => (
                     <IntegrationCard key={item.id} item={item} />
                   ))}
                 </div>
+
               </div>
             );
           })}

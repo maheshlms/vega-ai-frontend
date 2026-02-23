@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { IoIosClose } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
-import { useUser } from '../utils/UserContext';
+import { useUser } from '../../utils/UserContext';
 
 const Rename: React.FC = () => {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaPaperPlane, FaRobot, FaUser, FaTimes, FaComments } from "react-icons/fa";
 import { BsThreeDots } from "react-icons/bs";
-import { api } from '../utils/api';
+import { api } from '../../utils/api';
 
 // Type Definitions
 interface Message {

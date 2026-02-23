@@ -50,7 +50,7 @@ const AdvancedIntegrations: React.FC = () => {
         { text: 'IDaaS', color: 'purple' }
       ]
     },
-     slack: {
+    slack: {
       id: 'slack',
       logo: 'slack',
       title: 'Slack',
@@ -74,27 +74,34 @@ const AdvancedIntegrations: React.FC = () => {
   };
 
   const IntegrationCard: React.FC<{ item: Integration }> = ({ item }) => (
-    <div 
+    <div
       onClick={() => navigate(`/agents/create/${item.id}`)}
-      className="bg-white rounded-lg shadow-md border border-gray-200 p-5 hover:shadow-xl hover:border-blue-400 hover:scale-105 transition-all cursor-pointer"
+      className="bg-white rounded-lg shadow-md border border-gray-200 p-5 2xl:p-8 hover:shadow-xl hover:border-blue-400 hover:scale-105 transition-all cursor-pointer"
     >
-      <div className="flex items-center justify-center h-12 mb-4">
-        <span className="text-xl font-bold text-gray-900">{item.logo}</span>
+      {/* Logo */}
+      <div className="flex items-center justify-center h-12 2xl:h-20 mb-4 2xl:mb-5">
+        <span className="text-xl 2xl:text-4xl font-bold text-gray-900">
+          {item.logo}
+        </span>
       </div>
-      <h3 className="text-left font-semibold text-gray-900 mb-2 text-sm">
+
+      {/* Title */}
+      <h3 className="text-left font-semibold text-gray-900 mb-2 text-sm 2xl:text-xl">
         {item.title}
       </h3>
-      <div className="flex items-center gap-2 flex-wrap">
+
+      {/* Badges */}
+      <div className="flex items-center gap-2 2xl:gap-3 flex-wrap">
         {item.verified && (
           <div className="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded">
-            <FaCheckCircle className="text-green-600 text-xs" />
-            <span className="text-xs text-green-600 font-medium">Verified</span>
+            <FaCheckCircle className="text-green-600 text-xs 2xl:text-base" />
+            <span className="text-xs 2xl:text-base text-green-600 font-medium">Verified</span>
           </div>
         )}
         {item.badges.map((badge, index) => (
           <span
             key={index}
-            className={`px-2.5 py-0.5 rounded text-xs font-medium ${getBadgeColors(badge.color)}`}
+            className={`px-2.5 py-0.5 2xl:px-3 2xl:py-1 rounded text-xs 2xl:text-base font-medium ${getBadgeColors(badge.color)}`}
           >
             {badge.text}
           </span>
@@ -105,45 +112,57 @@ const AdvancedIntegrations: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Header — unchanged at 1920×1080, scales at 2xl (2560+) */}
       <div className="border-b border-gray-200 bg-white">
-        <div className="px-6 py-6">
+        <div className="px-6 2xl:px-20 py-6 2xl:py-12">
           <div className="flex items-center gap-2 mb-1">
-            <FaStar className="text-gray-400 text-sm" />
-            <h1 className="text-2xl font-bold text-gray-900">Advanced Integrations</h1>
+            <FaStar className="text-gray-400 text-sm 2xl:text-lg" />
+            <h1 className="text-2xl 2xl:text-5xl font-bold text-gray-900">
+              Advanced Integrations
+            </h1>
           </div>
-          <p className="text-sm text-gray-500 ml-6">
+          <p className="text-sm 2xl:text-xl text-gray-500 ml-6">
             Fully autonomous AI agents with advanced capabilities and enterprise-grade integrations
           </p>
         </div>
       </div>
 
-      <div className="px-6 py-6">
-        <div className="mb-10">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">OIDC Provider</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* Content */}
+      <div className="px-6 2xl:px-20 py-6 2xl:py-12">
+
+        {/* OIDC Provider */}
+        <div className="mb-10 2xl:mb-16">
+          <h2 className="text-base 2xl:text-2xl font-semibold text-gray-900 mb-4 2xl:mb-6">
+            OIDC Provider
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-5 2xl:gap-8">
             <IntegrationCard item={integrations.pingfederate} />
           </div>
         </div>
 
-        <div className="mb-10">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">
+        {/* Identity Datastores */}
+        <div className="mb-10 2xl:mb-16">
+          <h2 className="text-base 2xl:text-2xl font-semibold text-gray-900 mb-4 2xl:mb-6">
             Identity Datastores / Directories
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-5 2xl:gap-8">
             <IntegrationCard item={integrations.pingdirectory} />
           </div>
         </div>
 
-        <div className="mb-10">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Cloud Identity</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Cloud Identity */}
+        <div className="mb-10 2xl:mb-16">
+          <h2 className="text-base 2xl:text-2xl font-semibold text-gray-900 mb-4 2xl:mb-6">
+            Cloud Identity
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-5 2xl:gap-8">
             <IntegrationCard item={integrations.pingone} />
           </div>
         </div>
+
       </div>
     </div>
   );
 };
-
 
 export default AdvancedIntegrations;

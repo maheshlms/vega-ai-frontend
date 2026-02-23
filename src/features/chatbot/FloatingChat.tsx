@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { MdChat } from "react-icons/md";
-import ChatBox from "../components/ChatBox";
+import ChatBox from "../../components/ChatBox";
 
 const FloatingChat: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
