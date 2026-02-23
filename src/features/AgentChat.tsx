@@ -676,7 +676,7 @@ const AgentChat: React.FC = () => {
                         )}
                         
                         <div 
-                          className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+                          className={`text-sm leading-relaxed break-words ${message.sender === 'user' ? 'whitespace-pre-wrap' : 'whitespace-normal'}`}
                           dangerouslySetInnerHTML={{ __html: message.text }}
                         />
                         
