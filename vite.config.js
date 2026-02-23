@@ -14,7 +14,15 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // Ensure HMR works reliably on Windows
-    hmr: { host: 'localhost' }
+    hmr: { host: 'localhost' },
+    // Proxy API requests to backend
+    proxy: {
+      '/api/v1': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path
+      }
+    }
   },
   // Keep preview behavior consistent with dev for quick local checks
   preview: {

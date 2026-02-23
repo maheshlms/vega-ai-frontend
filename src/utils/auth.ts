@@ -182,12 +182,25 @@ export const auth = {
   },
 
   // Store native authentication data (username/password login)
-  storeNativeAuthData: (accessToken: string, userData: any): void => {
+  // Accepts the complete login response from backend
+  storeNativeAuthData: (accessToken: string, userData: any, expiresIn?: number, sessionData?: any): void => {
     try {
       console.log('🔐 [AUTH UTIL] Storing native auth token in localStorage');
+      console.log('📦 [DEBUG] Full response being stored:', { accessToken: accessToken.substring(0, 20) + '...', userData, expiresIn, sessionData });
       
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('tokenType', 'bearer');
+      
+      // Store the complete raw response for access to all fields
+      const completeResponse = {
+        access_token: accessToken,
+        token_type: 'bearer',
+        expires_in: expiresIn,
+        user: userData,
+        session: sessionData,
+        force_password_reset: userData?.force_password_reset || false
+      };
+      localStorage.setItem('loginResponse', JSON.stringify(completeResponse));
       
       // Extract roles from user data
       const roles = normalizeRoles(userData?.roles || userData?.permissions || []);
@@ -199,25 +212,45 @@ export const auth = {
         email: userData.email,
         name: userData.full_name || userData.username,
         picture: userData.picture || undefined,
-        sub: userData.id,
+        sub: userData.id || userData.user_id,
         role: role,
         roles: roles,
         is_active: userData.is_active !== undefined ? userData.is_active : true,
+        force_password_reset: userData.force_password_reset || false,
       };
       
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('userRole', user.role);
       localStorage.setItem('userRoles', JSON.stringify(roles));
+      localStorage.setItem('forcePasswordReset', String(userData.force_password_reset || false));
       
-      // Calculate token expiry (default 2 hours as per backend)
-      const expiryDate = new Date(Date.now() + (2 * 60 * 60 * 1000));
+      // Store session data if provided
+      if (sessionData && sessionData.session_id) {
+        localStorage.setItem('sessionId', sessionData.session_id);
+      }
+      
+      // Use provided expires_in or default to 2 hours
+      const expirySeconds = expiresIn || (2 * 60 * 60);
+      const expiryDate = new Date(Date.now() + (expirySeconds * 1000));
       localStorage.setItem('tokenExpiry', expiryDate.toISOString());
       
-      console.log('✅ Native auth data stored successfully');
+      console.log('✅ Native auth data stored successfully with all fields');
       console.log('👤 User:', user.username, '| Role:', role, '| Roles:', roles);
+      console.log('⏱️ Token expires in', expirySeconds, 'seconds');
     } catch (error) {
       console.error('❌ Failed to store native auth data:', error);
       throw new Error('Failed to store authentication data');
+    }
+  },
+
+  // Get the complete login response stored from backend
+  getLoginResponse: (): any => {
+    try {
+      const response = localStorage.getItem('loginResponse');
+      return response ? JSON.parse(response) : null;
+    } catch (error) {
+      console.error('❌ Failed to parse login response:', error);
+      return null;
     }
   },
 
@@ -314,6 +347,17 @@ export const auth = {
     }
   },
 
+  // Check if user needs to change password
+  needsPasswordChange: (): boolean => {
+    try {
+      const forcePasswordReset = localStorage.getItem('forcePasswordReset');
+      return forcePasswordReset === 'true';
+    } catch (error) {
+      console.error('❌ Failed to check password change requirement:', error);
+      return false;
+    }
+  },
+
   // Get authorization header
   getAuthHeader: (): Record<string, string> => {
     const token = auth.getToken();
@@ -393,6 +437,8 @@ export const auth = {
       localStorage.removeItem('userRoles');
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('sessionId');
+      localStorage.removeItem('forcePasswordReset');
+      localStorage.removeItem('loginResponse');
       console.log('✅ Auth data cleared successfully');
     } catch (error) {
       console.error('❌ Error during logout:', error);

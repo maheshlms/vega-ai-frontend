@@ -678,6 +678,84 @@ export const api = {
       
       return await response.json();
     }
+  },
+
+  // User management endpoints
+  users: {
+    // List all users (admin only - requires MANAGE_USERS permission)
+    list: async (skip: number = 0, limit: number = 100): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users?skip=${skip}&limit=${limit}`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to fetch users');
+      }
+      
+      return await response.json();
+    },
+
+    // Get specific user details
+    get: async (userId: string): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to fetch user');
+      }
+      
+      return await response.json();
+    },
+
+    // Create new user (admin only)
+    create: async (userData: any): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, '/api/v1/users', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to create user');
+      }
+      
+      return await response.json();
+    },
+
+    // Update user (admin only)
+    update: async (userId: string, userData: any): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to update user');
+      }
+      
+      return await response.json();
+    },
+
+    // Delete user (admin only)
+    delete: async (userId: string): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const errorMsg = error.detail || 'Failed to delete user';
+        const err = new Error(errorMsg) as any;
+        err.status = response.status;
+        throw err;
+      }
+      
+      return await response.json();
+    }
   }
 };
 

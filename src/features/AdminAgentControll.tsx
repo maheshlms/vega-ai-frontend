@@ -119,6 +119,35 @@ interface TypeStats {
   [key: string]: number;
 }
 
+interface DailyMetrics {
+  agent_id: string;
+  date: string;
+  total_tasks: number;
+  successful_tasks: number;
+  failed_tasks: number;
+  avg_response_time_ms: number;
+  min_response_time_ms: number;
+  max_response_time_ms: number;
+  success_rate: number;
+}
+
+interface AgentMetrics {
+  agent_id: string;
+  total_tasks: number;
+  successful_tasks: number;
+  failed_tasks: number;
+  overall_success_rate: number;
+  avg_response_time_ms: number;
+  min_response_time_ms: number;
+  max_response_time_ms: number;
+}
+
+interface DashboardMetricsResponse {
+  daily_metrics_past_7_days: DailyMetrics[];
+  agent_metrics: AgentMetrics[];
+  timestamp: string;
+}
+
 const AdminAgentControll: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -137,6 +166,11 @@ const AdminAgentControll: React.FC = () => {
   const [showReenableModal, setShowReenableModal] = useState<boolean>(false);
   const [reenableReason, setReenableReason] = useState<string>('');
   const [reenableLoading, setReenableLoading] = useState<boolean>(false);
+  
+  // Telemetry state
+  const [telemetryLoading, setTelemetryLoading] = useState<boolean>(true);
+  const [telemetryData, setTelemetryData] = useState<DashboardMetricsResponse | null>(null);
+  const [telemetryError, setTelemetryError] = useState<string | null>(null);
   
   const isAdmin = auth.isAdmin();
 
@@ -219,17 +253,67 @@ const AdminAgentControll: React.FC = () => {
     return () => clearInterval(healthInterval);
   }, []);
 
+  // Load telemetry data from API
+  useEffect(() => {
+    const fetchTelemetry = async (): Promise<void> => {
+      try {
+        const token = auth.getToken();
+        if (!token) {
+          const errorMsg = 'No authentication token available for telemetry';
+          console.warn(errorMsg);
+          setTelemetryError(errorMsg);
+          setTelemetryLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/v1/telemetry/dashboard?days=7', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data: DashboardMetricsResponse = await response.json();
+          console.info('Telemetry data fetched successfully');
+          setTelemetryData(data);
+          setTelemetryError(null);
+        } else {
+          const errorMsg = `Telemetry endpoint returned status ${response.status}`;
+          console.error('Failed to fetch telemetry:', errorMsg);
+          setTelemetryError(errorMsg);
+        }
+      } catch (error: any) {
+        const errorMsg = `Unable to reach telemetry endpoint: ${error?.message || 'Network error'}`;
+        console.error('Error fetching telemetry:', error);
+        setTelemetryError(errorMsg);
+      } finally {
+        setTelemetryLoading(false);
+      }
+    };
+
+    fetchTelemetry();
+  }, []);
+
   // Calculate real-time statistics
   const totalAgents = agents.length;
   const activeAgents = agents.filter(a => a.isActive && !a.killswitchActivated && !a.softDeleted).length;
   const inactiveAgents = agents.filter(a => !a.isActive || a.killswitchActivated || a.softDeleted).length;
-  const avgSuccessRate = agents.length > 0 
-    ? (agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length).toFixed(1)
-    : '0';
+  
+  // Use telemetry data if available, otherwise fallback to agent-based calculations
+  const avgSuccessRate = telemetryData?.agent_metrics?.length
+    ? (telemetryData.agent_metrics.reduce((sum, m) => sum + m.overall_success_rate, 0) / telemetryData.agent_metrics.length).toFixed(1)
+    : agents.length > 0 
+      ? (agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length).toFixed(1)
+      : '0';
+  
   const totalTasks = agents.reduce((sum, a) => sum + a.tasksCompleted, 0);
-  const avgResponseTime = agents.length > 0
-    ? Math.floor(agents.reduce((sum, a) => sum + a.responseTime, 0) / agents.length)
-    : 0;
+  
+  const avgResponseTime = telemetryData?.agent_metrics?.length
+    ? Math.floor(telemetryData.agent_metrics.reduce((sum, m) => sum + m.avg_response_time_ms, 0) / telemetryData.agent_metrics.length)
+    : agents.length > 0
+      ? Math.floor(agents.reduce((sum, a) => sum + a.responseTime, 0) / agents.length)
+      : 0;
 
   // Get environment distribution
   const environmentStats: EnvironmentStats = agents.reduce((acc, agent) => {
@@ -244,24 +328,20 @@ const AdminAgentControll: React.FC = () => {
     return acc;
   }, {} as TypeStats);
 
-  // Activity timeline (last 7 days)
-  const activityData: ActivityDataPoint[] = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    const completed = Math.floor(Math.random() * 50) + 60;
-    const given = completed + Math.floor(Math.random() * 30) + 20;
-    const inProcess = Math.floor(Math.random() * 15) + 5;
-    const failed = Math.floor(Math.random() * 8) + 2;
-    
-    return {
-      day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      tasksCompleted: completed,
-      tasksGiven: given,
-      tasksInProcess: inProcess,
-      tasksFailed: failed
-    };
-  });
+  // activity timeline (last 7 days) - only from telemetry data, no fallback to mock
+  const activityData: ActivityDataPoint[] = telemetryData?.daily_metrics_past_7_days?.length 
+    ? telemetryData.daily_metrics_past_7_days.map(metric => {
+        const date = new Date(metric.date);
+        return {
+          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          tasksCompleted: metric.successful_tasks,
+          tasksGiven: metric.total_tasks,
+          tasksInProcess: 0, // Not available in telemetry data
+          tasksFailed: metric.failed_tasks
+        };
+      })
+    : [];
 
   const maxTaskValue = Math.max(...activityData.map(d => d.tasksGiven));
 
@@ -585,6 +665,16 @@ const AdminAgentControll: React.FC = () => {
               </div>
             </div>
             
+            {telemetryError ? (
+              <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-center">
+                  <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-3" />
+                  <p className="text-red-700 font-medium">Telemetry Data Unavailable</p>
+                  <p className="text-red-600 text-sm mt-1">{telemetryError}</p>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* Chart Area */}
             <div className="relative h-64 mb-4">
               <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-gray-400 pr-2">
@@ -669,6 +759,8 @@ const AdminAgentControll: React.FC = () => {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </div>
 
           {/* AGENT DISTRIBUTION */}
