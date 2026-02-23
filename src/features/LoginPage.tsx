@@ -5,7 +5,8 @@ import MouseMove from '../effects/MouseMove';
 import FloatingDots from '../effects/FloatingDots';
 import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
-import { useState, useEffect } from 'react';
+import { IoSettingsSharp } from "react-icons/io5";
+import { useState, useEffect, useRef } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -14,6 +15,8 @@ import { auth } from '../utils/auth';
 const LoginPage: React.FC = () => {
 
   const [dark, setDark] = useState<boolean>(false);
+  const [showAdminMenu, setShowAdminMenu] = useState<boolean>(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { loginWithRedirect, isLoading: auth0Loading } = useAuth0();
   const navigate = useNavigate();
   
@@ -26,6 +29,19 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   }, [dark]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowAdminMenu(false);
+      }
+    };
+
+    if (showAdminMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAdminMenu]);
 
   const handleAuth0Login = (): void => {
     loginWithRedirect();
@@ -50,13 +66,27 @@ const LoginPage: React.FC = () => {
       });
 
       console.log('✅ Native login successful:', response);
+      console.log('📦 Response structure - hasAccessToken:', !!response.access_token, 
+                  'hasUser:', !!response.user, 'hasSession:', !!response.session,
+                  'expiresIn:', response.expires_in, 'forcePasswordReset:', response.force_password_reset);
 
-      // Store token and user info using auth utility
+      // Store token and user info using auth utility with all response fields
       if (response.access_token && response.user) {
-        auth.storeNativeAuthData(response.access_token, response.user);
+        auth.storeNativeAuthData(
+          response.access_token, 
+          response.user,
+          response.expires_in,
+          response.session
+        );
 
-        // Redirect to agent dashboard
-        navigate('/agent_dashboard');
+        // Check if user needs to change password (from root level or user object)
+        const needsPasswordChange = response.force_password_reset || response.user?.force_password_reset;
+        if (needsPasswordChange) {
+          navigate('/forced-password-change');
+        } else {
+          // Redirect to agent dashboard
+          navigate('/agent_dashboard');
+        }
       } else {
         setError('Login failed: Invalid response from server');
       }
@@ -85,14 +115,43 @@ const LoginPage: React.FC = () => {
         <MouseMove />
         <FloatingDots />
 
-        {/* THEME ICON */}
-        <div>
+        {/* THEME ICON & ADMIN SETTINGS */}
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          
+          {/* THEME TOGGLE BUTTON */}
           <button
             onClick={() => setDark(!dark)}
-            className="absolute top-6 right-6 p-2 rounded-md shadow bg-white cursor-pointer"
+            className="p-2 rounded-md shadow bg-white cursor-pointer hover:bg-gray-100 transition-all duration-200"
           >
             {dark ? <GoSun /> : <MdOutlineDarkMode />}
           </button>
+        {/* ADMIN SETTINGS BUTTON */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowAdminMenu(!showAdminMenu)}
+              className="p-2 rounded-md shadow bg-white cursor-pointer hover:bg-gray-100 transition-all duration-200"
+              style={{ color: "var(--text-main)" }}
+              title="Admin Settings"
+            >
+              <IoSettingsSharp size={20} />
+            </button>
+
+            {/* DROPDOWN MENU */}
+            {showAdminMenu && (
+              <div className="absolute top-full right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-50" style={{ background: "var(--card-bg)" }}>
+                <button
+                  onClick={() => {
+                    navigate('/system-admin-login');
+                    setShowAdminMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
+                  style={{ color: "var(--text-main)" }}
+                >
+                  Admin Login
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* LOGIN CARD */}

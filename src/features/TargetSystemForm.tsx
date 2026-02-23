@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint } from 'react-icons/fa';
+import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint, FaEye, FaEyeSlash, FaClipboard, FaCheck } from 'react-icons/fa';
 import { IconType } from 'react-icons';
 
 interface TypeOption {
@@ -155,7 +155,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     type: integrationValue || '',
     integration_id: integrationId || '',
     environment: 'production',
-    auth_method: 'BearerToken',
+    auth_method: 'AssertionJwtExchange',
     host: '',
     port: 443,
     engine_port: 9031,
@@ -170,6 +170,11 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [tokenProviderConfig, setTokenProviderConfig] = useState<any>(null);
+  const [loadingTokenConfig, setLoadingTokenConfig] = useState<boolean>(false);
+  const [expandInstructions, setExpandInstructions] = useState<boolean>(false);
+  const [showIntrospectionSecret, setShowIntrospectionSecret] = useState<boolean>(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Debug: Log props on mount
   useEffect(() => {
@@ -243,6 +248,28 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       });
       
       console.log('[TargetSystemForm] Form data updated with type:', typeValue);
+      
+      // Load token provider config if the system uses AssertionJwtExchange
+      if (system.auth_method && 
+          (system.auth_method === 'assertion_jwt_exchange' || system.auth_method === 'AssertionJwtExchange')) {
+        setLoadingTokenConfig(true);
+        fetch('/api/v1/token-provider-config', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        })
+          .then(response => response.ok ? response.json() : null)
+          .then(result => {
+            if (result?.success && result?.data) {
+              setTokenProviderConfig(result.data);
+              console.log('[TargetSystemForm] Token provider config loaded:', result.data);
+            }
+          })
+          .catch(err => console.error('[TargetSystemForm] Error loading token provider config:', err))
+          .finally(() => setLoadingTokenConfig(false));
+      }
     } else {
       // For new systems, set default port based on type
       if (integrationValue === 'PingFederate' || integrationValue === 'ping_federate') {
@@ -254,6 +281,35 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       }
     }
   }, [system, integrationValue]);
+
+  // Load token provider config when auth method is AssertionJwtExchange
+  useEffect(() => {
+    if (formData.auth_method === 'AssertionJwtExchange' && !tokenProviderConfig && !loadingTokenConfig) {
+      console.log('[TargetSystemForm] useEffect: Auth method is AssertionJwtExchange, loading token config');
+      setLoadingTokenConfig(true);
+      
+      fetch('/api/v1/token-provider-config', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+        .then(response => {
+          console.log('[TargetSystemForm] Token config response status:', response.status);
+          return response.ok ? response.json() : null;
+        })
+        .then(result => {
+          console.log('[TargetSystemForm] Token config fetch result:', result);
+          if (result?.success && result?.data) {
+            setTokenProviderConfig(result.data);
+            console.log('[TargetSystemForm] Token provider config loaded in useEffect:', result.data);
+          }
+        })
+        .catch(err => console.error('[TargetSystemForm] Error loading token provider config in useEffect:', err))
+        .finally(() => setLoadingTokenConfig(false));
+    }
+  }, [formData.auth_method]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -277,7 +333,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   };
 
   // Handle AuthMethod change to set defaults
-  const handleAuthMethodChange = (method: string): void => {
+  const handleAuthMethodChange = async (method: string): Promise<void> => {
     const updates: Partial<FormData> = { auth_method: method };
     
     // Set default ports for PingFederate + BearerToken
@@ -288,6 +344,38 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     }
     
     setFormData(prev => ({ ...prev, ...updates }));
+    
+    // Fetch token provider config if AssertionJwtExchange is selected
+    if (method === 'AssertionJwtExchange') {
+      setLoadingTokenConfig(true);
+      try {
+        const response = await fetch('/api/v1/token-provider-config', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setTokenProviderConfig(result.data);
+            console.log('[TargetSystemForm] Token provider config loaded:', result.data);
+          }
+        } else {
+          console.error('[TargetSystemForm] Failed to load token provider config:', response.statusText);
+          setTokenProviderConfig(null);
+        }
+      } catch (err) {
+        console.error('[TargetSystemForm] Error loading token provider config:', err);
+        setTokenProviderConfig(null);
+      } finally {
+        setLoadingTokenConfig(false);
+      }
+    } else {
+      setTokenProviderConfig(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -335,7 +423,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       // For CREATE mode, validate all auth fields are present
       // For EDIT mode, only validate if user is changing the credentials (non-empty values)
       if (!system) {
-        // CREATE mode - all auth fields required
+        // CREATE mode - all auth fields required (except AssertionJwtExchange)
         if (formData.auth_method === 'BearerToken' && (!formData.client_id || !formData.client_secret)) {
           setError('Client ID and Client Secret are required for BearerToken');
           setLoading(false);
@@ -352,6 +440,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           setError('API Key is required for APIKey authentication');
           setLoading(false);
           return;
+        }
+
+        // AssertionJwtExchange doesn't require credentials - uses token provider config
+        if (formData.auth_method === 'AssertionJwtExchange') {
+          if (!tokenProviderConfig) {
+            setError('Token Provider Configuration is required for Assertion JWT Exchange. Please configure it first.');
+            setLoading(false);
+            return;
+          }
         }
       } else {
         // EDIT mode - only validate non-secret fields (username, client_id always required if present)
@@ -391,7 +488,8 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           'OAuth2': 'oauth2',
           'ClientCredentials': 'client_credentials',
           'BearerToken': 'bearer_token',
-          'Certificate': 'certificate'
+          'Certificate': 'certificate',
+          'AssertionJwtExchange': 'assertion_jwt_exchange'
         };
         return mapping[method] || method.toLowerCase().replace(/\s+/g, '_');
       };
@@ -421,10 +519,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         if (formData.api_key || !system) {
           credentials.api_key = formData.api_key;
         }
+      } else if (formData.auth_method === 'AssertionJwtExchange') {
+        // AssertionJwtExchange uses token provider config, no credentials needed
+        // Credentials object remains empty
       }
 
       // Build submit data in the format expected by API
-      const submitData: SubmitData = {
+      const submitData: any = {
         name: formData.name,
         type: typeToSnakeCase(formData.type),
         integration_id: formData.integration_id,
@@ -434,6 +535,11 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         environment: formData.environment,
         description: formData.description
       };
+
+      // Add use_assertion_jwt_exchange flag if using AssertionJwtExchange
+      if (formData.auth_method === 'AssertionJwtExchange') {
+        submitData.use_assertion_jwt_exchange = true;
+      }
 
       // Add engine_port for PingFederate with BearerToken
       const isPingFederate = typeToSnakeCase(formData.type) === 'ping_federate';
@@ -458,6 +564,18 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   const handleSuccess = (): void => {
     setShowSuccess(false);
     if (onCancel) onCancel();
+  };
+
+  const handleCopyToClipboard = (text: string, fieldName: string): void => {
+    if (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedField(fieldName);
+        // Reset the copied indicator after 2 seconds
+        setTimeout(() => setCopiedField(null), 2000);
+      }).catch(err => {
+        console.error('Failed to copy to clipboard:', err);
+      });
+    }
   };
 
   const handleReset = (): void => {
@@ -507,7 +625,8 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         { value: 'BasicAuth', label: 'Basic Auth', snakeCase: 'basic_auth', icon: FaKey, description: 'Username and password authentication' },
         { value: 'APIKey', label: 'API Key', snakeCase: 'api_key', icon: FaFingerprint, description: 'Single API key authentication' },
         { value: 'OAuth2', label: 'OAuth2', snakeCase: 'oauth2', icon: FaLock, description: 'Full OAuth 2.0 flow' },
-        { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials', icon: FaShieldAlt, description: 'Machine-to-machine authentication' }
+        { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials', icon: FaShieldAlt, description: 'Machine-to-machine authentication' },
+        { value: 'AssertionJwtExchange', label: 'Assertion JWT Exchange', snakeCase: 'assertion_jwt_exchange', icon: FaShieldAlt, description: 'RFC 8693 token exchange using assertion JWT' }
       ];
 
   // Check if current type is PingFederate
@@ -633,6 +752,213 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               <span>Your API key will be securely encrypted and stored</span>
             </p>
           </div>
+        );
+
+      case 'AssertionJwtExchange':
+        return (
+          <>
+            {/* Token Provider Configuration Display */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+              <h3 className="text-sm font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                <span>🔐</span>
+                Token Provider Configuration
+              </h3>
+
+              {loadingTokenConfig ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                  <span className="text-sm text-blue-700">Loading configuration...</span>
+                </div>
+              ) : tokenProviderConfig ? (
+                <div className="space-y-4">
+                  {/* Introspection Endpoint */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Endpoint
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.introspectionUrl || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionUrl, 'introspectionUrl')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'introspectionUrl' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Introspection Client ID */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Client ID
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.introspectionClientId || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionClientId && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionClientId, 'introspectionClientId')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'introspectionClientId' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Introspection Client Secret */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Client Secret
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showIntrospectionSecret ? "text" : "password"}
+                        value={tokenProviderConfig.introspectionClientSecret || ''}
+                        readOnly
+                        placeholder="(not configured)"
+                        className="w-full px-4 py-2 pr-20 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionClientSecret && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowIntrospectionSecret(!showIntrospectionSecret)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title={showIntrospectionSecret ? 'Hide secret' : 'Show secret'}
+                          >
+                            {showIntrospectionSecret ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionClientSecret, 'introspectionClientSecret')}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            {copiedField === 'introspectionClientSecret' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scope */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Scope
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.scope || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.scope && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.scope, 'scope')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'scope' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-sm text-blue-700">
+                  ⚠️ Token provider configuration not found. Please configure it first.
+                </div>
+              )}
+            </div>
+
+            {/* Instructions Section */}
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandInstructions(!expandInstructions)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-100 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+                  <span>📋</span>
+                  Configuration Instructions
+                </h3>
+                <span className={`transform transition-transform duration-300 ${expandInstructions ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+
+              {expandInstructions && (
+                <div className="px-6 py-4 border-t border-amber-200 bg-white space-y-4">
+                  <div className="space-y-3 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-900">General Steps:</p>
+                    <ol className="list-decimal list-inside space-y-2 ml-2">
+                      <li>Configure your target system to trust the SSL certificate of the Token Provider</li>
+                      <li>Set the authentication method to use Assertion JWT Token Exchange (RFC 8693)</li>
+                      <li>Configure introspection endpoint details below in your target system</li>
+                    </ol>
+
+                    {/* PingFederate Specific Instructions */}
+                    {(formData.type === 'PingFederate' || formData.type === 'ping_federate') && (
+                      <div className="mt-4 pt-4 border-t border-amber-200">
+                        <p className="font-semibold text-gray-900 mb-2">PingFederate Configuration:</p>
+                        <ol className="list-decimal list-inside space-y-2 ml-2">
+                          <li>Enable OAuth 2.0 in the Admin API settings</li>
+                          <li>In your target PingFederate system, configure the following in the introspection details:
+                            <div className="mt-2 ml-4 p-3 bg-gray-100 rounded font-mono text-xs space-y-1">
+                              <div><strong>Introspection URL:</strong> {tokenProviderConfig?.introspectionUrl}</div>
+                              <div><strong>Client ID:</strong> {tokenProviderConfig?.introspectionClientId}</div>
+                              <div><strong>Client Secret:</strong> (use from configuration above)</div>
+                              <div><strong>Scope:</strong> {tokenProviderConfig?.scope}</div>
+                            </div>
+                          </li>
+                          <li>Set username.attribute.name = "sub"</li>
+                          <li>Set role.attribute.name = "groups"</li>
+                          <li>Set role.admin = "Vega_Admins"</li>
+                          <li>Set role.cryptoManager = "Vega_Admins"</li>
+                          <li>Set role.userAdmin = "Vega_Admins"</li>
+                          <li>Ensure SSL certificate trust is configured for the Token Provider endpoint</li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* Generic Target System Instructions */}
+                    {!(formData.type === 'PingFederate' || formData.type === 'ping_federate') && (
+                      <div className="mt-4 pt-4 border-t border-amber-200">
+                        <p className="font-semibold text-gray-900 mb-2">Target System Configuration:</p>
+                        <ol className="list-decimal list-inside space-y-2 ml-2">
+                          <li>Configure your {formData.type} system to use RFC 8693 Token Exchange</li>
+                          <li>Set the introspection endpoint to: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{tokenProviderConfig?.introspectionUrl}</code></li>
+                          <li>Use the introspection client credentials provided above</li>
+                          <li>Configure the scope: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{tokenProviderConfig?.scope}</code></li>
+                          <li>Map username to the "sub" claim</li>
+                          <li>Map roles to the "groups" claim</li>
+                          <li>Mark "Vega_Admins" group as administrator role</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         );
 
       default:

@@ -89,6 +89,7 @@ const TargetSystems: React.FC = () => {
   const [canDelete, setCanDelete] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [systemToDelete, setSystemToDelete] = useState<System | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   
   // Filter states - don't include integrationId in API filters
   const [filters, setFilters] = useState<Filters>({
@@ -206,6 +207,8 @@ const TargetSystems: React.FC = () => {
       await api.targetSystems.delete(systemToDelete._id);
       setShowDeleteModal(false);
       setSystemToDelete(null);
+      setDeleteConfirmText('');
+      toast.success('Target system deleted successfully. Associated agents have been removed.');
       fetchData();
     } catch (err) {
       console.error('Error deleting target system:', err);
@@ -217,6 +220,7 @@ const TargetSystems: React.FC = () => {
   const cancelDelete = useCallback((): void => {
     setShowDeleteModal(false);
     setSystemToDelete(null);
+    setDeleteConfirmText('');
   }, []);
 
   const handleTestConnection = async (id: string): Promise<void> => {
@@ -303,10 +307,28 @@ const TargetSystems: React.FC = () => {
             </div>
 
             {/* Warning Message */}
-            <p className="text-gray-600 text-center mb-8">
-              Are you sure you want to delete this target system? This action cannot be undone. 
-              All associated agents and monitoring will be affected.
-            </p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-700">
+                <strong>Warning:</strong> Deleting this target system will permanently remove it along with all associated agents and monitoring data. This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Confirmation Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-red-600 mb-2">
+                To confirm deletion, please enter the target system name
+              </label>
+              <input
+                type="text"
+                placeholder={`Type "${systemToDelete?.name}" to confirm`}
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              {deleteConfirmText && deleteConfirmText !== systemToDelete?.name && (
+                <p className="text-red-600 text-xs mt-2">Target system name does not match</p>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3">
@@ -318,7 +340,8 @@ const TargetSystems: React.FC = () => {
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                disabled={deleteConfirmText !== systemToDelete?.name}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Yes, Delete
               </button>
@@ -536,7 +559,7 @@ const TargetSystems: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-gray-600">Host:</span>
-                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.hostname || system.host}</span>
+                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.host}</span>
                   </div>
                   <div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(system.status)}`}>
