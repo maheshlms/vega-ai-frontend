@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint } from 'react-icons/fa';
+import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint, FaEye, FaEyeSlash, FaClipboard, FaCheck } from 'react-icons/fa';
 import { IconType } from 'react-icons';
 
 interface TypeOption {
@@ -21,14 +21,17 @@ interface System {
   integration_id?: string;
   environment?: string;
   auth_method?: string;
-  host?: string;
-  port?: number;
+  host?: string;  // Deprecated: use hostname
+  hostname?: string;  // Backend returns this field
+  port?: number;  // Deprecated: use default_port
+  default_port?: number;  // Backend returns this field
   base_url?: string;
   engine_port?: number;
   description?: string;
   credentials?: {
-    username?: string;
-    client_id?: string;
+    username?: string;  // For basic_auth (non-sensitive)
+    client_id?: string;  // For bearer_token (non-sensitive)
+    // Note: passwords, secrets, and api_keys are never returned by backend
     [key: string]: any;
   };
 }
@@ -344,7 +347,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     type: integrationValue ? normalizeType(integrationValue) : '',
     integration_id: integrationId || '',
     environment: 'production',
-    auth_method: integDefaults.defaultAuthMethod,
+    auth_method: 'AssertionJwtExchange',
     host: '',
     port: integDefaults.port,
     engine_port: integDefaults.engine_port ?? 9031,
@@ -379,14 +382,44 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [tokenProviderConfig, setTokenProviderConfig] = useState<any>(null);
+  const [loadingTokenConfig, setLoadingTokenConfig] = useState<boolean>(false);
+  const [expandInstructions, setExpandInstructions] = useState<boolean>(false);
+  const [showIntrospectionSecret, setShowIntrospectionSecret] = useState<boolean>(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Debug: Log props on mount
+  useEffect(() => {
+    console.log('[TargetSystemForm] Props received:', {
+      system,
+      typeOptions,
+      availableAuthMethods,
+      integrationValue,
+      integrationId,
+      integrationName,
+      onSubmit: typeof onSubmit,
+      onCancel: typeof onCancel
+    });
+
+    if (typeof onSubmit !== 'function') {
+      console.error('[TargetSystemForm] ERROR: onSubmit is not a function!', onSubmit);
+    }
+  }, [system, typeOptions, availableAuthMethods, integrationValue, integrationId, integrationName, onSubmit, onCancel]);
 
   /* ── load existing system ── */
   useEffect(() => {
     if (system) {
       const credentials = system.credentials || {};
-      let host = system.host || '';
-      let port = system.port || integDefaults.port;
+      console.log('[TargetSystemForm] Credentials from backend:', credentials);
+      console.log('[TargetSystemForm] Username:', credentials.username, 'Client ID:', credentials.client_id);
+      
+      // Extract host and port - backend returns hostname and default_port
+      console.log('[TargetSystemForm] Raw from backend - hostname:', system.hostname, 'default_port:', system.default_port, 'base_url:', system.base_url);
+      let host = system.hostname || system.host || '';
+      let port = system.default_port || system.port || 443;
+      
+      // Fallback: parse from base_url if host/port not available
       if (!host && system.base_url) {
         try {
           const url = new URL(system.base_url);
@@ -394,9 +427,16 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           port = url.port ? parseInt(url.port) : 443;
         } catch {}
       }
-      const typeValue = system.type ? normalizeType(system.type) : '';
-      setFormData(prev => ({
-        ...prev,
+      
+      console.log('[TargetSystemForm] Final extracted host:', host, 'port:', port);
+      
+      // Normalize the type to match form options
+      const rawType = system.type;
+      const typeValue = rawType ? normalizeType(rawType) : '';
+      
+      console.log('[TargetSystemForm] Type conversion: raw="' + rawType + '" -> normalized="' + typeValue + '"');
+      
+      setFormData({
         name: system.name || '',
         type: typeValue,
         integration_id: system.integration_id || '',
@@ -411,7 +451,60 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         password: '',
         client_secret: '',
         api_key: '',
-      }));
+        // Directory / LDAP fields
+        server_url: system.base_url || '',
+        ldap_host: host,
+        ldap_port: port === 636 ? 389 : port,  // assumption: LDAPS is 636, LDAP is 389 or other
+        ldaps_port: port === 636 ? port : 636,
+        base_dn: (system as any).base_dn || '',
+        bind_dn: credentials.bind_dn || '',
+        bind_password: credentials.bind_password || '',
+        enable_ssl: false,
+        ssl_trust_mode: 'trustAll',
+        ssl_certificate: '',
+        ssl_truststore_path: '',
+        ssl_truststore_password: '',
+        // PingOne
+        region: (system as any).region || '',
+        environment_id: (system as any).environment_id || '',
+        // Okta / Auth0
+        domain: (system as any).domain || '',
+        // AzureAD
+        tenant_id: (system as any).tenant_id || ''
+      });
+      
+      console.log('[TargetSystemForm] Form data updated with type:', typeValue);
+      
+      // Load token provider config if the system uses AssertionJwtExchange
+      if (system.auth_method && 
+          (system.auth_method === 'assertion_jwt_exchange' || system.auth_method === 'AssertionJwtExchange')) {
+        setLoadingTokenConfig(true);
+        fetch('/api/v1/token-provider-config', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        })
+          .then(response => response.ok ? response.json() : null)
+          .then(result => {
+            if (result?.success && result?.data) {
+              setTokenProviderConfig(result.data);
+              console.log('[TargetSystemForm] Token provider config loaded:', result.data);
+            }
+          })
+          .catch(err => console.error('[TargetSystemForm] Error loading token provider config:', err))
+          .finally(() => setLoadingTokenConfig(false));
+      }
+    } else {
+      // For new systems, set default port based on type
+      if (integrationValue === 'PingFederate' || integrationValue === 'ping_federate') {
+        setFormData(prev => ({
+          ...prev,
+          port: 9999,
+          engine_port: 9031
+        }));
+      }
     }
   }, [system]);
 
@@ -479,7 +572,37 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     });
   };
 
-  const handleAuthMethodChange = (method: string) => {
+  // Load token provider config when auth method is AssertionJwtExchange
+  useEffect(() => {
+    if (formData.auth_method === 'AssertionJwtExchange' && !tokenProviderConfig && !loadingTokenConfig) {
+      console.log('[TargetSystemForm] useEffect: Auth method is AssertionJwtExchange, loading token config');
+      setLoadingTokenConfig(true);
+      
+      fetch('/api/v1/token-provider-config', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+        .then(response => {
+          console.log('[TargetSystemForm] Token config response status:', response.status);
+          return response.ok ? response.json() : null;
+        })
+        .then(result => {
+          console.log('[TargetSystemForm] Token config fetch result:', result);
+          if (result?.success && result?.data) {
+            setTokenProviderConfig(result.data);
+            console.log('[TargetSystemForm] Token provider config loaded in useEffect:', result.data);
+          }
+        })
+        .catch(err => console.error('[TargetSystemForm] Error loading token provider config in useEffect:', err))
+        .finally(() => setLoadingTokenConfig(false));
+    }
+  }, [formData.auth_method]);
+
+  // Handle AuthMethod change to set defaults
+  const handleAuthMethodChange = async (method: string): Promise<void> => {
     const updates: Partial<FormData> = { auth_method: method };
     const isPF = formData.type === 'PingFederate';
     if (isPF && method === 'BearerToken') {
@@ -487,6 +610,38 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       updates.engine_port = 9031;
     }
     setFormData(prev => ({ ...prev, ...updates }));
+    
+    // Fetch token provider config if AssertionJwtExchange is selected
+    if (method === 'AssertionJwtExchange') {
+      setLoadingTokenConfig(true);
+      try {
+        const response = await fetch('/api/v1/token-provider-config', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setTokenProviderConfig(result.data);
+            console.log('[TargetSystemForm] Token provider config loaded:', result.data);
+          }
+        } else {
+          console.error('[TargetSystemForm] Failed to load token provider config:', response.statusText);
+          setTokenProviderConfig(null);
+        }
+      } catch (err) {
+        console.error('[TargetSystemForm] Error loading token provider config:', err);
+        setTokenProviderConfig(null);
+      } finally {
+        setLoadingTokenConfig(false);
+      }
+    } else {
+      setTokenProviderConfig(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -549,20 +704,66 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         }
       }
 
-      /* auth-method validation (non-directory) */
-      if (!isDirectory(formData.type)) {
+      // Validate port number
+      const portNum = Number(formData.port);
+      if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+        setError('Port must be a valid number between 1 and 65535');
+        setLoading(false);
+        return;
+      }
+      
+      // Validate engine_port if present
+      if (formData.engine_port) {
+        const enginePortNum = Number(formData.engine_port);
+        if (isNaN(enginePortNum) || enginePortNum < 1 || enginePortNum > 65535) {
+          setError('Engine port must be a valid number between 1 and 65535');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // For CREATE mode, validate all auth fields are present
+      // For EDIT mode, only validate non-secret fields
+      if (!system) {
+        // CREATE mode - all auth fields required (except AssertionJwtExchange)
         if (formData.auth_method === 'BearerToken' && (!formData.client_id || !formData.client_secret)) {
-          setError('Client ID and Client Secret are required for Bearer Token');
+          setError('Client ID and Client Secret are required for BearerToken');
           setLoading(false);
           return;
         }
+
         if (formData.auth_method === 'BasicAuth' && (!formData.username || !formData.password)) {
-          setError('Username and Password are required for Basic Auth');
+          setError('Username and Password are required for BasicAuth');
           setLoading(false);
           return;
         }
+
         if (formData.auth_method === 'APIKey' && !formData.api_key) {
-          setError('API Key is required'); setLoading(false); return;
+          setError('API Key is required for APIKey authentication');
+          setLoading(false);
+          return;
+        }
+
+        // AssertionJwtExchange doesn't require credentials - uses token provider config
+        if (formData.auth_method === 'AssertionJwtExchange') {
+          if (!tokenProviderConfig) {
+            setError('Token Provider Configuration is required for Assertion JWT Exchange. Please configure it first.');
+            setLoading(false);
+            return;
+          }
+        }
+      } else {
+        // EDIT mode - only validate non-secret fields (username, client_id always required if present)
+        if (formData.auth_method === 'BearerToken' && !formData.client_id) {
+          setError('Client ID is required');
+          setLoading(false);
+          return;
+        }
+
+        if (formData.auth_method === 'BasicAuth' && !formData.username) {
+          setError('Username is required');
+          setLoading(false);
+          return;
         }
       }
 
@@ -576,13 +777,18 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         return m[t] || t.toLowerCase().replace(/\s+/g, '_');
       };
 
-      /* auth_method → snake_case */
-      const authToSnake = (m: string): string => {
-        const map: Record<string, string> = {
-          BasicAuth: 'basic_auth', APIKey: 'api_key', OAuth2: 'oauth2',
-          ClientCredentials: 'client_credentials', BearerToken: 'bearer_token', Certificate: 'certificate',
+      // Convert auth_method to snake_case for API
+      const authMethodToSnakeCase = (method: string): string => {
+        const mapping: Record<string, string> = {
+          'BasicAuth': 'basic_auth',
+          'APIKey': 'api_key',
+          'OAuth2': 'oauth2',
+          'ClientCredentials': 'client_credentials',
+          'BearerToken': 'bearer_token',
+          'Certificate': 'certificate',
+          'AssertionJwtExchange': 'assertion_jwt_exchange'
         };
-        return map[m] || m.toLowerCase().replace(/\s+/g, '_');
+        return mapping[method] || method.toLowerCase().replace(/\s+/g, '_');
       };
 
       // For directory types use the server_url as-is; others build https://host:port
@@ -609,19 +815,26 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         credentials = { api_key: formData.api_key };
       }
 
-      const submitData: SubmitData = {
+      // Build submit data in the format expected by API
+      const submitData: any = {
         name: formData.name,
         type: typeToSnake(formData.type),
         integration_id: formData.integration_id,
         base_url,
-        auth_method: authToSnake(formData.auth_method),
+        auth_method: authMethodToSnakeCase(formData.auth_method),
         credentials,
         environment: formData.environment,
         description: formData.description,
       };
 
-      /* per-type extras */
-      if (typeToSnake(formData.type) === 'ping_federate' && formData.auth_method === 'BearerToken') {
+      // Add use_assertion_jwt_exchange flag if using AssertionJwtExchange
+      if (formData.auth_method === 'AssertionJwtExchange') {
+        submitData.use_assertion_jwt_exchange = true;
+      }
+
+      // Add engine_port for PingFederate with BearerToken
+      const isPingFederateType = typeToSnake(formData.type) === 'ping_federate';
+      if (isPingFederateType && formData.auth_method === 'BearerToken') {
         submitData.engine_port = formData.engine_port;
       }
       if (isDirectory(formData.type)) {
@@ -671,6 +884,36 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     port: integDefaults.port,
     engine_port: integDefaults.engine_port ?? 9031,
   });
+  const handleCopyToClipboard = (text: string, fieldName: string): void => {
+    if (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedField(fieldName);
+        // Reset the copied indicator after 2 seconds
+        setTimeout(() => setCopiedField(null), 2000);
+      }).catch(err => {
+        console.error('Failed to copy to clipboard:', err);
+      });
+    }
+  };
+
+  // const handleReset = (): void => {
+  //   setFormData({
+  //     name: '',
+  //     type: integrationValue || '',
+  //     integration_id: integrationId || '',
+  //     environment: 'production',
+  //     auth_method: 'BearerToken',
+  //     host: '',
+  //     port: 443,
+  //     engine_port: 9031,
+  //     username: '',
+  //     password: '',
+  //     client_id: '',
+  //     client_secret: '',
+  //     api_key: '',
+  //     description: ''
+  //   });
+  // };
 
   /* ── derived flags ── */
   const isPingFederate = (t: string) => t === 'PingFederate' || t === 'ping_federate';
@@ -688,13 +931,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     { value: 'ClientCredentials', label: 'Client Credentials', snakeCase: 'client_credentials', icon: FaShieldAlt, description: 'Machine-to-machine' },
   ];
 
-  const authMethodOptions: AuthMethodOption[] = availableAuthMethods.length > 0
-    ? availableAuthMethods.map(m => ({ value: snakeToPascal(m), label: snakeToLabel(m), snakeCase: m }))
-    : integDefaults.allowedAuthMethods.map(v =>
-        defaultAuthMethodOptions.find(o => o.value === v) ??
-        { value: v, label: v, snakeCase: v }
-      );
-
   const typeOptions_final: TypeOption[] = typeOptions.length > 0 ? typeOptions : [
     { value: 'PingFederate', label: 'PingFederate' },
     { value: 'PingDirectory', label: 'PingDirectory' },
@@ -709,6 +945,25 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   /* hint helper */
   const hint = (key: string) =>
     integDefaults.hints[key] ?? null;
+
+  // Convert available auth methods to display format
+  const authMethodOptions: AuthMethodOption[] = availableAuthMethods.length > 0 
+    ? availableAuthMethods.map(method => {
+        const pascalCase = snakeToPascal(method);
+        const label = snakeToLabel(method);
+        const defaultOption = defaultAuthMethodOptions.find(o => o.value === pascalCase);
+        
+        return {
+          value: pascalCase,
+          label: label,
+          snakeCase: method,
+          icon: defaultOption?.icon,
+          description: defaultOption?.description
+        };
+      })
+    : defaultAuthMethodOptions.concat([
+        { value: 'AssertionJwtExchange', label: 'Assertion JWT Exchange', snakeCase: 'assertion_jwt_exchange', icon: FaShieldAlt, description: 'RFC 8693 token exchange using assertion JWT' }
+      ]);
 
   const ph = (key: keyof FormData): string =>
     (integDefaults.placeholders[key] as string | undefined) ?? '';
@@ -761,12 +1016,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 placeholder={ph('username') || 'Enter username'} required
                 className={inputCls}
               />
+              {system && (
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <span>ℹ️</span>
+                  <span>Username is required - enter new username to replace existing</span>
+                </p>
+              )}
             </Field>
-            <Field
-              label="Password" required
-              hint={hint('password')}
-              subLabel={system ? '(leave empty to keep existing)' : undefined}
-            >
+
+            <Field label="Password" required hint={hint('password')} subLabel={system ? '(leave empty to keep existing)' : undefined}>
               <input
                 type="password" name="password" value={formData.password}
                 onChange={handleChange} placeholder="Enter password" required={!system}
@@ -787,12 +1045,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 placeholder={ph('client_id') || 'Enter client ID'} required
                 className={inputCls}
               />
+              {system && (
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <span>ℹ️</span>
+                  <span>Client ID is required - enter new client ID to replace existing</span>
+                </p>
+              )}
             </Field>
-            <Field
-              label="Client Secret" required
-              hint={hint('client_secret')}
-              subLabel={system ? '(leave empty to keep existing)' : undefined}
-            >
+
+            <Field label="Client Secret" required hint={hint('client_secret')} subLabel={system ? '(leave empty to keep existing)' : undefined}>
               <textarea
                 name="client_secret" value={formData.client_secret} onChange={handleChange}
                 placeholder={ph('client_secret') || 'Paste your client secret here...'}
@@ -819,6 +1080,213 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             />
             <SecureNote />
           </Field>
+        );
+
+      case 'AssertionJwtExchange':
+        return (
+          <>
+            {/* Token Provider Configuration Display */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+              <h3 className="text-sm font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                <span>🔐</span>
+                Token Provider Configuration
+              </h3>
+
+              {loadingTokenConfig ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                  <span className="text-sm text-blue-700">Loading configuration...</span>
+                </div>
+              ) : tokenProviderConfig ? (
+                <div className="space-y-4">
+                  {/* Introspection Endpoint */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Endpoint
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.introspectionUrl || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionUrl, 'introspectionUrl')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'introspectionUrl' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Introspection Client ID */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Client ID
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.introspectionClientId || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionClientId && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionClientId, 'introspectionClientId')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'introspectionClientId' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Introspection Client Secret */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Introspection Client Secret
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showIntrospectionSecret ? "text" : "password"}
+                        value={tokenProviderConfig.introspectionClientSecret || ''}
+                        readOnly
+                        placeholder="(not configured)"
+                        className="w-full px-4 py-2 pr-20 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.introspectionClientSecret && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowIntrospectionSecret(!showIntrospectionSecret)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title={showIntrospectionSecret ? 'Hide secret' : 'Show secret'}
+                          >
+                            {showIntrospectionSecret ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyToClipboard(tokenProviderConfig.introspectionClientSecret, 'introspectionClientSecret')}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            {copiedField === 'introspectionClientSecret' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scope */}
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-blue-900 mb-2">
+                      Scope
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tokenProviderConfig.scope || ''}
+                        readOnly
+                        className="w-full px-4 py-2 pr-10 text-sm bg-white border border-blue-300 rounded-lg text-gray-700 cursor-not-allowed opacity-75 font-mono"
+                      />
+                      {tokenProviderConfig.scope && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(tokenProviderConfig.scope, 'scope')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedField === 'scope' ? <FaCheck size={16} /> : <FaClipboard size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-sm text-blue-700">
+                  ⚠️ Token provider configuration not found. Please configure it first.
+                </div>
+              )}
+            </div>
+
+            {/* Instructions Section */}
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandInstructions(!expandInstructions)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-100 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+                  <span>📋</span>
+                  Configuration Instructions
+                </h3>
+                <span className={`transform transition-transform duration-300 ${expandInstructions ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+
+              {expandInstructions && (
+                <div className="px-6 py-4 border-t border-amber-200 bg-white space-y-4">
+                  <div className="space-y-3 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-900">General Steps:</p>
+                    <ol className="list-decimal list-inside space-y-2 ml-2">
+                      <li>Configure your target system to trust the SSL certificate of the Token Provider</li>
+                      <li>Set the authentication method to use Assertion JWT Token Exchange (RFC 8693)</li>
+                      <li>Configure introspection endpoint details below in your target system</li>
+                    </ol>
+
+                    {/* PingFederate Specific Instructions */}
+                    {(formData.type === 'PingFederate' || formData.type === 'ping_federate') && (
+                      <div className="mt-4 pt-4 border-t border-amber-200">
+                        <p className="font-semibold text-gray-900 mb-2">PingFederate Configuration:</p>
+                        <ol className="list-decimal list-inside space-y-2 ml-2">
+                          <li>Enable OAuth 2.0 in the Admin API settings</li>
+                          <li>In your target PingFederate system, configure the following in the introspection details:
+                            <div className="mt-2 ml-4 p-3 bg-gray-100 rounded font-mono text-xs space-y-1">
+                              <div><strong>Introspection URL:</strong> {tokenProviderConfig?.introspectionUrl}</div>
+                              <div><strong>Client ID:</strong> {tokenProviderConfig?.introspectionClientId}</div>
+                              <div><strong>Client Secret:</strong> (use from configuration above)</div>
+                              <div><strong>Scope:</strong> {tokenProviderConfig?.scope}</div>
+                            </div>
+                          </li>
+                          <li>Set username.attribute.name = "sub"</li>
+                          <li>Set role.attribute.name = "groups"</li>
+                          <li>Set role.admin = "Vega_Admins"</li>
+                          <li>Set role.cryptoManager = "Vega_Admins"</li>
+                          <li>Set role.userAdmin = "Vega_Admins"</li>
+                          <li>Ensure SSL certificate trust is configured for the Token Provider endpoint</li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* Generic Target System Instructions */}
+                    {!(formData.type === 'PingFederate' || formData.type === 'ping_federate') && (
+                      <div className="mt-4 pt-4 border-t border-amber-200">
+                        <p className="font-semibold text-gray-900 mb-2">Target System Configuration:</p>
+                        <ol className="list-decimal list-inside space-y-2 ml-2">
+                          <li>Configure your {formData.type} system to use RFC 8693 Token Exchange</li>
+                          <li>Set the introspection endpoint to: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{tokenProviderConfig?.introspectionUrl}</code></li>
+                          <li>Use the introspection client credentials provided above</li>
+                          <li>Configure the scope: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{tokenProviderConfig?.scope}</code></li>
+                          <li>Map username to the "sub" claim</li>
+                          <li>Map roles to the "groups" claim</li>
+                          <li>Mark "Vega_Admins" group as administrator role</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         );
 
       default:
@@ -1344,19 +1812,92 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   </select>
                 </Field>
 
-                {/* ── Auth Method (hidden for directory types — always BasicAuth) ── */}
-                {!isDirectory(formData.type) && (
-                  <Field label="Authentication Method" required hint="Choose the authentication method for your system">
-                    <select
-                      name="auth_method" value={formData.auth_method}
-                      onChange={e => handleAuthMethodChange(e.target.value)} required
-                      className={`${inputCls} cursor-pointer`}
-                    >
-                      {authMethodOptions.map(m => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
-                      ))}
-                    </select>
-                  </Field>
+                {/* Authentication Method - Dropdown */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Authentication Method <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="auth_method"
+                    value={formData.auth_method}
+                    onChange={(e) => handleAuthMethodChange(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300 cursor-pointer"
+                  >
+                    {authMethodOptions.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <span>💡</span>
+                    <span>Choose the authentication method for your system</span>
+                  </p>
+                </div>
+
+                {/* Host */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Host/Domain <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="host"
+                    value={formData.host}
+                    onChange={handleChange}
+                    placeholder="e.g., api.example.com"
+                    required
+                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <span>💡</span>
+                    <span>Enter the hostname or domain without the protocol</span>
+                  </p>
+                </div>
+
+                {/* Port */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Port
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    name="port"
+                    value={formData.port}
+                    onChange={handleChange}
+                    placeholder="443"
+                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <span>💡</span>
+                    <span>Default is 443 for HTTPS</span>
+                  </p>
+                </div>
+
+                {/* Engine Port - Only for PingFederate + BearerToken */}
+                {isPingFederate(formData.type) && formData.auth_method === 'BearerToken' && (
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Engine Port
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      name="engine_port"
+                      value={formData.engine_port}
+                      onChange={handleChange}
+                      placeholder="9031"
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                    />
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <span>💡</span>
+                      <span>Engine port for PingFederate admin API (default: 9031)</span>
+                    </p>
+                  </div>
                 )}
 
                 {/* ── Host (hidden for directory types — captured via Server URL) ── */}

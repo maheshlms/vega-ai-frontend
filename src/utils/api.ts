@@ -102,9 +102,27 @@ export const api = {
     return await response.json();
   },
 
-  // Post-login endpoint - Called after Auth0 authentication
+  // Native login API call (username/password authentication)
+  nativeLogin: async (credentials: LoginCredentials): Promise<any> => {
+    const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Invalid username or password');
+    }
+
+    return await response.json();
+  },
+
+  // Post-login endpoint - Called after Auth0 authentication (Legacy)
   postLogin: async (userDetails: UserDetails, accessToken: string): Promise<any> => {
-    const response = await fetch(`${API_BASE}/api/v1/postlogin`, {
+    const response = await fetch(`${API_BASE}/api/v1/auth/login-auth0`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -121,7 +139,7 @@ export const api = {
     return await response.json();
   },
 
-  // Logout endpoint - Called before clearing local data
+  // Logout endpoint - Called before clearing local data (Legacy for Auth0)
   logoutUser: async (userDetails: UserDetails, sessionId?: string): Promise<any> => {
     const token = auth.getToken();
     if (!token) {
@@ -150,6 +168,34 @@ export const api = {
       return await response.json().catch(() => ({}));
     } catch (error) {
       console.error('Error calling logout endpoint:', error);
+      // Don't throw - we still want to complete local logout
+    }
+  },
+
+  // Native logout endpoint - Called before clearing local data
+  nativeLogout: async (): Promise<any> => {
+    const token = auth.getToken();
+    if (!token) {
+      console.warn('No token available for native logout endpoint');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Native logout endpoint returned non-OK status');
+      }
+
+      return await response.json().catch(() => ({}));
+    } catch (error) {
+      console.error('Error calling native logout endpoint:', error);
       // Don't throw - we still want to complete local logout
     }
   },
@@ -628,6 +674,84 @@ export const api = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || 'Failed to delete integration');
+      }
+      
+      return await response.json();
+    }
+  },
+
+  // User management endpoints
+  users: {
+    // List all users (admin only - requires MANAGE_USERS permission)
+    list: async (skip: number = 0, limit: number = 100): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users?skip=${skip}&limit=${limit}`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to fetch users');
+      }
+      
+      return await response.json();
+    },
+
+    // Get specific user details
+    get: async (userId: string): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to fetch user');
+      }
+      
+      return await response.json();
+    },
+
+    // Create new user (admin only)
+    create: async (userData: any): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, '/api/v1/users', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to create user');
+      }
+      
+      return await response.json();
+    },
+
+    // Update user (admin only)
+    update: async (userId: string, userData: any): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Failed to update user');
+      }
+      
+      return await response.json();
+    },
+
+    // Delete user (admin only)
+    delete: async (userId: string): Promise<any> => {
+      const response = await fetchWithAuthToService(API_BASE, `/api/v1/users/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const errorMsg = error.detail || 'Failed to delete user';
+        const err = new Error(errorMsg) as any;
+        err.status = response.status;
+        throw err;
       }
       
       return await response.json();

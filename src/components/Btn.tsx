@@ -5,13 +5,17 @@ interface BtnProps {
   className?: string;
   onClick?: () => void;
   disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  style?: React.CSSProperties;
 }
 
-const Btn: React.FC<BtnProps> = ({ value, className = "", onClick, disabled = false }) => {
+const Btn: React.FC<BtnProps> = ({ value, className = "", onClick, disabled = false, type = 'button', style }) => {
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
+      style={style}
       className={`
         text-white font-semibold relative overflow-hidden
         transition-all duration-200

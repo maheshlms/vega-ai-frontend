@@ -45,7 +45,8 @@ interface TargetSystem {
   status: string;
   integration_id?: string;
   base_url?: string;
-  host?: string;
+  host?: string;  // Deprecated: use hostname
+  hostname?: string;  // Backend returns this field
 }
 
 interface FormData {
@@ -410,7 +411,9 @@ const AgentCreationForm: React.FC = () => {
           selectedAvatarName: formData.selectedAvatarName,  // ← display name
         },
       };
-      await api.llmRuntime.createAgent(payload);
+
+      const response = await api.llmRuntime.createAgent(payload);
+      console.log('[AgentCreationForm] Agent created:', response);
       setShowSuccess(true);
     } catch (err: any) {
       setError(err?.message || 'Failed to create agent');
@@ -493,10 +496,12 @@ const AgentCreationForm: React.FC = () => {
                 <span className="text-sm text-gray-600">Target System</span>
                 <span className="font-semibold text-gray-900 text-sm">{formData.selectedTargetSystem?.name}</span>
               </div>
-              <div className="flex items-center justify-between border-t border-gray-200 pt-3">
-                <span className="text-sm text-gray-600">Notification Window</span>
-                <span className="font-semibold text-gray-900 text-sm">{formData.notificationWindow} days</span>
-              </div>
+              {agentTypeId !== 'connection' && (
+                <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+                  <span className="text-sm text-gray-600">Notification Window</span>
+                  <span className="font-semibold text-gray-900 text-sm">{formData.notificationWindow} days</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => { setShowSuccess(false); navigate('/agents'); }}
@@ -631,40 +636,61 @@ const AgentCreationForm: React.FC = () => {
                         required
                         className="w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 transition-all hover:border-gray-300 cursor-pointer"
                       >
-                        <option value="">Select a target system…</option>
-                        {availableTargetSystems.map(s => (
-                          <option key={s._id || s.id} value={s._id || s.id}>
-                            {s.name} ({s.base_url || s.host || 'n/a'})
-                          </option>
-                        ))}
+                        <option value="">Select a target system...</option>
+                        {availableTargetSystems.map((system) => {
+                          const systemId = system._id || system.id;
+                          const url = system.base_url || system.hostname || system.host || 'n/a';
+                          
+                          return (
+                            <option key={systemId} value={systemId}>
+                              {system.name} ({url})
+                            </option>
+                          );
+                        })}
                       </select>
                     )}
                     {formData.selectedTargetSystem && (
-                      <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 flex items-center gap-2">
-                        <FaCheckCircle className="text-green-500 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-green-900">{formData.selectedTargetSystem.name}</p>
-                          <p className="text-xs text-green-700">{formData.selectedTargetSystem.base_url || formData.selectedTargetSystem.host}</p>
+                      <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 animate-slideDown">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <FaCheckCircle className="text-white text-xs" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-green-900 truncate">
+                              {formData.selectedTargetSystem.name}
+                            </p>
+                            <p className="text-xs text-green-700 truncate">
+                              {formData.selectedTargetSystem.base_url || formData.selectedTargetSystem.hostname || formData.selectedTargetSystem.host}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* 5. Notification Window */}
-                <div>
-                  <label className="block text-sm 2xl:text-base font-semibold text-gray-900 mb-2">
-                    Notification Window (days) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number" name="notificationWindow" value={formData.notificationWindow}
-                    onChange={handleInputChange} min="1" max="365" required
-                    className="w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 transition-all hover:border-gray-300"
-                  />
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <span>💡</span><span>Days before license expiry to send notifications</span>
-                  </p>
-                </div>
+                {/* Notification Window - Hide for connection agent */}
+                {agentTypeId !== 'connection' && (
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Notification Window (days) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="notificationWindow"
+                      value={formData.notificationWindow}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="365"
+                      required={agentTypeId !== 'connection'}
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                    />
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <span>💡</span>
+                      <span>Number of days before license expiry to send notifications</span>
+                    </p>
+                  </div>
+                )}
 
                 {/* 6. Notification Channel */}
                 <div>

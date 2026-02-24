@@ -1,18 +1,25 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from 'react';
 
-function FloatingDots() {
-  const [dots, setDots] = useState([])
+interface Dot {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+}
+
+const FloatingDots: React.FC = () => {
+  const [dots, setDots] = useState<Dot[]>([]);
 
   useEffect(() => {
-    const total = 50
-    const newDots = Array.from({ length: total }).map(() => ({
+    const total = 50;
+    const newDots: Dot[] = Array.from({ length: total }).map(() => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
-      size: Math.random() * 4    + 1,
+      size: Math.random() * 4 + 1,
       speed: Math.random() * 2 + 0.1,
-    }))
-    setDots(newDots)
-  }, [])
+    }));
+    setDots(newDots);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,11 +28,11 @@ function FloatingDots() {
           ...d,
           y: d.y <= 0 ? window.innerHeight : d.y - d.speed,
         }))
-      )
-    }, 30)
+      );
+    }, 30);
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0">
@@ -42,7 +49,7 @@ function FloatingDots() {
         />
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default FloatingDots
+export default FloatingDots;

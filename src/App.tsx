@@ -21,8 +21,7 @@ import AgentChat from './features/agents/AgentChat';
 import AgentCreationForm from './features/agents/AgentCreationForm';
 import AgentTypeSelection from './features/agents/AgentTypeSelection';
 import AiAssist from './features/agents/AiAssist';
-import  DirectoryAgentChat from './features/agents/DirectoryAgentChat';
-// import TaskExecute from './features/agents/TaskExecute';
+import DirectoryAgentChat from './features/agents/DirectoryAgentChat';
 
 // Admin
 import AdminSidebar from './features/admin/AdminSidebar';
@@ -33,6 +32,11 @@ import TargetSystemShow from './features/admin/TargetSystemShow';
 import CreateTargetSystem from './features/admin/CreateTargetSystem';
 import TargetSystems from './features/admin/TargetSystems';
 import IntegrationsPage from './features/admin/IntegrationsPage';
+import AdminLoginForm from './features/admin/AdminLoginForm';
+import AdminSection from './features/admin/AdminSection';
+import AdminUserManagement from './features/admin/AdminUserManagement';
+import AdminTokenManagement from './features/admin/AdminTokenManagement';
+import ForcedPasswordChange from './features/admin/ForcedPasswordChange';
 
 // Audit
 import AuditLogs from './features/audit/AuditLogs';
@@ -62,6 +66,73 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// Admin Protected Route Component
+interface AdminProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
+  const location: Location = useLocation();
+  
+  // Check if authenticated and has admin role
+  const isValidAdminSession = () => {
+    try {
+      // First check if user is authenticated (validates token expiry and user existence)
+      if (!auth.isAuthenticated()) {
+        return false;
+      }
+      
+      // Then check if user is admin
+      if (!auth.isAdmin()) {
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Admin session validation failed:', error);
+      return false;
+    }
+  };
+
+  if (!isValidAdminSession()) {
+    console.warn('🔒 Admin access denied - redirecting to admin login');
+    return <Navigate to="/system-admin-login" state={{ from: location }} replace />;
+  }
+
+  // If user needs to change password, allow access only to the password change page
+  if (auth.needsPasswordChange()) {
+    if (location.pathname !== '/system-admin/change-password-forced') {
+      console.warn('⚠️ Admin needs to change password - redirecting to password change page');
+      return <Navigate to="/system-admin/change-password-forced" state={{ from: location }} replace />;
+    }
+  }
+
+  return <>{children}</>;
+}
+
+// Forced Password Change Route Component
+interface ForcedPasswordChangeRouteProps {
+  children: React.ReactNode;
+}
+
+function ForcedPasswordChangeRoute({ children }: ForcedPasswordChangeRouteProps) {
+  const location: Location = useLocation();
+  
+  // Only allow access to this route if user needs to change password
+  if (!auth.isAuthenticated()) {
+    console.warn('🔒 Not authenticated - redirecting to login');
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  
+  if (!auth.needsPasswordChange()) {
+    console.warn('⚠️ Password change not required - redirecting based on role');
+    const redirectPath = auth.isAdmin() ? '/system-admin' : '/agent_dashboard';
+    return <Navigate to={redirectPath} state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth0();
   const location: Location = useLocation();
@@ -83,6 +154,12 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Check if user needs to change password
+  if (auth.needsPasswordChange()) {
+    console.warn('⚠️ User needs to change password - redirecting to password change page');
+    return <Navigate to="/forced-password-change" state={{ from: location }} replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -92,7 +169,10 @@ function AppContent() {
     location.pathname === '/login' || 
     location.pathname === '/' || 
     location.pathname === '/logout' || 
-    location.pathname === '/callback';
+    location.pathname === '/callback' ||
+    location.pathname === '/system-admin-login' ||
+    location.pathname === '/forced-password-change' ||
+    location.pathname.startsWith('/system-admin');
 
   return (
     <div className="h-screen overflow-hidden flex flex-col">
@@ -110,7 +190,6 @@ function AppContent() {
         >
           <ScrollToTop />
           <Routes>
-
             {/* Default */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
@@ -158,6 +237,18 @@ function AppContent() {
             <Route path="/setting/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
             <Route path="/settings/rename" element={<ProtectedRoute><Rename /></ProtectedRoute>} />
 
+            {/* Forced Password Change */}
+            <Route path="/forced-password-change" element={<ForcedPasswordChangeRoute><ForcedPasswordChange /></ForcedPasswordChangeRoute>} />
+
+            {/* System Admin Routes */}
+            <Route path="/system-admin-login" element={<AdminLoginForm />} />
+            <Route path="/system-admin/change-password-forced" element={<AdminProtectedRoute><ForcedPasswordChange /></AdminProtectedRoute>} />
+            <Route path="/system-admin" element={<AdminProtectedRoute><AdminSection /></AdminProtectedRoute>} />
+            <Route path="/system-admin/users" element={<AdminProtectedRoute><AdminUserManagement /></AdminProtectedRoute>} />
+            <Route path="/system-admin/tokens" element={<AdminProtectedRoute><AdminTokenManagement /></AdminProtectedRoute>} />
+
+            {/* Catch all - redirect to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </div>
