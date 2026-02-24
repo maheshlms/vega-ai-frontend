@@ -473,6 +473,32 @@ const AdminAgentControll: React.FC = () => {
     toast.success('Agent data refreshed!');
   };
 
+  // ─── Get agent success rate from telemetry data ───
+  const getAgentSuccessRateFromTelemetry = (agentId: string): number | null => {
+    if (!telemetryData?.agent_metrics?.length) return null;
+    const agentMetric = telemetryData.agent_metrics.find(m => m.agent_id === agentId);
+    return agentMetric ? Math.round(agentMetric.overall_success_rate) : null;
+  };
+
+  // ─── Get agent task stats from telemetry data ───
+  const getAgentTasksFromTelemetry = (agentId: string) => {
+    if (!telemetryData?.agent_metrics?.length) return null;
+    const agentMetric = telemetryData.agent_metrics.find(m => m.agent_id === agentId);
+    if (!agentMetric) return null;
+    return {
+      tasksGiven: agentMetric.total_tasks,
+      tasksCompleted: agentMetric.successful_tasks,
+      tasksFailed: agentMetric.failed_tasks,
+    };
+  };
+
+  // ─── Get agent response time from telemetry data ───
+  const getAgentResponseTimeFromTelemetry = (agentId: string): number | null => {
+    if (!telemetryData?.agent_metrics?.length) return null;
+    const agentMetric = telemetryData.agent_metrics.find(m => m.agent_id === agentId);
+    return agentMetric ? Math.round(agentMetric.avg_response_time_ms) : null;
+  };
+
   // ─── Kill switch handlers ───
   const handleKillswitchClick = (): void => {
     setShowKillswitchModal(true);
@@ -584,7 +610,10 @@ const AdminAgentControll: React.FC = () => {
       };
     });
   }, []);
-  const dummyMaxTaskValue = Math.max(...dummyActivityData.map(d => d.tasksGiven), 1);
+  
+  // ─── Chart data: only use real telemetry data, no fallback to dummy data ───
+  const chartActivityData = activityData;
+  const chartMaxTaskValue = activityData.length > 0 ? Math.max(...activityData.map(d => d.tasksGiven), 1) : 1;
 
   const chartGridColor = isDark ? "#1e2d45" : "#e5e7eb";
   const scrollbarClass = isDark ? "custom-scrollbar" : "light-scrollbar";
@@ -783,12 +812,12 @@ const AdminAgentControll: React.FC = () => {
               </div>
             </div>
             
-            {telemetryError ? (
+            {telemetryError || activityData.length === 0 ? (
               <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg">
                 <div className="text-center">
                   <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-3" />
                   <p className="text-red-700 font-medium">Telemetry Data Unavailable</p>
-                  <p className="text-red-600 text-sm mt-1">{telemetryError}</p>
+                  <p className="text-red-600 text-sm mt-1">{telemetryError || 'No telemetry data available'}</p>
                 </div>
               </div>
             ) : (
@@ -796,10 +825,10 @@ const AdminAgentControll: React.FC = () => {
             {/* Chart Area */}
             <div className="relative h-64 mb-4">
               <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-gray-400 dark:text-slate-500 pr-2">
-                <span>{dummyMaxTaskValue}</span>
-                <span>{Math.floor(dummyMaxTaskValue * 0.75)}</span>
-                <span>{Math.floor(dummyMaxTaskValue * 0.5)}</span>
-                <span>{Math.floor(dummyMaxTaskValue * 0.25)}</span>
+                <span>{chartMaxTaskValue}</span>
+                <span>{Math.floor(chartMaxTaskValue * 0.75)}</span>
+                <span>{Math.floor(chartMaxTaskValue * 0.5)}</span>
+                <span>{Math.floor(chartMaxTaskValue * 0.25)}</span>
                 <span>0</span>
               </div>
               <div className="absolute left-12 right-0 top-0 bottom-6">
@@ -811,10 +840,10 @@ const AdminAgentControll: React.FC = () => {
                   <line x1="0" y1="240" x2="700" y2="240" stroke={chartGridColor} strokeWidth="1" />
                   {/* Tasks Given line */}
                   <polyline
-                    points={dummyActivityData
+                    points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (dummyActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksGiven / dummyMaxTaskValue) * 240;
+                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
                       .join(' ')}
@@ -823,10 +852,10 @@ const AdminAgentControll: React.FC = () => {
                   />
                   {/* Tasks Completed line */}
                   <polyline
-                    points={dummyActivityData
+                    points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (dummyActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksCompleted / dummyMaxTaskValue) * 240;
+                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
                       .join(' ')}
@@ -835,10 +864,10 @@ const AdminAgentControll: React.FC = () => {
                   />
                   {/* Tasks In Process line */}
                   <polyline
-                    points={dummyActivityData
+                    points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (dummyActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksInProcess / dummyMaxTaskValue) * 240;
+                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksInProcess / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
                       .join(' ')}
@@ -847,10 +876,10 @@ const AdminAgentControll: React.FC = () => {
                   />
                   {/* Tasks Failed line */}
                   <polyline
-                    points={dummyActivityData
+                    points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (dummyActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksFailed / dummyMaxTaskValue) * 240;
+                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const y = 240 - (d.tasksFailed / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
                       .join(' ')}
@@ -858,10 +887,10 @@ const AdminAgentControll: React.FC = () => {
                     strokeLinecap="round" strokeLinejoin="round"
                   />
                   {/* Dot markers */}
-                  {dummyActivityData.map((d, i) => {
-                    const x = (i / (dummyActivityData.length - 1)) * 700;
-                    const yGiven = 240 - (d.tasksGiven / dummyMaxTaskValue) * 240;
-                    const yCompleted = 240 - (d.tasksCompleted / dummyMaxTaskValue) * 240;
+                  {chartActivityData.map((d, i) => {
+                    const x = (i / (chartActivityData.length - 1)) * 700;
+                    const yGiven = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
+                    const yCompleted = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
                     return (
                       <React.Fragment key={i}>
                         <circle cx={x} cy={yGiven} r="4" fill="#22c55e" />
@@ -872,7 +901,7 @@ const AdminAgentControll: React.FC = () => {
                 </svg>
               </div>
               <div className="absolute left-12 right-0 bottom-0 flex justify-between text-xs text-gray-500 dark:text-slate-500">
-                {dummyActivityData.map((d, i) => (
+                {chartActivityData.map((d, i) => (
                   <div key={i} className="text-center">
                     <div className="font-medium">{d.day}</div>
                   </div>
@@ -885,22 +914,22 @@ const AdminAgentControll: React.FC = () => {
                 {[
                   {
                     color: 'bg-green-500', label: 'Tasks Given',
-                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksGiven, 0),
+                    value: chartActivityData.reduce((sum, d) => sum + d.tasksGiven, 0),
                     textColor: 'text-green-600 dark:text-green-400',
                   },
                   {
                     color: 'bg-blue-500', label: 'Completed',
-                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksCompleted, 0),
+                    value: chartActivityData.reduce((sum, d) => sum + d.tasksCompleted, 0),
                     textColor: 'text-blue-600 dark:text-blue-400',
                   },
                   {
                     color: 'bg-yellow-500', label: 'In Process',
-                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksInProcess, 0),
+                    value: chartActivityData.reduce((sum, d) => sum + d.tasksInProcess, 0),
                     textColor: 'text-yellow-600 dark:text-yellow-400',
                   },
                   {
                     color: 'bg-red-500', label: 'Failed',
-                    value: dummyActivityData.reduce((sum, d) => sum + d.tasksFailed, 0),
+                    value: chartActivityData.reduce((sum, d) => sum + d.tasksFailed, 0),
                     textColor: 'text-red-600 dark:text-red-400',
                   },
                 ].map(item => (
@@ -1079,7 +1108,11 @@ const AdminAgentControll: React.FC = () => {
             </div>
 
             <div className={`flex-1 overflow-y-auto max-h-[320px] pr-2 space-y-3 ${scrollbarClass}`}>
-              {agents.map((agent) => (
+              {agents.map((agent) => {
+                const telemetryResponseTime = getAgentResponseTimeFromTelemetry(agent.id);
+                const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : agent.responseTime;
+                
+                return (
                 <div key={agent.id}
                   className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${agent.killswitchActivated || agent.softDeleted ? 'bg-gray-50 dark:bg-[#111827]/50' : 'hover:bg-gray-50 dark:hover:bg-[#111827]'}`}>
                   <div className="flex-shrink-0">
@@ -1101,22 +1134,23 @@ const AdminAgentControll: React.FC = () => {
                     <div
                       className={`h-8 rounded-full transition-all duration-700 flex items-center justify-end pr-2 ${
                         agent.killswitchActivated || agent.softDeleted ? 'bg-gray-300 dark:bg-slate-600' :
-                        agent.responseTime === 0 ? 'bg-gray-200 dark:bg-slate-700' :
-                        agent.responseTime < 200 ? 'bg-green-500' :
-                        agent.responseTime < 400 ? 'bg-blue-500' :
-                        agent.responseTime < 500 ? 'bg-yellow-500' : 'bg-red-500'
+                        displayResponseTime === 0 ? 'bg-gray-200 dark:bg-slate-700' :
+                        displayResponseTime < 200 ? 'bg-green-500' :
+                        displayResponseTime < 400 ? 'bg-blue-500' :
+                        displayResponseTime < 500 ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
-                      style={{ width: agent.responseTime === 0 ? '10%' : `${Math.min((agent.responseTime / 600) * 100, 100)}%` }}
+                      style={{ width: displayResponseTime === 0 ? '10%' : `${Math.min((displayResponseTime / 600) * 100, 100)}%` }}
                     >
                       <span className={`text-xs font-semibold ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-600 dark:text-slate-300' : 'text-white'}`}>
-                        {agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}
+                        {displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A'}
                       </span>
                     </div>
                   </div>
                   {agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-200 dark:border-red-800">Killed</span>}
                   {agent.softDeleted && !agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded border border-gray-300 dark:border-slate-600">Deleted</span>}
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#1e2d45]">
@@ -1240,15 +1274,29 @@ const AdminAgentControll: React.FC = () => {
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2 w-20">
-                            <div className={`h-2 rounded-full ${agent.successRate >= 90 ? 'bg-green-500' : agent.successRate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${agent.successRate}%` }} />
-                          </div>
-                          <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">{agent.successRate}%</span>
+                          {(() => {
+                            const telemetryRate = getAgentSuccessRateFromTelemetry(agent.id);
+                            const rate = telemetryRate !== null ? telemetryRate : agent.successRate;
+                            return (
+                              <>
+                                <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2 w-20">
+                                  <div className={`h-2 rounded-full ${rate >= 90 ? 'bg-green-500' : rate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                    style={{ width: `${rate}%` }} />
+                                </div>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">{rate}%</span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden xl:table-cell">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {(() => {
+                            const telemetryResponseTime = getAgentResponseTimeFromTelemetry(agent.id);
+                            const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : agent.responseTime;
+                            return displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A';
+                          })()}
+                        </div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
                         {agent.killswitchActivated ? (
@@ -1406,7 +1454,14 @@ const AdminAgentControll: React.FC = () => {
                         <div className="text-xs text-gray-400">Tasks</div>
                       </div>
                       <div className="text-center">
-                        <div className={`text-sm font-bold ${agent.successRate >= 90 ? 'text-green-600 dark:text-green-400' : agent.successRate >= 70 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{agent.successRate}%</div>
+                        <div className={`text-sm font-bold ${(() => {
+                          const telemetryRate = getAgentSuccessRateFromTelemetry(agent.id);
+                          const rate = telemetryRate !== null ? telemetryRate : agent.successRate;
+                          return rate >= 90 ? 'text-green-600 dark:text-green-400' : rate >= 70 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+                        })()}`}>{(() => {
+                          const telemetryRate = getAgentSuccessRateFromTelemetry(agent.id);
+                          return telemetryRate !== null ? `${telemetryRate}%` : `${agent.successRate}%`;
+                        })()}</div>
                         <div className="text-xs text-gray-400">Success</div>
                       </div>
                       <div className="text-center">
@@ -1527,11 +1582,22 @@ const AdminAgentControll: React.FC = () => {
                 </div>
                 <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-4 border border-gray-200 dark:border-[#1e2d45]">
                   <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Response Time</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{selectedAgent.responseTime > 0 ? `${selectedAgent.responseTime}ms` : 'N/A'}</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {(() => {
+                      const telemetryResponseTime = getAgentResponseTimeFromTelemetry(selectedAgent.id);
+                      const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : selectedAgent.responseTime;
+                      return displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A';
+                    })()}
+                  </div>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
                   <div className="text-xs text-green-600 dark:text-green-400 uppercase tracking-wide mb-1">Success Rate</div>
-                  <div className="text-lg font-semibold text-green-700 dark:text-green-300">{selectedAgent.successRate}%</div>
+                  <div className="text-lg font-semibold text-green-700 dark:text-green-300">
+                    {(() => {
+                      const telemetryRate = getAgentSuccessRateFromTelemetry(selectedAgent.id);
+                      return telemetryRate !== null ? `${telemetryRate}%` : `${selectedAgent.successRate}%`;
+                    })()}
+                  </div>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                   <div className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Tasks Completed</div>
@@ -1542,25 +1608,33 @@ const AdminAgentControll: React.FC = () => {
               <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-[#1a2234] rounded-xl p-5 border border-blue-200 dark:border-blue-900/40">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><FaChartLine className="text-blue-600 dark:text-blue-400" />Task Statistics</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { label: 'Tasks Given', value: selectedAgent.tasksGiven, color: 'bg-green-500', pct: 100 },
-                    { label: 'Completed', value: selectedAgent.tasksCompleted, color: 'bg-blue-500',
-                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksCompleted / selectedAgent.tasksGiven) * 100 : 0 },
-                    { label: 'In Process', value: selectedAgent.tasksInProcess, color: 'bg-yellow-500',
-                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksInProcess / selectedAgent.tasksGiven) * 100 : 0 },
-                    { label: 'Failed', value: selectedAgent.tasksFailed, color: 'bg-red-500',
-                      pct: selectedAgent.tasksGiven > 0 ? (selectedAgent.tasksFailed / selectedAgent.tasksGiven) * 100 : 0 },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-700 dark:text-slate-300">{item.label}</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value}</span>
+                  {(() => {
+                    const telemetryTasks = getAgentTasksFromTelemetry(selectedAgent.id);
+                    const tasksGiven = telemetryTasks?.tasksGiven ?? selectedAgent.tasksGiven;
+                    const tasksCompleted = telemetryTasks?.tasksCompleted ?? selectedAgent.tasksCompleted;
+                    const tasksFailed = telemetryTasks?.tasksFailed ?? selectedAgent.tasksFailed;
+                    const tasksInProcess = selectedAgent.tasksInProcess;
+                    
+                    return [
+                      { label: 'Tasks Given', value: tasksGiven, color: 'bg-green-500', pct: 100 },
+                      { label: 'Completed', value: tasksCompleted, color: 'bg-blue-500',
+                        pct: tasksGiven > 0 ? (tasksCompleted / tasksGiven) * 100 : 0 },
+                      { label: 'In Process', value: tasksInProcess, color: 'bg-yellow-500',
+                        pct: tasksGiven > 0 ? (tasksInProcess / tasksGiven) * 100 : 0 },
+                      { label: 'Failed', value: tasksFailed, color: 'bg-red-500',
+                        pct: tasksGiven > 0 ? (tasksFailed / tasksGiven) * 100 : 0 },
+                    ].map(item => (
+                      <div key={item.label}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-700 dark:text-slate-300">{item.label}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value}</span>
+                        </div>
+                        <div className="bg-white dark:bg-[#0d1117] rounded-full h-2">
+                          <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.pct}%` }} />
+                        </div>
                       </div>
-                      <div className="bg-white dark:bg-[#0d1117] rounded-full h-2">
-                        <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
 
@@ -1588,7 +1662,7 @@ const AdminAgentControll: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-5 border border-gray-200 dark:border-[#1e2d45]">
+              {/* <div className="bg-gray-50 dark:bg-[#111827] rounded-xl p-5 border border-gray-200 dark:border-[#1e2d45]">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Overall Performance</h3>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
@@ -1615,7 +1689,7 @@ const AdminAgentControll: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 dark:bg-[#111827] border-t border-gray-200 dark:border-[#1e2d45] p-6 rounded-b-2xl">
