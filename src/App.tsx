@@ -20,7 +20,6 @@ import Agents from './features/agents/Agents';
 import AgentChat from './features/agents/AgentChat';
 import AgentCreationForm from './features/agents/AgentCreationForm';
 import AgentTypeSelection from './features/agents/AgentTypeSelection';
-import AiAssist from './features/agents/AiAssist';
 import DirectoryAgentChat from './features/agents/DirectoryAgentChat';
 
 // Admin
@@ -201,7 +200,7 @@ function AppContent() {
             <Route path="/agents/:agentId/chat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
             <Route path="/agents/agentchat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
             {/* <Route path="/agents/agentchat/execute" element={<ProtectedRoute><TaskExecute /></ProtectedRoute>} /> */}
-            <Route path="/agents/agentchat/aiassist" element={<ProtectedRoute><AiAssist /></ProtectedRoute>} />
+            {/* <Route path="/agents/agentchat/aiassist" element={<ProtectedRoute><AiAssist /></ProtectedRoute>} /> */}
             <Route path="/agents/select-target" element={<ProtectedRoute><AvailableIntegration /></ProtectedRoute>} />
             <Route path="/agents/select-type/:integrationType/:targetId" element={<ProtectedRoute><AgentTypeSelection /></ProtectedRoute>} />
             <Route path="/agents/create/:agentTypeId" element={<ProtectedRoute><AgentCreationForm /></ProtectedRoute>} />
