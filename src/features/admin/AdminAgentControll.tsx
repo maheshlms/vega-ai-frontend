@@ -358,12 +358,7 @@ const AdminAgentControll: React.FC = () => {
           return;
         }
 
-        const response = await fetch('/api/v1/telemetry/dashboard?days=7', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await api.fetchWithAuth('/api/v1/telemetry/dashboard?days=7');
 
         if (response.ok) {
           const data: DashboardMetricsResponse = await response.json();
