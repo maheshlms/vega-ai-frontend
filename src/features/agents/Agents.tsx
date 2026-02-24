@@ -392,12 +392,13 @@ const Agents: React.FC = () => {
     { icon: GoGraph,        value: `${avgSuccessRate}%`,      description: 'Avg Success Rate', sub: '+2.3% improvement',  iconcolor: '#F97316', bg: '#FFF7ED' },
   ];
 
-  const filters = ['All', 'Production', 'Staging', 'Inactive'];
+  const filters = ['All', 'Production', 'Staging', 'Development', 'Inactive'];
 
   const getFilteredAgents = (): Agent[] => {
     switch (activeFilter) {
       case 'Production': return agents.filter(a => !a.killswitchActivated && ['production', 'prod'].includes(a.environment?.toLowerCase() || ''));
       case 'Staging':    return agents.filter(a => !a.killswitchActivated && ['staging', 'stage'].includes(a.environment?.toLowerCase() || ''));
+      case 'Development':    return agents.filter(a => !a.killswitchActivated && ['development', 'dev'].includes(a.environment?.toLowerCase() || ''));
       case 'Inactive':   return agents.filter(a => a.killswitchActivated || a.status !== 'active');
       default:           return agents.filter(a => !a.killswitchActivated);
     }
