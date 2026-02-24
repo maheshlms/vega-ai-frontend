@@ -297,6 +297,43 @@ const getIntegrationDefaults = (type: string): IntegrationDefaults => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/* Helper Components (defined outside to prevent re-creation on render)       */
+/* ─────────────────────────────────────────────────────────────────────────── */
+const SecureNote = () => (
+  <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+    <span>🔒</span>
+    <span>This value will be securely encrypted and stored</span>
+  </p>
+);
+
+const Hint = ({ text }: { text: string }) => (
+  <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+    <span>💡</span>
+    <span>{text}</span>
+  </p>
+);
+
+interface FieldProps {
+  label: string;
+  required?: boolean;
+  hint?: string | null;
+  subLabel?: string;
+  children: React.ReactNode;
+}
+
+const Field = ({ label, required, hint, subLabel, children }: FieldProps) => (
+  <div className="group">
+    <label className="block text-sm 2xl:text-base font-semibold text-gray-900 mb-2">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+      {subLabel && <span className="text-xs 2xl:text-sm text-gray-500 ml-2 font-normal">{subLabel}</span>}
+    </label>
+    {children}
+    {hint && <Hint text={hint} />}
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /* Component                                                                   */
 /* ─────────────────────────────────────────────────────────────────────────── */
 const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
@@ -980,33 +1017,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
     switch (formData.auth_method) {
       case 'BasicAuth':
-        /* PingDirectory / LDAP → use Bind DN instead of username */
-        if (isDirectory(formData.type)) {
-          return (
-            <>
-              <Field label="Bind DN" required hint={hint('bind_dn')}>
-                <input
-                  type="text" name="bind_dn" value={formData.bind_dn} onChange={handleChange}
-                  placeholder={ph('bind_dn') || 'cn=admin,dc=example,dc=com'} required
-                  className={inputCls}
-                />
-              </Field>
-              <Field
-                label="Bind Password"
-                required
-                hint={hint('bind_password')}
-                subLabel={system ? '(leave empty to keep existing)' : undefined}
-              >
-                <input
-                  type="password" name="bind_password" value={formData.bind_password}
-                  onChange={handleChange} placeholder="Enter bind password" required={!system}
-                  className={inputCls}
-                />
-                <SecureNote />
-              </Field>
-            </>
-          );
-        }
         /* All other types → username + password */
         return (
           <>
@@ -1624,42 +1634,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     'w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300';
 
   /* ─────────────────────────────────────────────────────────────────────── */
-  /* Small reusable presentational pieces                                     */
-  /* ─────────────────────────────────────────────────────────────────────── */
-  const SecureNote = () => (
-    <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
-      <span>🔒</span>
-      <span>This value will be securely encrypted and stored</span>
-    </p>
-  );
-
-  const Hint = ({ text }: { text: string }) => (
-    <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
-      <span>💡</span>
-      <span>{text}</span>
-    </p>
-  );
-
-  interface FieldProps {
-    label: string;
-    required?: boolean;
-    hint?: string | null;
-    subLabel?: string;
-    children: React.ReactNode;
-  }
-  const Field = ({ label, required, hint, subLabel, children }: FieldProps) => (
-    <div className="group">
-      <label className="block text-sm 2xl:text-base font-semibold text-gray-900 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-        {subLabel && <span className="text-xs 2xl:text-sm text-gray-500 ml-2 font-normal">{subLabel}</span>}
-      </label>
-      {children}
-      {hint && <Hint text={hint} />}
-    </div>
-  );
-
-  /* ─────────────────────────────────────────────────────────────────────── */
   /* Render                                                                   */
   /* ─────────────────────────────────────────────────────────────────────── */
   return (
@@ -1833,47 +1807,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
                     <span>Choose the authentication method for your system</span>
-                  </p>
-                </div>
-
-                {/* Host */}
-                <div className="group">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Host/Domain <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="host"
-                    value={formData.host}
-                    onChange={handleChange}
-                    placeholder="e.g., api.example.com"
-                    required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  />
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <span>💡</span>
-                    <span>Enter the hostname or domain without the protocol</span>
-                  </p>
-                </div>
-
-                {/* Port */}
-                <div className="group">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Port
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    name="port"
-                    value={formData.port}
-                    onChange={handleChange}
-                    placeholder="443"
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
-                  />
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <span>💡</span>
-                    <span>Default is 443 for HTTPS</span>
                   </p>
                 </div>
 

@@ -22,6 +22,15 @@ interface Message {
   files?: string[];
   isError?: boolean;
   isSuccess?: boolean;
+  file_path?: string;
+  filename?: string;
+  metadata?: {
+    type?: string;
+    csr_content?: string;
+    keypair_id?: string;
+    filename?: string;
+    [key: string]: any;
+  };
 }
 
 interface Agent {
@@ -144,6 +153,7 @@ const AgentChat: React.FC = () => {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const [approvalProcessing, setApprovalProcessing] = useState<boolean>(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
   // ── Avatar (HeyGen Streaming SDK) state ───────────────────────────────────
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -538,9 +548,80 @@ const AgentChat: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
+    // Reset the file input so the same file can be selected again
+    if (e.target) e.target.value = '';
   };
   const handleRemoveFile = (index: number) =>
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+
+  // ── Handle file download from metadata ────────────────────────────────────
+  const handleDownloadFromMetadata = useCallback((content: string, filename: string, mimeType: string = 'application/octet-stream') => {
+    try {
+      // Create a blob from the content
+      const blob = new Blob([content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('File downloaded:', filename);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      alert('Failed to download file. Please try again.');
+    }
+  }, []);
+
+  // ── Handle file download ──────────────────────────────────────────────────
+  const handleDownloadFile = async (message: Message): Promise<void> => {
+    if (!message.file_path) return;
+    
+    setDownloadingFileId(message.id);
+    
+    try {
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+      const downloadUrl = `${backendUrl}${message.file_path}`;
+      
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = message.filename || 'download.txt';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('File downloaded successfully:', message.filename);
+    } catch (error: any) {
+      console.error('Error downloading file:', error);
+      alert(`Failed to download file: ${error.message}`);
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
 
   // ── Approval ──────────────────────────────────────────────────────────────
   const handleApprovalButtonClick = async (action: string) => {
@@ -688,7 +769,15 @@ const AgentChat: React.FC = () => {
 
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
       const agentKey = `Agent${agentMessageIndex}`;
-      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date() };
+      const aiMessage: Message = { 
+        id: Date.now() + 1, 
+        text: aiResponseText, 
+        sender: 'ai', 
+        timestamp: new Date(),
+        file_path: data.file_path,
+        filename: data.filename,
+        metadata: data.metadata
+      };
       setMessages(prev => [...prev, aiMessage]);
 
       const newHistory: ChatHistory = { ...updatedHistory, [agentKey]: aiResponseText };
@@ -729,6 +818,7 @@ const AgentChat: React.FC = () => {
           display: flex;
           flex-direction: column;
           height: 100vh;
+          max-height: 100vh;
           background: #F9FAFB;
           overflow: hidden;
         }
@@ -736,11 +826,12 @@ const AgentChat: React.FC = () => {
         /* ── Header ── */
         .agc-header {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 10px 24px;
+          padding: 8px 20px;
           background: #fff;
           box-shadow: 0 1px 6px rgba(0,0,0,0.06);
           flex-shrink: 0;
           z-index: 20;
+          height: 50px;
         }
         .agc-header-left { display: flex; align-items: center; gap: 16px; }
         .agc-back-btn {
@@ -804,13 +895,14 @@ const AgentChat: React.FC = () => {
         .agc-body {
           display: flex;
           flex: 1;
+          min-height: 0;
           overflow: hidden;
         }
 
         /* ── LEFT: Avatar Panel — full-body rectangle ── */
         .agc-avatar-panel {
-          width: 340px;
-          min-width: 300px;
+          width: 300px;
+          min-width: 280px;
           flex-shrink: 0;
           border-right: 1px solid #eaecf0;
           background: #fff;
@@ -823,6 +915,7 @@ const AgentChat: React.FC = () => {
         /* Full-height avatar stage */
         .agc-avatar-stage {
           flex: 1;
+          min-height: 0;
           position: relative;
           overflow: hidden;
           background: #f1f5f9;
@@ -1029,6 +1122,7 @@ const AgentChat: React.FC = () => {
         /* ── RIGHT: Chat Panel ── */
         .agc-chat-panel {
           flex: 1;
+          min-height: 0;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1036,11 +1130,12 @@ const AgentChat: React.FC = () => {
         }
 
         .agc-chat-header {
-          padding: 14px 20px;
+          padding: 10px 16px;
           border-bottom: 1px solid #eaecf0;
           background: #fff;
           display: flex; align-items: center; justify-content: space-between;
           flex-shrink: 0;
+          height: 56px;
         }
         .agc-chat-title {
           font-size: 18px; font-weight: 700; color: #111827;
@@ -1048,7 +1143,10 @@ const AgentChat: React.FC = () => {
         .agc-chat-subtitle { font-size: 14px; color: #9ca3af; margin-top: 2px; }
 
         .agc-messages {
-          flex: 1; overflow-y: auto; padding: 20px;
+          flex: 1; 
+          min-height: 0;
+          overflow-y: auto; 
+          padding: 16px;
           display: flex; flex-direction: column; gap: 4px;
           scrollbar-width: thin; scrollbar-color: #e5e7eb transparent;
         }
@@ -1174,8 +1272,9 @@ const AgentChat: React.FC = () => {
         /* Input zone */
         .agc-input-zone {
           background: #fff; border-top: 1px solid #eaecf0;
-          padding: 12px 16px 16px;
+          padding: 10px 16px 12px;
           flex-shrink: 0;
+          height: auto;
         }
         .agc-file-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .agc-chip {
@@ -1465,6 +1564,55 @@ const AgentChat: React.FC = () => {
                           {message.files && message.files.length > 0 && (
                             <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>
                               📎 {message.files.join(', ')}
+                            </div>
+                          )}
+                          {/* Download button for metadata files (e.g., CSR) */}
+                          {message.metadata?.type && message.metadata?.filename && (
+                            <div style={{ marginTop: 8 }}>
+                              <button
+                                onClick={() => {
+                                  const content = message.metadata?.csr_content || '';
+                                  const filename = message.metadata?.filename || 'file.txt';
+                                  handleDownloadFromMetadata(content, filename, 'application/x-pem-file');
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: 12,
+                                  backgroundColor: '#4f46e5',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6
+                                }}
+                              >
+                                📥 Download {message.metadata.filename}
+                              </button>
+                            </div>
+                          )}
+                          {/* Download button for file_path files */}
+                          {message.file_path && message.sender === 'ai' && (
+                            <div style={{ marginTop: 8 }}>
+                              <button
+                                onClick={() => handleDownloadFile(message)}
+                                disabled={downloadingFileId === message.id}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: 12,
+                                  backgroundColor: downloadingFileId === message.id ? '#9ca3af' : '#4f46e5',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: downloadingFileId === message.id ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6
+                                }}
+                              >
+                                {downloadingFileId === message.id ? '⏳ Downloading...' : `📥 Download ${message.filename || 'file'}`}
+                              </button>
                             </div>
                           )}
                         </div>

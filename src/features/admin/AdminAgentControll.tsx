@@ -205,7 +205,7 @@ const exportAgentsCSV = (agents: Agent[]) => {
   ];
   const rows = agents.map(a => [
     a.name, a.type,
-    a.killswitchActivated ? 'Killed' : a.softDeleted ? 'Deleted' : a.isActive ? 'Active' : 'Inactive',
+    a.killswitchActivated ? 'Disabled' : a.softDeleted ? 'Deleted' : a.isActive ? 'Active' : 'Inactive',
     a.environment || 'N/A',
     a.tasksCompleted, `${a.successRate}%`, `${a.responseTime}ms`,
     a.createdBy,
@@ -539,10 +539,10 @@ const AdminAgentControll: React.FC = () => {
       const response = await api.llmRuntime.activateKillswitch(selectedAgent.id, { reason: killswitchReason });
       setAgents(prev => prev.map(agent =>
         agent.id === selectedAgent.id
-          ? { ...agent, killswitchActivated: true, isActive: false, status: 'killed' }
+          ? { ...agent, killswitchActivated: true, isActive: false, status: 'disabled' }
           : agent
       ));
-      setSelectedAgent(prev => prev ? ({ ...prev, killswitchActivated: true, isActive: false, status: 'killed' }) : null);
+      setSelectedAgent(prev => prev ? ({ ...prev, killswitchActivated: true, isActive: false, status: 'disabled' }) : null);
       setShowKillswitchModal(false);
       setShowAgentModal(false);
       setKillswitchReason('');
@@ -740,7 +740,7 @@ const AdminAgentControll: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600 dark:text-slate-400">Paused or killed</span>
+              <span className="text-gray-600 dark:text-slate-400">Paused or disabled</span>
             </div>
           </div>
 
@@ -1169,7 +1169,7 @@ const AdminAgentControll: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  {agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-200 dark:border-red-800">Killed</span>}
+                  {agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-200 dark:border-red-800">Disabled</span>}
                   {agent.softDeleted && !agent.killswitchActivated && <span className="flex-shrink-0 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded border border-gray-300 dark:border-slate-600">Deleted</span>}
                 </div>
               );
@@ -1292,7 +1292,10 @@ const AdminAgentControll: React.FC = () => {
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300 hidden md:table-cell">{agent.environment || 'N/A'}</td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.tasksCompleted}</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{(() => {
+                          const telemetryTasks = getAgentTasksFromTelemetry(agent.id);
+                          return telemetryTasks?.tasksCompleted ?? agent.tasksCompleted;
+                        })()}</div>
                         <div className="text-xs text-gray-500 dark:text-slate-500">completed</div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
@@ -1323,7 +1326,7 @@ const AdminAgentControll: React.FC = () => {
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
                         {agent.killswitchActivated ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"><FaPowerOff className="w-2 h-2" />Killed</span>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"><FaPowerOff className="w-2 h-2" />Disabled</span>
                         ) : agent.softDeleted ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600">Deleted</span>
                         ) : (
@@ -1406,7 +1409,7 @@ const AdminAgentControll: React.FC = () => {
                     color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
                   },
                   {
-                    label: 'Killed/Deleted',
+                    label: 'Disabled/Deleted',
                     value: agents.filter(a => a.killswitchActivated || a.softDeleted).length,
                     filter: 'killed' as const,
                     color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
@@ -1463,7 +1466,7 @@ const AdminAgentControll: React.FC = () => {
                         <span className="font-semibold text-gray-900 dark:text-white">{agent.name}</span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{agent.type}</span>
                         {agent.environment && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#0d1117] text-gray-600 dark:text-slate-400">{agent.environment}</span>}
-                        {agent.killswitchActivated && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center gap-1"><FaPowerOff className="text-xs" />Killed</span>}
+                        {agent.killswitchActivated && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center gap-1"><FaPowerOff className="text-xs" />Disabled</span>}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-slate-500 mt-1">
                         Created by <span className="font-medium text-gray-700 dark:text-slate-300">{agent.createdBy}</span> · Last active {new Date(agent.lastActivity).toLocaleDateString()}
@@ -1473,7 +1476,10 @@ const AdminAgentControll: React.FC = () => {
                     {/* Stats */}
                     <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
                       <div className="text-center">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">{agent.tasksCompleted}</div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">{(() => {
+                          const telemetryTasks = getAgentTasksFromTelemetry(agent.id);
+                          return telemetryTasks?.tasksCompleted ?? agent.tasksCompleted;
+                        })()}</div>
                         <div className="text-xs text-gray-400">Tasks</div>
                       </div>
                       <div className="text-center">
@@ -1500,10 +1506,10 @@ const AdminAgentControll: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Kill switch info if killed */}
+                  {/* Kill switch info if disabled */}
                   {agent.killswitchActivated && agent.killswitchReason && (
                     <div className="mt-3 pt-3 border-t border-red-100 dark:border-red-900/30 text-xs text-red-600 dark:text-red-400">
-                      <span className="font-semibold">Killed by:</span> {agent.killswitchActivatedBy} · <span className="font-semibold">Reason:</span> {agent.killswitchReason}
+                      <span className="font-semibold">Disabled by:</span> {agent.killswitchActivatedBy} · <span className="font-semibold">Reason:</span> {agent.killswitchReason}
                     </div>
                   )}
                 </div>
@@ -1571,7 +1577,7 @@ const AdminAgentControll: React.FC = () => {
                       <h4 className="text-sm font-bold text-green-900 dark:text-green-300 mb-1">Re-enable Agent</h4>
                       {(selectedAgent.killswitchActivatedBy || selectedAgent.killswitchReason) && (
                         <div className="bg-white/70 dark:bg-[#111827]/70 rounded-lg p-2 mb-2 border border-green-200 dark:border-green-800 space-y-0.5">
-                          {selectedAgent.killswitchActivatedBy && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">Killed by:</span> {selectedAgent.killswitchActivatedBy}</p>}
+                          {selectedAgent.killswitchActivatedBy && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">Disabled by:</span> {selectedAgent.killswitchActivatedBy}</p>}
                           {selectedAgent.killswitchActivatedAt && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">At:</span> {new Date(selectedAgent.killswitchActivatedAt).toLocaleString()}</p>}
                           {selectedAgent.killswitchReason && <p className="text-xs text-gray-600 dark:text-slate-400"><span className="font-semibold">Reason:</span> {selectedAgent.killswitchReason}</p>}
                         </div>
@@ -1624,7 +1630,12 @@ const AdminAgentControll: React.FC = () => {
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                   <div className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Tasks Completed</div>
-                  <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">{selectedAgent.tasksCompleted}</div>
+                  <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                    {(() => {
+                      const telemetryTasks = getAgentTasksFromTelemetry(selectedAgent.id);
+                      return telemetryTasks?.tasksCompleted ?? selectedAgent.tasksCompleted;
+                    })()}
+                  </div>
                 </div>
               </div>
 
