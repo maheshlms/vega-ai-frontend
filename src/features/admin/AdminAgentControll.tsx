@@ -420,17 +420,40 @@ const AdminAgentControll: React.FC = () => {
 
   // activity timeline (last 7 days) - only from telemetry data, no fallback to mock
   const activityData: ActivityDataPoint[] = telemetryData?.daily_metrics_past_7_days?.length 
-    ? telemetryData.daily_metrics_past_7_days.map(metric => {
-        const date = new Date(metric.date);
-        return {
-          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-          fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          tasksCompleted: metric.successful_tasks,
-          tasksGiven: metric.total_tasks,
-          tasksInProcess: 0, // Not available in telemetry data
-          tasksFailed: metric.failed_tasks
-        };
-      })
+    ? (() => {
+        // Group by date and aggregate metrics across all agents
+        const dateMap = new Map<string, { total_tasks: number; successful_tasks: number; failed_tasks: number; date: string }>();
+        
+        telemetryData.daily_metrics_past_7_days.forEach(metric => {
+          if (!dateMap.has(metric.date)) {
+            dateMap.set(metric.date, {
+              date: metric.date,
+              total_tasks: 0,
+              successful_tasks: 0,
+              failed_tasks: 0
+            });
+          }
+          const entry = dateMap.get(metric.date)!;
+          entry.total_tasks += metric.total_tasks;
+          entry.successful_tasks += metric.successful_tasks;
+          entry.failed_tasks += metric.failed_tasks;
+        });
+        
+        // Convert map to sorted array of ActivityDataPoint
+        return Array.from(dateMap.values())
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .map(aggregated => {
+            const date = new Date(aggregated.date);
+            return {
+              day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+              fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              tasksCompleted: aggregated.successful_tasks,
+              tasksGiven: aggregated.total_tasks,
+              tasksInProcess: 0, // Not available in telemetry data
+              tasksFailed: aggregated.failed_tasks
+            };
+          });
+      })()
     : [];
 
   // ─── Details panel helpers ───
@@ -842,7 +865,7 @@ const AdminAgentControll: React.FC = () => {
                   <polyline
                     points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
                         const y = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
@@ -854,7 +877,7 @@ const AdminAgentControll: React.FC = () => {
                   <polyline
                     points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
                         const y = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
@@ -866,7 +889,7 @@ const AdminAgentControll: React.FC = () => {
                   <polyline
                     points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
                         const y = 240 - (d.tasksInProcess / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
@@ -878,7 +901,7 @@ const AdminAgentControll: React.FC = () => {
                   <polyline
                     points={chartActivityData
                       .map((d, i) => {
-                        const x = (i / (chartActivityData.length - 1)) * 700;
+                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
                         const y = 240 - (d.tasksFailed / chartMaxTaskValue) * 240;
                         return `${x},${y}`;
                       })
@@ -888,7 +911,7 @@ const AdminAgentControll: React.FC = () => {
                   />
                   {/* Dot markers */}
                   {chartActivityData.map((d, i) => {
-                    const x = (i / (chartActivityData.length - 1)) * 700;
+                    const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
                     const yGiven = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
                     const yCompleted = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
                     return (
@@ -902,7 +925,7 @@ const AdminAgentControll: React.FC = () => {
               </div>
               <div className="absolute left-12 right-0 bottom-0 flex justify-between text-xs text-gray-500 dark:text-slate-500">
                 {chartActivityData.map((d, i) => (
-                  <div key={i} className="text-center">
+                  <div key={i} className="text-center flex-1">
                     <div className="font-medium">{d.day}</div>
                   </div>
                 ))}

@@ -725,10 +725,7 @@ const AgentChat: React.FC = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
-
         .agc-root {
-          font-family: 'DM Sans', sans-serif;
           display: flex;
           flex-direction: column;
           height: 100vh;
@@ -750,7 +747,6 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; gap: 6px;
           background: none; border: none; cursor: pointer;
           color: #6366f1; font-size: 13px; font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
           padding: 6px 10px; border-radius: 8px;
           transition: all 0.15s;
         }
@@ -783,11 +779,10 @@ const AgentChat: React.FC = () => {
           50% { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
         }
         .agc-agent-name {
-          font-family: 'Syne', sans-serif;
-          font-size: 15px; font-weight: 700; color: #111827;
+          font-size: 18px; font-weight: 700; color: #111827;
         }
         .agc-agent-status {
-          font-size: 11px; color: #10b981; font-weight: 500;
+          font-size: 13px; color: #10b981; font-weight: 500;
           display: flex; align-items: center; gap: 4px;
         }
         .agc-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
@@ -797,7 +792,7 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; gap: 6px;
           padding: 6px 14px; border-radius: 9px;
           font-size: 13px; font-weight: 500; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          transition: all 0.15s;
           border: 1px solid transparent;
         }
         .agc-hbtn-neutral { background: #fff; border-color: #e5e7eb; color: #6b7280; }
@@ -867,8 +862,7 @@ const AgentChat: React.FC = () => {
           display: flex; flex-direction: column; gap: 4px;
         }
         .agc-avatar-name-badge {
-          font-family: 'Syne', sans-serif;
-          font-size: 15px; font-weight: 700; color: #111827;
+          font-size: 16px; font-weight: 700; color: #111827;
         }
         .agc-avatar-status-row {
           display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -888,7 +882,7 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; gap: 5px;
           padding: 5px 10px; border-radius: 8px;
           font-size: 11px; font-weight: 600; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          transition: all 0.15s;
           border: 1px solid transparent;
         }
         .agc-overlay-btn-green {
@@ -964,7 +958,7 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; gap: 6px;
           padding: 8px 16px; border-radius: 10px;
           font-size: 12px; font-weight: 600; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          transition: all 0.15s;
           border: none;
         }
         .agc-ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -982,7 +976,6 @@ const AgentChat: React.FC = () => {
           border-radius: 12px;
           background: linear-gradient(135deg, #4f46e5, #6366f1);
           color: #fff;
-          font-family: 'DM Sans', sans-serif;
           font-weight: 700;
           font-size: 14px;
           border: none;
@@ -1003,7 +996,6 @@ const AgentChat: React.FC = () => {
           color: #92400e;
           font-size: 12px; font-weight: 600;
           cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
           animation: agc-glow-amber 1.5s ease-in-out infinite;
         }
         @keyframes agc-glow-amber {
@@ -1051,10 +1043,9 @@ const AgentChat: React.FC = () => {
           flex-shrink: 0;
         }
         .agc-chat-title {
-          font-family: 'Syne', sans-serif;
-          font-size: 15px; font-weight: 700; color: #111827;
+          font-size: 18px; font-weight: 700; color: #111827;
         }
-        .agc-chat-subtitle { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+        .agc-chat-subtitle { font-size: 14px; color: #9ca3af; margin-top: 2px; }
 
         .agc-messages {
           flex: 1; overflow-y: auto; padding: 20px;
@@ -1095,10 +1086,9 @@ const AgentChat: React.FC = () => {
           50% { transform: translateY(-8px); }
         }
         .agc-welcome-title {
-          font-family: 'Syne', sans-serif;
-          font-size: 22px; font-weight: 800; color: #111827; margin-bottom: 8px;
+          font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px;
         }
-        .agc-welcome-sub { font-size: 13px; color: #9ca3af; }
+        .agc-welcome-sub { font-size: 15px; color: #9ca3af; }
 
         /* Message rows */
         .agc-row { display: flex; align-items: flex-end; gap: 8px; animation: agc-msgin 0.22s ease; }
@@ -1115,7 +1105,7 @@ const AgentChat: React.FC = () => {
         }
         .agc-bubble {
           max-width: 68%; padding: 10px 14px;
-          border-radius: 18px; font-size: 13.5px;
+          border-radius: 18px; font-size: 14px;
           word-break: break-word; line-height: 1.65;
         }
         .agc-bubble.user {
@@ -1167,7 +1157,7 @@ const AgentChat: React.FC = () => {
           padding: 7px 14px; border-radius: 8px;
           background: #ecfdf5; border: 1px solid #6ee7b7;
           color: #065f46; font-size: 12px; font-weight: 500; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+          transition: background 0.15s;
         }
         .agc-approve:hover { background: #d1fae5; }
         .agc-approve:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1176,7 +1166,7 @@ const AgentChat: React.FC = () => {
           padding: 7px 14px; border-radius: 8px;
           background: #fff5f5; border: 1px solid #fca5a5;
           color: #b91c1c; font-size: 12px; font-weight: 500; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+          transition: background 0.15s;
         }
         .agc-reject:hover { background: #fee2e2; }
         .agc-reject:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1219,7 +1209,7 @@ const AgentChat: React.FC = () => {
         .agc-text-input {
           flex: 1; background: none; border: none; outline: none;
           color: #111827; font-size: 13.5px;
-          font-family: 'DM Sans', sans-serif; padding: 4px 0;
+          padding: 4px 0;
         }
         .agc-text-input::placeholder { color: #d1d5db; }
         .agc-divider { width: 1px; height: 18px; background: #e5e7eb; flex-shrink: 0; }
@@ -1228,7 +1218,7 @@ const AgentChat: React.FC = () => {
           padding: 8px 18px; border-radius: 10px;
           background: linear-gradient(135deg, #4f46e5, #6366f1);
           border: none; color: #fff; font-size: 13px; font-weight: 600;
-          cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0;
+          cursor: pointer; flex-shrink: 0;
           box-shadow: 0 4px 12px rgba(99,102,241,0.3); transition: all 0.18s;
         }
         .agc-send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,0.38); }

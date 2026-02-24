@@ -5,6 +5,7 @@ import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
 import { useNavigate } from 'react-router-dom'
 import api from '../../utils/api';
 import { IconType } from 'react-icons';
+import { auth } from '../../utils/auth';
 
 interface Agent {
   id: string;
@@ -35,6 +36,30 @@ interface RemoteAgent {
     selectedAvatarName?: string;   // ← stored by AgentCreationForm
   };
   killswitch_activated?: boolean;
+}
+
+interface AgentMetrics {
+  agent_id: string;
+  total_tasks: number;
+  successful_tasks: number;
+  failed_tasks: number;
+  overall_success_rate: number;
+  avg_response_time_ms: number;
+  min_response_time_ms: number;
+  max_response_time_ms: number;
+}
+
+interface DailyMetrics {
+  date: string;
+  total_tasks: number;
+  successful_tasks: number;
+  failed_tasks: number;
+}
+
+interface DashboardMetricsResponse {
+  daily_metrics_past_7_days: DailyMetrics[];
+  agent_metrics: AgentMetrics[];
+  timestamp: string;
 }
 
 interface TargetSystemMap { [key: string]: string; }
@@ -95,11 +120,12 @@ const AvatarPhoto: React.FC<AvatarPhotoProps> = ({ src, name, size, accent = '#6
 interface AgentCardProps {
   agent: Agent;
   accent: string;
+  metrics?: AgentMetrics | null;
   onDelete: (e: React.MouseEvent<HTMLButtonElement>, agent: Agent) => void;
   onClick: () => void;
 }
 
-const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, onDelete, onClick }) => {
+const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, metrics, onDelete, onClick }) => {
   const isKilled = agent.killswitchActivated;
   const isActive = agent.status === 'active' && !isKilled;
 
@@ -162,12 +188,16 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, onDelete, onClick 
         {/* Stats */}
         <div className="flex justify-around">
           <div className="text-center">
-            <div className={`text-lg 2xl:text-xl font-bold ${isKilled ? 'text-gray-400' : 'text-gray-800'}`}>{agent.tasks}</div>
+            <div className={`text-lg 2xl:text-xl font-bold ${isKilled ? 'text-gray-400' : 'text-gray-800'}`}>
+              {metrics?.total_tasks ?? agent.tasks}
+            </div>
             <div className="text-xs 2xl:text-sm text-gray-400 mt-0.5">Tasks</div>
           </div>
           <div className="w-px bg-gray-100" />
           <div className="text-center">
-            <div className={`text-lg 2xl:text-xl font-bold ${isKilled ? 'text-gray-400' : 'text-emerald-600'}`}>{agent.success}</div>
+            <div className={`text-lg 2xl:text-xl font-bold ${isKilled ? 'text-gray-400' : 'text-emerald-600'}`}>
+              {metrics?.overall_success_rate ? `${Math.round(metrics.overall_success_rate)}%` : agent.success}
+            </div>
             <div className="text-xs 2xl:text-sm text-gray-400 mt-0.5">Success</div>
           </div>
           {agent.environment && (
@@ -191,11 +221,12 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, onDelete, onClick 
 interface CategorySectionProps {
   categoryKey: string;
   agents: Agent[];
+  telemetryData: DashboardMetricsResponse | null;
   onDelete: (e: React.MouseEvent<HTMLButtonElement>, agent: Agent) => void;
   onNavigate: (agent: Agent) => void;
 }
 
-const CategorySection: React.FC<CategorySectionProps> = ({ categoryKey, agents, onDelete, onNavigate }) => {
+const CategorySection: React.FC<CategorySectionProps> = ({ categoryKey, agents, telemetryData, onDelete, onNavigate }) => {
   const config = CATEGORY_CONFIG[categoryKey] || CATEGORY_CONFIG.unknown;
   return (
     <div className="mb-10 2xl:mb-14">
@@ -217,10 +248,15 @@ const CategorySection: React.FC<CategorySectionProps> = ({ categoryKey, agents, 
         <div className="flex-1 h-px ml-2" style={{ background: `linear-gradient(to right, ${config.accent}40, transparent)` }} />
       </div>
       <div className="flex flex-wrap gap-5 2xl:gap-8">
-        {agents.map((agent, i) => (
-          <AgentCard key={agent.id || i} agent={agent} accent={config.accent}
-            onDelete={onDelete} onClick={() => { if (!agent.killswitchActivated) onNavigate(agent); }} />
-        ))}
+        {agents.map((agent, i) => {
+          const agentMetrics = telemetryData?.agent_metrics?.length
+            ? telemetryData.agent_metrics.find(m => m.agent_id === agent.id)
+            : null;
+          return (
+            <AgentCard key={agent.id || i} agent={agent} accent={config.accent} metrics={agentMetrics}
+              onDelete={onDelete} onClick={() => { if (!agent.killswitchActivated) onNavigate(agent); }} />
+          );
+        })}
       </div>
     </div>
   );
@@ -235,6 +271,7 @@ const Agents: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [agentToDelete,   setAgentToDelete]   = useState<Agent | null>(null);
   const [activeFilter,    setActiveFilter]    = useState<string>('All');
+  const [telemetryData,   setTelemetryData]   = useState<DashboardMetricsResponse | null>(null);
 
   useEffect(() => {
     const formatSystemTypeName = (systemType: string): string => {
@@ -292,17 +329,67 @@ const Agents: React.FC = () => {
     fetchAgents();
   }, []);
 
+  // ─── Fetch telemetry data ───
+  useEffect(() => {
+    const fetchTelemetry = async (): Promise<void> => {
+      try {
+        const token = auth.getToken();
+        if (!token) {
+          console.warn('No authentication token available for telemetry');
+          return;
+        }
+
+        const response = await fetch('/api/v1/telemetry/dashboard?days=7', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data: DashboardMetricsResponse = await response.json();
+          console.info('Telemetry data fetched successfully');
+          setTelemetryData(data);
+        } else {
+          console.error('Failed to fetch telemetry:', response.status);
+        }
+      } catch (error: any) {
+        console.error('Error fetching telemetry:', error);
+      }
+    };
+
+    fetchTelemetry();
+  }, []);
+
+  // ─── Get agent telemetry metrics ───
+  const getAgentMetrics = (agentId: string) => {
+    if (!telemetryData?.agent_metrics?.length) return null;
+    return telemetryData.agent_metrics.find(m => m.agent_id === agentId);
+  };
+
   const handleCreateAgent = useCallback(() => navigate('/agents/select-target'), [navigate]);
 
   const alive      = agents.filter(a => !a.killswitchActivated);
   const active     = agents.filter(a => a.status === 'active' && !a.killswitchActivated);
-  const totalTasks = alive.reduce((s, a) => s + parseInt(a.tasks || '0'), 0);
+  
+  // Calculate total tasks and average success rate from telemetry - only for displayed agents
+  const totalTasks = telemetryData?.agent_metrics?.length 
+    ? telemetryData.agent_metrics
+        .filter(m => alive.some(a => a.id === m.agent_id))
+        .reduce((sum, m) => sum + m.total_tasks, 0)
+    : alive.reduce((s, a) => s + parseInt(a.tasks || '0'), 0);
+  
+  const avgSuccessRate = telemetryData?.agent_metrics?.length
+    ? (telemetryData.agent_metrics
+        .filter(m => alive.some(a => a.id === m.agent_id))
+        .reduce((sum, m) => sum + m.overall_success_rate, 0) / telemetryData.agent_metrics.filter(m => alive.some(a => a.id === m.agent_id)).length).toFixed(1)
+    : '0.0';
 
   const stats: StatData[] = [
     { icon: GoPeople,       value: alive.length.toString(),   description: 'Total Agents',     sub: '+1 this month',      iconcolor: '#60A5FA', bg: '#EFF6FF' },
     { icon: TiFlashOutline, value: active.length.toString(),  description: 'Active Now',       sub: '75% uptime',         iconcolor: '#22C55E', bg: '#F0FDF4' },
     { icon: TiTickOutline,  value: totalTasks.toString(),     description: 'Tasks Completed',  sub: '+12% vs last week',  iconcolor: '#A78BFA', bg: '#F5F3FF' },
-    { icon: GoGraph,        value: '97.5%',                   description: 'Avg Success Rate', sub: '+2.3% improvement',  iconcolor: '#F97316', bg: '#FFF7ED' },
+    { icon: GoGraph,        value: `${avgSuccessRate}%`,      description: 'Avg Success Rate', sub: '+2.3% improvement',  iconcolor: '#F97316', bg: '#FFF7ED' },
   ];
 
   const filters = ['All', 'Production', 'Staging', 'Inactive'];
@@ -456,7 +543,7 @@ const Agents: React.FC = () => {
         ) : (
           <div>
             {activeCategories.map(catKey => (
-              <CategorySection key={catKey} categoryKey={catKey} agents={grouped[catKey]}
+              <CategorySection key={catKey} categoryKey={catKey} agents={grouped[catKey]} telemetryData={telemetryData}
                 onDelete={handleDeleteClick}
                 onNavigate={agent => navigate(`/agents/${agent.id}/chat`, { state: { agent } })} />
             ))}
