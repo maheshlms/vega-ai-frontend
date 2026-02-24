@@ -23,7 +23,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/heygen-api/, ''),
       },
-    },
+      // Proxy API requests to backend
+      '/api/v1': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path
+      }
+    }
   },
   // Keep preview behavior consistent with dev for quick local checks
   preview: {
