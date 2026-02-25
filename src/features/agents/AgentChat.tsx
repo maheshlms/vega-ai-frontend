@@ -425,7 +425,7 @@ const AgentChat: React.FC = () => {
 
       setTimeout(() => {
         if (avatarRef.current) {
-          const greeting = `Hello! I'm ${avatarName}. How can I help you today?`;
+          const greeting = `Hello! . How can I help you ?`;
           avatarRef.current.speak({ text: greeting, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC })
             .catch((_: Error) => {});
         }
