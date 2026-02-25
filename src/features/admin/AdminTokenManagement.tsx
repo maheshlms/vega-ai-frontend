@@ -35,7 +35,8 @@ const STYLES = `
   .tm-root {
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-    width: 100vw !important; height: 100vh !important;
+    width: 100vw !important; 
+    height: 100vh !important;
     font-family: 'DM Sans', sans-serif;
     background: #f5f5f7;
     overflow-y: auto;
@@ -303,10 +304,20 @@ const STYLES = `
   .tm-btn-action.active { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; border-color: #1d4ed8; }
   .tm-btn-action.active:hover { transform: translateY(-1px); box-shadow: 0 3px 12px rgba(59,130,246,0.3); }
   .tm-jwks-modal {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: #ffffff; border-radius: 18px; padding: 32px; max-width: 600px;
-    width: 90%; max-height: 70vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
-    z-index: 10001; animation: tmFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    position: fixed;
+    top: 25%;
+    left: 30%;
+    transform: translate(-50%, -50%);
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    z-index: 10001;
+    animation: tmFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
   }
   .tm-jwks-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;

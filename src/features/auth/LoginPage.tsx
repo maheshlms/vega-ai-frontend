@@ -79,6 +79,9 @@ const LoginPage: React.FC = () => {
           response.session
         );
 
+        // Mark that user logged in from normal login endpoint
+        localStorage.setItem('loginSource', 'normal-login');
+
         // Check if user needs to change password (from root level or user object)
         const needsPasswordChange = response.force_password_reset || response.user?.force_password_reset;
         if (needsPasswordChange) {
@@ -231,6 +234,14 @@ const LoginPage: React.FC = () => {
               className="bg-gray-100 hover:bg-gray-200 w-full h-10 rounded-md transition-all duration-300 ease-in-out border border-gray-300"
               style={{ color: '#000000' }}
               disabled={auth0Loading || isLoading}
+            />
+
+            {/* PINGFEDERATE LOGIN BUTTON */}
+            <Btn
+              value="Sign In with PingFederate"
+              className="bg-gray-100 hover:bg-gray-200 w-full h-10 rounded-md transition-all duration-300 ease-in-out border border-gray-300 mt-3"
+              style={{ color: '#000000' }}
+              disabled={false}
             />
             
           </div>
