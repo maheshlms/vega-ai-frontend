@@ -165,6 +165,7 @@ const AgentChat: React.FC = () => {
   const [debugLines, setDebugLines] = useState<string[]>([]);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [autoSendVoice, setAutoSendVoice] = useState(false);
 
   // ── Voice input state ─────────────────────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
@@ -528,13 +529,19 @@ const AgentChat: React.FC = () => {
     recognitionRef.current.interimResults = false;
     recognitionRef.current.lang = 'en-US';
     recognitionRef.current.onresult = (e: SpeechRecognitionEvent) => {
-      const t = e.results[0][0].transcript;
-      setInputValue(t);
-      setIsListening(false);
+       const transcript = e.results[0][0].transcript.trim();
+  setIsListening(false);
+
+  if (transcript) {
+    setInputValue(transcript);
+    setAutoSendVoice(true);   // 👈 tell system to auto-send
+  }
     };
     recognitionRef.current.onerror = () => setIsListening(false);
     recognitionRef.current.onend = () => setIsListening(false);
   }, []);
+
+ 
 
   const startListening = () => {
     if (!recognitionRef.current || isListening) return;
@@ -695,6 +702,58 @@ const AgentChat: React.FC = () => {
     } finally { setApprovalProcessing(false); }
   };
 
+
+  const sendMessage = useCallback(async (text: string) => {
+  if (!text.trim()) return;
+
+  setShowWelcomeMessage(false);
+
+  const userMessage: Message = {
+    id: Date.now(),
+    text: text,
+    sender: 'user',
+    timestamp: new Date(),
+  };
+
+  setMessages(prev => [...prev, userMessage]);
+  setInputValue('');
+  setIsTyping(true);
+
+  try {
+    const response = await api.fetchWithAuth('/api/v1/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: 'current-user',
+        session_id: sessionIdRef.current || Date.now().toString(),
+        agent_id: agent?.id,
+        message: text,
+        access_token: auth.getToken() || '',
+      }),
+    });
+
+    const data = await response.json();
+    const aiText = data.message || "No response";
+
+    setIsTyping(false);
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now() + 1,
+        text: aiText,
+        sender: 'ai',
+        timestamp: new Date(),
+      },
+    ]);
+
+    await speakMessage(aiText);
+
+  } catch (error) {
+    setIsTyping(false);
+  }
+}, [agent, speakMessage]);
+
+
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (!inputValue.trim()) return;
@@ -793,6 +852,13 @@ const AgentChat: React.FC = () => {
       await speakMessage("I'm sorry, I encountered an error. Please try again.");
     }
   }, [inputValue, chatHistory, agent, attachedFiles, isPlaying, speakMessage, handleInterrupt]);
+
+   useEffect(() => {
+  if (autoSendVoice && inputValue.trim()) {
+    handleSend();
+    setAutoSendVoice(false);
+  }
+}, [autoSendVoice, inputValue, handleSend]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }

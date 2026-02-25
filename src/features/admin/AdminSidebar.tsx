@@ -115,7 +115,7 @@ const AdminSidebar: React.FC = () => {
               overflow-hidden cursor-pointer group
               transition-all duration-300 hover:scale-[1.02] hover:border-purple-200/50
             "
-            onClick={() => handleNavigate("settings")}
+            // onClick={() => handleNavigate("settings")}
           >
             {/* Gradient overlay on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-pink-50/50 opacity-0
