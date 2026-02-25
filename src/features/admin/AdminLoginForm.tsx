@@ -67,6 +67,41 @@ const STYLES = `
     max-width: 420px;
   }
 
+  .lp-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #18182b;
+    cursor: pointer;
+    width: fit-content;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .lp-back-btn:hover {
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.15);
+    transform: translateX(-2px);
+  }
+
+  .lp-back-btn:active {
+    transform: scale(0.98);
+  }
+
+  .lp-back-arrow {
+    font-size: 16px;
+    line-height: 1;
+  }
+
   .lp-card {
     background: rgba(255, 255, 255, 0.84);
     backdrop-filter: blur(24px);
@@ -337,6 +372,9 @@ function LoginForm() {
       // Store the authentication token and user data
       auth.storeNativeAuthData(response.access_token, response.user);
 
+      // Mark that user logged in from system-admin-login endpoint
+      localStorage.setItem('loginSource', 'system-admin-login');
+
       // Check if force_password_reset flag is set
       if (response.force_password_reset === true) {
         // Redirect to forced password change page
@@ -357,7 +395,12 @@ function LoginForm() {
   };
 
   return (
-    <div className="lp-card">
+    <>
+      <button className="lp-back-btn" onClick={() => navigate("/login")}>
+        <span className="lp-back-arrow">←</span>
+        Back to User Login
+      </button>
+      <div className="lp-card">
       <div className="lp-logo-area">
         <div className="lp-logo-mark"><span>A</span></div>
         <h1>Welcome back.</h1>
@@ -395,7 +438,8 @@ function LoginForm() {
           {loading ? "Signing in…" : "Sign In"}
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

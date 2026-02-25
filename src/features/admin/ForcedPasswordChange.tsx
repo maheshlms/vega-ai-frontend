@@ -142,8 +142,18 @@ export default function ForcedPasswordChange() {
           redirectPath = intendedDestination;
         }
       } else {
-        // No intended destination - use role-based default
-        redirectPath = auth.isAdmin() ? '/system-admin' : '/agent_dashboard';
+        // No intended destination - use login source and role-based default
+        const loginSource = localStorage.getItem('loginSource');
+        
+        // Only redirect to system-admin if:
+        // 1. User logged in from system-admin-login endpoint AND
+        // 2. User is actually an admin
+        if (loginSource === 'system-admin-login' && auth.isAdmin()) {
+          redirectPath = '/system-admin';
+        } else {
+          // For normal login or non-admin users, redirect to agent dashboard
+          redirectPath = '/agent_dashboard';
+        }
       }
       
       console.log(`Password changed successfully. Redirecting to: ${redirectPath}`);

@@ -3,11 +3,10 @@
  *
  * Run once (or when HeyGen adds new avatars) to cache avatar images locally.
  *
- * Usage (Windows):
- *   set VITE_HEYGEN_API_KEY=your_key && npx tsx scripts/downloadHeyGenAvatars.ts
+ * Usage:
+ *   npx tsx scripts/downloadHeyGenAvatars.ts
  *
- * Usage (Mac/Linux):
- *   VITE_HEYGEN_API_KEY=your_key npx tsx scripts/downloadHeyGenAvatars.ts
+ * Note: Requires HEYGEN_API_KEY to be set in Frontend/.env file
  *
  * Output:
  *   public/avatars/<avatar_id>.webp  ← cached image (served as /avatars/*.webp)
@@ -18,9 +17,13 @@ import fs    from 'fs';
 import path  from 'path';
 import https from 'https';
 import http  from 'http';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const HEYGEN_API_KEY  = process.env.VITE_HEYGEN_API_KEY ?? '';
+const HEYGEN_API_KEY  = process.env.HEYGEN_API_KEY ?? '';
 const OUTPUT_DIR      = path.resolve('public/avatars');
 const MANIFEST_PATH   = path.resolve('src/data/avatarManifest.json');
 const HEYGEN_LIST_URL = 'https://api.heygen.com/v1/streaming/avatar.list';
@@ -108,9 +111,8 @@ async function runWithConcurrency(
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   if (!HEYGEN_API_KEY) {
-    console.error('❌  VITE_HEYGEN_API_KEY is not set.');
-    console.error('    Windows : set VITE_HEYGEN_API_KEY=your_key && npx tsx scripts/downloadHeyGenAvatars.ts');
-    console.error('    Mac/Linux: VITE_HEYGEN_API_KEY=your_key npx tsx scripts/downloadHeyGenAvatars.ts');
+    console.error('❌  HEYGEN_API_KEY is not set in Frontend/.env file.');
+    console.error('    Please add: HEYGEN_API_KEY=your_key');
     process.exit(1);
   }
 
