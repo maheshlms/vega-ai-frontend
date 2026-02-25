@@ -394,7 +394,9 @@ const AdminAgentControll: React.FC = () => {
       ? (agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length).toFixed(1)
       : '0';
   
-  const totalTasks = agents.reduce((sum, a) => sum + a.tasksCompleted, 0);
+  const totalTasks = telemetryData?.agent_metrics?.length
+    ? telemetryData.agent_metrics.reduce((sum, m) => sum + m.successful_tasks, 0)
+    : agents.reduce((sum, a) => sum + a.tasksCompleted, 0);
   
   const avgResponseTime = telemetryData?.agent_metrics?.length
     ? Math.floor(telemetryData.agent_metrics.reduce((sum, m) => sum + m.avg_response_time_ms, 0) / telemetryData.agent_metrics.length)
