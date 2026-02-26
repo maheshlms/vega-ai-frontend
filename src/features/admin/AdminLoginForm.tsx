@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoSun } from "react-icons/go";
+import { MdOutlineDarkMode } from "react-icons/md";
 import { api } from '../../utils/api';
 import { auth } from '../../utils/auth';
 
@@ -294,82 +296,136 @@ interface Bubble {
   delay: number;
   dur: number;
   color: string;
+/* ══════════════════════════════════════════════════════════
+   DARK MODE EFFECTS
+══════════════════════════════════════════════════════════ */
+function StarField() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let animId: number;
+    const stars: { x: number; y: number; r: number; o: number; sp: number }[] = [];
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener('resize', resize);
+    for (let i = 0; i < 150; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.1 + 0.2,
+        o: Math.random() * 0.6 + 0.1,
+        sp: Math.random() * 0.015 + 0.003,
+      });
+    }
+    let t = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      t += 0.01;
+      stars.forEach(s => {
+        const p = s.o + Math.sin(t * s.sp * 60) * 0.18;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(178,245,234,${Math.max(0, Math.min(1, p))})`;
+        ctx.fill();
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+  }, []);
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.45 }} />;
 }
 
-const BUBBLES: Bubble[] = [
-  { size: 90,  left: "5%",  delay: 0,    dur: 15, color: "rgba(236,172,213,0.55)" },
-  { size: 55,  left: "18%", delay: 3.5,  dur: 19, color: "rgba(180,160,240,0.5)"  },
-  { size: 130, left: "33%", delay: 1,    dur: 22, color: "rgba(160,200,240,0.4)"  },
-  { size: 42,  left: "48%", delay: 5.5,  dur: 13, color: "rgba(240,180,210,0.5)"  },
-  { size: 95,  left: "63%", delay: 2.5,  dur: 18, color: "rgba(200,165,245,0.48)" },
-  { size: 65,  left: "77%", delay: 7,    dur: 16, color: "rgba(160,220,240,0.48)" },
-  { size: 35,  left: "87%", delay: 4,    dur: 12, color: "rgba(240,200,180,0.52)" },
-  { size: 110, left: "93%", delay: 9.5,  dur: 24, color: "rgba(200,180,255,0.38)" },
-  { size: 58,  left: "13%", delay: 11.5, dur: 17, color: "rgba(255,180,210,0.45)" },
-  { size: 75,  left: "54%", delay: 6.5,  dur: 20, color: "rgba(170,210,255,0.48)" },
-  { size: 48,  left: "41%", delay: 13.5, dur: 14, color: "rgba(220,170,255,0.45)" },
-  { size: 88,  left: "71%", delay: 8.5,  dur: 21, color: "rgba(255,200,230,0.38)" },
+function DarkGrid() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.055 }}>
+        <defs>
+          <pattern id="admgrid" width="55" height="55" patternUnits="userSpaceOnUse">
+            <path d="M 55 0 L 0 0 0 55" fill="none" stroke="#2dd4bf" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#admgrid)" />
+      </svg>
+      <div className="absolute left-0 right-0 h-px adm-scan"
+        style={{ background: 'linear-gradient(90deg,transparent,rgba(45,212,191,0.45),transparent)' }} />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   LIGHT MODE EFFECTS  (same floating bubbles as LoginPage)
+══════════════════════════════════════════════════════════ */
+const DOTS = [
+  { size: 5,  left: '3%',  delay: 0,    dur: 12, color: 'rgba(167,139,250,0.6)'  },
+  { size: 4,  left: '9%',  delay: 2.5,  dur: 16, color: 'rgba(236,172,213,0.65)' },
+  { size: 6,  left: '16%', delay: 5,    dur: 14, color: 'rgba(147,197,253,0.6)'  },
+  { size: 5,  left: '24%', delay: 1,    dur: 18, color: 'rgba(196,181,253,0.65)' },
+  { size: 4,  left: '31%', delay: 7,    dur: 11, color: 'rgba(253,186,116,0.55)' },
+  { size: 6,  left: '38%', delay: 3,    dur: 15, color: 'rgba(167,139,250,0.55)' },
+  { size: 5,  left: '45%', delay: 9,    dur: 13, color: 'rgba(236,172,213,0.6)'  },
+  { size: 6,  left: '52%', delay: 0.5,  dur: 17, color: 'rgba(147,197,253,0.65)' },
+  { size: 4,  left: '59%', delay: 6,    dur: 10, color: 'rgba(196,181,253,0.6)'  },
+  { size: 5,  left: '66%', delay: 4,    dur: 19, color: 'rgba(167,139,250,0.55)' },
+  { size: 6,  left: '73%', delay: 11,   dur: 14, color: 'rgba(253,186,116,0.5)'  },
+  { size: 4,  left: '79%', delay: 2,    dur: 16, color: 'rgba(236,172,213,0.65)' },
+  { size: 5,  left: '85%', delay: 8,    dur: 12, color: 'rgba(147,197,253,0.6)'  },
+  { size: 6,  left: '91%', delay: 3.5,  dur: 20, color: 'rgba(196,181,253,0.55)' },
+  { size: 4,  left: '97%', delay: 13,   dur: 15, color: 'rgba(167,139,250,0.6)'  },
+  { size: 5,  left: '13%', delay: 10,   dur: 13, color: 'rgba(253,186,116,0.55)' },
+  { size: 6,  left: '27%', delay: 14,   dur: 18, color: 'rgba(236,172,213,0.55)' },
+  { size: 4,  left: '42%', delay: 4.5,  dur: 11, color: 'rgba(147,197,253,0.65)' },
+  { size: 5,  left: '57%', delay: 12,   dur: 16, color: 'rgba(196,181,253,0.6)'  },
+  { size: 6,  left: '71%', delay: 7.5,  dur: 14, color: 'rgba(167,139,250,0.55)' },
 ];
 
-// Bubbles Component
-function Bubbles() {
+function FloatingDots() {
   return (
-    <div className="lp-bubbles">
-      {BUBBLES.map((b, i) => (
-        <div
-          key={i}
-          className="lp-bubble"
-          style={{
-            width: b.size,
-            height: b.size,
-            left: b.left,
-            bottom: -160,
-            background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.88), ${b.color})`,
-            animationDuration: `${b.dur}s`,
-            animationDelay: `${b.delay}s`,
-            boxShadow: `inset 0 0 18px rgba(255,255,255,0.5), 0 4px 12px rgba(180,160,240,0.12)`,
-          }}
-        />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {DOTS.map((d, i) => (
+        <div key={i} className="absolute rounded-full adm-bubble" style={{
+          width: d.size,
+          height: d.size,
+          left: d.left,
+          bottom: '-20px',
+          background: d.color,
+          animationDuration: `${d.dur}s`,
+          animationDelay: `${d.delay}s`,
+        }} />
       ))}
     </div>
   );
 }
 
-// Login Form
-function LoginForm() {
+/* ══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════ */
+const AdminLoginForm: React.FC = () => {
+  const [dark, setDark] = useState<boolean>(false);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [gErr, setGErr] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((f) => ({ ...f, [k]: e.target.value }));
-    setErrors((er) => ({ ...er, [k]: "" }));
-    setGErr("");
-  };
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!form.username.trim()) e.username = "Username is required";
-    if (!form.password) e.password = "Password is required";
-    return e;
-  };
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
-  const submit = async () => {
-    const e = validate();
-    if (Object.keys(e).length) {
-      setErrors(e);
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both username and password');
       return;
     }
-    setLoading(true);
+    setIsLoading(true);
     try {
-      const response = await api.nativeLogin({
-        username: form.username,
-        password: form.password
-      });
-
-      // Store the authentication token and user data
+      const response = await api.nativeLogin({ username: username.trim(), password });
       auth.storeNativeAuthData(response.access_token, response.user);
 
       // Mark that user logged in from system-admin-login endpoint
@@ -377,21 +433,44 @@ function LoginForm() {
 
       // Check if force_password_reset flag is set
       if (response.force_password_reset === true) {
-        // Redirect to forced password change page
-        navigate("/system-admin/change-password-forced", { replace: true });
+        navigate('/system-admin/change-password-forced', { replace: true });
       } else {
-        // Normal flow: redirect to admin dashboard
-        navigate("/system-admin", { replace: true });
+        navigate('/system-admin', { replace: true });
       }
-      setLoading(false);
     } catch (err: any) {
-      setGErr(err.message || "Login failed. Please check your credentials.");
-      setLoading(false);
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") submit();
+  /* ─────────────────────────────────────────
+     Theme token objects — dark vs light
+  ───────────────────────────────────────── */
+  const D = {
+    pageBg:      'linear-gradient(155deg,#020617 0%,#050e1a 50%,#020b14 100%)',
+    cardBg:      'rgba(7,13,22,0.88)',
+    cardBorder:  '1px solid rgba(45,212,191,0.18)',
+    cardShadow:  '0 0 48px rgba(45,212,191,0.07), 0 20px 50px rgba(0,0,0,0.65)',
+    topBar:      'linear-gradient(90deg,transparent,rgba(45,212,191,0.7),rgba(99,102,241,0.4),transparent)',
+    botBar:      'linear-gradient(90deg,transparent,rgba(99,102,241,0.4),rgba(45,212,191,0.3),transparent)',
+    heading:     '#e2e8f0',
+    sub:         'rgba(45,212,191,0.4)',
+    muted:       '#1e3a4a',
+    inputBg:     'rgba(15,23,42,0.55)',
+    inputBgFoc:  'rgba(45,212,191,0.04)',
+    inputBorder: 'rgba(51,65,85,0.8)',
+    inputFocus:  'rgba(45,212,191,0.5)',
+    inputShadow: '0 0 0 3px rgba(45,212,191,0.07)',
+    inputColor:  '#e2e8f0',
+    inputPh:     'rgba(71,85,105,0.8)',
+    btnBg:       'linear-gradient(135deg,rgba(13,148,136,0.28),rgba(8,145,178,0.18))',
+    btnBorder:   '1px solid rgba(45,212,191,0.38)',
+    btnColor:    '#2dd4bf',
+    divider:     'rgba(30,41,59,0.8)',
+    toggleBg:    'rgba(15,23,42,0.9)',
+    toggleBdr:   '1px solid rgba(45,212,191,0.2)',
+    toggleClr:   '#fbbf24',
   };
 
   return (
@@ -442,18 +521,376 @@ function LoginForm() {
     </>
   );
 }
+  const L = {
+    pageBg:      'linear-gradient(135deg,#fce7f3 0%,#f3e8ff 40%,#dbeafe 75%,#c8dff5 100%)',
+    cardBg:      'var(--card-bg, #fff)',
+    cardBorder:  'none',
+    cardShadow:  '0 8px 40px rgba(124,58,237,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+    topBar:      'none',
+    botBar:      'none',
+    heading:     'var(--text-main, #111)',
+    sub:         'var(--text-belowmain, #6b7280)',
+    muted:       'var(--text-muted, #9ca3af)',
+    inputBg:     'var(--input-bg, #fff)',
+    inputBgFoc:  'var(--input-bg, #fff)',
+    inputBorder: 'rgba(196,181,253,0.55)',
+    inputFocus:  '#7c3aed',
+    inputShadow: '0 0 0 3px rgba(124,58,237,0.1)',
+    inputColor:  'var(--text-main, #111)',
+    inputPh:     '#9ca3af',
+    btnBg:       'linear-gradient(to right,#3B82F6,#9333EA)',
+    btnBorder:   'none',
+    btnColor:    '#fff',
+    divider:     '#e5e7eb',
+    toggleBg:    '#fff',
+    toggleBdr:   'none',
+    toggleClr:   '#6b7280',
+  };
 
-// Main Login Page
-export default function AdminLoginForm() {
+  const T = dark ? D : L;
+
   return (
     <>
-      <style>{STYLES}</style>
-      <div className="lp-root">
-        <Bubbles />
-        <div className="lp-wrapper">
-          <LoginForm />
+      <style>{`
+        @keyframes admScan {
+          0%   { top: -2px; opacity: 0; }
+          5%   { opacity: 1; }
+          95%  { opacity: 0.55; }
+          100% { top: 100%; opacity: 0; }
+        }
+        .adm-scan { animation: admScan 7s ease-in-out infinite; position: absolute; }
+
+        @keyframes admBubble {
+          0%   { transform: translateY(0); opacity: 0; }
+          8%   { opacity: 1; }
+          92%  { opacity: 0.55; }
+          100% { transform: translateY(calc(-100vh - 200px)) translateX(16px); opacity: 0; }
+        }
+        .adm-bubble { animation: admBubble linear infinite; position: absolute; }
+
+        @keyframes admFadeIn {
+          from { opacity: 0; transform: translateY(18px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .adm-card { animation: admFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+
+        @keyframes admShake {
+          0%,100% { transform: translateX(0); }
+          20%     { transform: translateX(-6px); }
+          40%     { transform: translateX(6px); }
+          60%     { transform: translateX(-3px); }
+          80%     { transform: translateX(3px); }
+        }
+        .adm-shake { animation: admShake 0.38s ease; }
+
+        @keyframes admTheme {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .adm-theme { animation: admTheme 0.3s ease both; }
+
+        .adm-input::placeholder { opacity: 1; }
+      `}</style>
+
+      {/* MOBILE BLOCKER */}
+      <div className="flex md:hidden h-screen w-full items-center justify-center p-6 bg-slate-900">
+        <p className="text-center text-lg font-semibold text-white">
+          This application is not available on mobile devices.<br />
+          Please use a laptop or desktop.
+        </p>
+      </div>
+
+      {/* DESKTOP */}
+      <div
+        key={dark ? 'dark' : 'light'}
+        className="adm-theme hidden md:flex h-screen w-full items-center justify-center relative overflow-hidden p-6"
+        style={{ background: T.pageBg }}
+      >
+        {/* ── background layer ── */}
+        {dark ? (
+          <>
+            <StarField />
+            <DarkGrid />
+            {/* centre teal glow */}
+            <div className="absolute pointer-events-none" style={{
+              top: '10%', left: '50%', transform: 'translateX(-50%)',
+              width: 'min(600px,90vw)', height: 'min(600px,90vh)',
+              background: 'radial-gradient(ellipse,rgba(13,148,136,0.1) 0%,transparent 65%)',
+            }} />
+            {/* corner brackets */}
+            {(['tl','tr','bl','br'] as const).map(c => (
+              <div key={c} className="absolute pointer-events-none" style={{
+                top:    c[0]==='t' ? 20 : undefined,
+                bottom: c[0]==='b' ? 20 : undefined,
+                left:   c[1]==='l' ? 20 : undefined,
+                right:  c[1]==='r' ? 20 : undefined,
+              }}>
+                <div style={{
+                  width: 22, height: 22,
+                  borderTop:    c[0]==='t' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderBottom: c[0]==='b' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderLeft:   c[1]==='l' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderRight:  c[1]==='r' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                }} />
+              </div>
+            ))}
+            {/* top status label */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none">
+              <span style={{
+                color: 'rgba(45,212,191,0.18)',
+                fontFamily: "'Courier New',monospace",
+                fontSize: 9,
+                letterSpacing: '0.3em',
+              }}>
+                VEGA CONTROL SYSTEM — RESTRICTED ACCESS
+              </span>
+            </div>
+          </>
+        ) : (
+          <FloatingDots />
+        )}
+
+        {/* ── THEME TOGGLE — identical button style to LoginPage ── */}
+        <div className="absolute top-6 right-6 z-50">
+          <button
+            onClick={() => setDark(d => !d)}
+            className="p-2 rounded-md shadow cursor-pointer hover:bg-gray-100 transition-all duration-200"
+            style={{
+              background: T.toggleBg,
+              border:     T.toggleBdr || undefined,
+              color:      T.toggleClr,
+            }}
+          >
+            {dark ? <GoSun size={18} /> : <MdOutlineDarkMode size={18} />}
+          </button>
+        </div>
+
+        {/* ════════════════════════════════════════
+            CARD  — same w-[420px] as LoginPage
+        ════════════════════════════════════════ */}
+        <div className="adm-card relative" style={{ width: 420 }}>
+
+          {/* glow ring wrapper — dark only */}
+          {dark && (
+            <div className="absolute -inset-px rounded-md pointer-events-none" style={{
+              background: 'linear-gradient(135deg,rgba(45,212,191,0.22),rgba(99,102,241,0.12),rgba(45,212,191,0.06))',
+            }} />
+          )}
+
+          <div className="relative rounded-md overflow-hidden" style={{
+            background:     T.cardBg,
+            border:         T.cardBorder,
+            boxShadow:      T.cardShadow,
+            backdropFilter: dark ? 'blur(28px)' : undefined,
+          }}>
+
+            {/* top accent — dark only */}
+            {dark && <div className="h-px w-full" style={{ background: T.topBar }} />}
+
+            <div className="pb-6">
+
+              {/* logo — same size/position as LoginPage */}
+              <div className="flex justify-center pt-6">
+                <img
+                  src={dark ? '/logo-dark.png' : '/logo-light.png'}
+                  alt="Vega AI"
+                  className="h-32"
+                />
+              </div>
+
+              {/* title */}
+              <h1
+                className="text-center text-2xl font-bold mt-4"
+                style={{
+                  color:      T.heading,
+                  fontFamily: dark ? "'Courier New',monospace" : undefined,
+                }}
+              >
+                {dark ? 'Admin Access' : 'Admin Login'}
+              </h1>
+
+              <p
+                className="text-center text-xs font-medium mt-1 mb-6"
+                style={{
+                  color:      T.sub,
+                  fontFamily: dark ? "'Courier New',monospace" : undefined,
+                }}
+              >
+                {dark ? '// restricted — authenticate to proceed' : 'System administrator portal'}
+              </p>
+
+              <div className="px-7">
+                <form onSubmit={handleLogin} className="space-y-4">
+
+                  {/* ── USERNAME ── */}
+                  <div>
+                    <label
+                      className="text-sm font-medium mb-1 block"
+                      style={{
+                        color:         T.heading,
+                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
+                        fontSize:      dark ? 11 : undefined,
+                        letterSpacing: dark ? '0.1em' : undefined,
+                        textTransform: dark ? 'uppercase' : undefined,
+                      }}
+                    >
+                      {dark ? '⟩ Username' : 'Username'}
+                    </label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={e => { setUsername(e.target.value); setError(''); }}
+                      placeholder={dark ? 'admin' : 'admin'}
+                      disabled={isLoading}
+                      className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
+                      style={{
+                        background:    T.inputBg,
+                        border:        `1px solid ${T.inputBorder}`,
+                        color:         T.inputColor,
+                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
+                        fontSize:      13,
+                        // placeholder colour via CSS class above; inline not possible
+                      }}
+                      onFocus={e => {
+                        e.currentTarget.style.border = `1px solid ${T.inputFocus}`;
+                        e.currentTarget.style.boxShadow = T.inputShadow;
+                        e.currentTarget.style.background = T.inputBgFoc;
+                      }}
+                      onBlur={e => {
+                        e.currentTarget.style.border = `1px solid ${T.inputBorder}`;
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.background = T.inputBg;
+                      }}
+                    />
+                  </div>
+
+                  {/* ── PASSWORD ── */}
+                  <div>
+                    <label
+                      className="text-sm font-medium mb-1 block"
+                      style={{
+                        color:         T.heading,
+                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
+                        fontSize:      dark ? 11 : undefined,
+                        letterSpacing: dark ? '0.1em' : undefined,
+                        textTransform: dark ? 'uppercase' : undefined,
+                      }}
+                    >
+                      {dark ? '⟩ Password' : 'Password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(''); }}
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                      className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
+                      style={{
+                        background: T.inputBg,
+                        border:     `1px solid ${T.inputBorder}`,
+                        color:      T.inputColor,
+                        fontFamily: dark ? "'Courier New',monospace" : undefined,
+                        fontSize:   13,
+                      }}
+                      onFocus={e => {
+                        e.currentTarget.style.border = `1px solid ${T.inputFocus}`;
+                        e.currentTarget.style.boxShadow = T.inputShadow;
+                        e.currentTarget.style.background = T.inputBgFoc;
+                      }}
+                      onBlur={e => {
+                        e.currentTarget.style.border = `1px solid ${T.inputBorder}`;
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.background = T.inputBg;
+                      }}
+                    />
+                  </div>
+
+                  {/* ── ERROR ── */}
+                  {error && (
+                    <div
+                      key={error}
+                      className="adm-shake text-xs text-center py-2 px-3 rounded-md"
+                      style={dark ? {
+                        background: 'rgba(239,68,68,0.08)',
+                        border:     '1px solid rgba(239,68,68,0.3)',
+                        color:      '#fca5a5',
+                        fontFamily: "'Courier New',monospace",
+                      } : {
+                        background: '#fef2f2',
+                        border:     '1px solid #fecaca',
+                        color:      '#b91c1c',
+                      }}
+                    >
+                      {dark ? `⚠ ${error}` : error}
+                    </div>
+                  )}
+
+                  {/* ── SUBMIT — same h-10 as LoginPage Btn ── */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="relative w-full h-10 rounded-md overflow-hidden font-semibold text-sm transition-all duration-300 ease-in-out group"
+                    style={{
+                      background:    T.btnBg,
+                      border:        T.btnBorder || undefined,
+                      color:         T.btnColor,
+                      cursor:        isLoading ? 'not-allowed' : 'pointer',
+                      opacity:       isLoading ? 0.7 : 1,
+                      fontFamily:    dark ? "'Courier New',monospace" : undefined,
+                      letterSpacing: dark ? '0.1em' : undefined,
+                      textTransform: dark ? 'uppercase' : undefined,
+                    }}
+                  >
+                    {/* hover shimmer */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)' }}
+                    />
+                    <span className="relative flex items-center justify-center gap-2">
+                      {isLoading ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/>
+                            <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                          </svg>
+                          {dark ? 'Authenticating...' : 'Signing In...'}
+                        </>
+                      ) : (
+                        dark ? 'Sign In' : 'Sign In'
+                      )}
+                    </span>
+                  </button>
+                </form>
+
+                {/* footer */}
+                <p
+                  className="w-full text-center text-xs mt-6"
+                  style={{
+                    color:      T.muted,
+                    fontFamily: dark ? "'Courier New',monospace" : undefined,
+                  }}
+                >
+                  {dark ? (
+                    <span className="flex items-center justify-center gap-2">
+                      {/* <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> */}
+                      © 2026 Product of Like Minds Consulting Inc.
+                    </span>
+                  ) : (
+                    '© 2026 Product of Like Minds Consulting Inc.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* bottom accent — dark only */}
+            {dark && (
+              <div className="h-px w-full" style={{ background: T.botBar }} />
+            )}
+          </div>
         </div>
       </div>
     </>
   );
-}
+};
+
+export default AdminLoginForm;
