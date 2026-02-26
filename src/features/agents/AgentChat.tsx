@@ -52,7 +52,7 @@ interface PendingApproval {
   filename: string;
   expires_at?: string;
   session_id?: string;
-  action_type?: string; // e.g. 'update_ssl_certificate' | 'update_license'
+  action_type?: string;
 }
 
 interface FileData {
@@ -140,12 +140,10 @@ const AgentChat: React.FC = () => {
   const location = useLocation();
   const preloadedAgent = location.state?.agent;
 
-  // ── Agent state ───────────────────────────────────────────────────────────
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
   const [agentError, setAgentError] = useState<string>('');
   const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
 
-  // ── Chat state ────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -157,7 +155,6 @@ const AgentChat: React.FC = () => {
   const [approvalClickedAction, setApprovalClickedAction] = useState<'approve' | 'reject' | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
-  // ── Avatar (HeyGen Streaming SDK) state ───────────────────────────────────
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [isAvatarActive, setIsAvatarActive] = useState(false);
   const [hasVideo, setHasVideo] = useState(false);
@@ -169,10 +166,8 @@ const AgentChat: React.FC = () => {
   const [muted, setMuted] = useState(false);
   const [autoSendVoice, setAutoSendVoice] = useState(false);
 
-  // ── Voice input state ─────────────────────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -187,7 +182,6 @@ const AgentChat: React.FC = () => {
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const latestAIResponseRef = useRef<string>('');
 
-  // ── Derived avatar info ───────────────────────────────────────────────────
   const avatarImg  = agent?.config?.selectedAvatarImg  || (agent as any)?.avatarImg  || '';
   const avatarName = agent?.config?.selectedAvatarName || (agent as any)?.avatarName || agent?.name || 'Agent';
   const avatarId   = agent?.config?.selectedAvatarId   || '';
@@ -195,13 +189,11 @@ const AgentChat: React.FC = () => {
   const avatarIdRef = useRef(avatarId);
   useEffect(() => { avatarIdRef.current = avatarId; }, [avatarId]);
 
-  // ── Scroll ────────────────────────────────────────────────────────────────
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
-  // ── Always fetch full agent from API ──────────────────────────────────────
   useEffect(() => {
     const fetchAgent = async () => {
       if (!agentId || agentId.startsWith('default-')) { setLoadingAgent(false); return; }
@@ -217,13 +209,11 @@ const AgentChat: React.FC = () => {
     fetchAgent();
   }, [agentId]); // eslint-disable-line
 
-  // ── Debug logger ──────────────────────────────────────────────────────────
   const log = useCallback((msg: string) => {
     console.log('[AgentChat Avatar]', msg);
     setDebugLines(prev => [`${new Date().toLocaleTimeString()}: ${msg}`, ...prev].slice(0, 20));
   }, []);
 
-  // ── Audio management ──────────────────────────────────────────────────────
   const rebuildAudio = useCallback(() => {
     if (!audioTracksRef.current.length) return;
     if (!audioElRef.current) {
@@ -249,7 +239,6 @@ const AgentChat: React.FC = () => {
     }
   }, [muted]);
 
-  // ── Fetch session token ───────────────────────────────────────────────────
   const fetchSessionToken = async (): Promise<string> => {
     const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
     if (!apiKey) throw new Error('NO_API_KEY');
@@ -278,7 +267,6 @@ const AgentChat: React.FC = () => {
     throw new Error('ALL_TOKEN_ENDPOINTS_FAILED');
   };
 
-  // ── Resolve avatar ID ─────────────────────────────────────────────────────
   const resolveStreamingAvatarId = async (): Promise<string> => {
     const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
 
@@ -341,7 +329,6 @@ const AgentChat: React.FC = () => {
     return DEFAULT_STREAMING_AVATAR;
   };
 
-  // ── End avatar session ────────────────────────────────────────────────────
   const endSession = useCallback(async () => {
     if (!avatarRef.current) return;
     try { await avatarRef.current.stopAvatar(); } catch (_) {}
@@ -354,7 +341,6 @@ const AgentChat: React.FC = () => {
     log('Session ended');
   }, [log]);
 
-  // ── Start avatar session ──────────────────────────────────────────────────
   const startSession = useCallback(async () => {
     if (isLoadingSession || isAvatarActive) return;
     setIsLoadingSession(true);
@@ -431,7 +417,6 @@ const AgentChat: React.FC = () => {
     }
   }, [isLoadingSession, isAvatarActive, avatarName, rebuildAudio, log]); // eslint-disable-line
 
-  // ── Speak a message via the avatar ────────────────────────────────────────
   const speakMessage = useCallback(async (text: string) => {
     if (!avatarRef.current || !isAvatarActive || !text.trim()) return;
     const clean = text
@@ -446,14 +431,12 @@ const AgentChat: React.FC = () => {
     }
   }, [isAvatarActive, log]);
 
-  // ── Interrupt avatar speech ───────────────────────────────────────────────
   const handleInterrupt = useCallback(async () => {
     if (!avatarRef.current || !isPlaying) return;
     try { await avatarRef.current.interrupt(); } catch (_) {}
     setIsPlaying(false);
   }, [isPlaying]);
 
-  // ── Chroma-key canvas rendering ───────────────────────────────────────────
   useEffect(() => {
     if (!hasVideo) {
       if (chromaRafRef.current) cancelAnimationFrame(chromaRafRef.current);
@@ -488,7 +471,6 @@ const AgentChat: React.FC = () => {
     return () => { if (chromaRafRef.current) cancelAnimationFrame(chromaRafRef.current); };
   }, [hasVideo]);
 
-  // ── Session timer ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (isAvatarActive) {
       timerRef.current = setInterval(() => setSessionDuration(s => s + 1), 1000);
@@ -499,7 +481,6 @@ const AgentChat: React.FC = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isAvatarActive]);
 
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       endSession();
@@ -508,7 +489,6 @@ const AgentChat: React.FC = () => {
     };
   }, []); // eslint-disable-line
 
-  // ── Speech recognition setup ──────────────────────────────────────────────
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
@@ -535,7 +515,6 @@ const AgentChat: React.FC = () => {
     recognitionRef.current.start();
   };
 
-  // ── File handling ─────────────────────────────────────────────────────────
   const handleAttachClick = () => fileInputRef.current?.click();
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -616,7 +595,6 @@ const AgentChat: React.FC = () => {
         : '✓ License installation completed!';
       const failText = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
 
-      const actionMessage: Message = {
       setMessages(prev => [...prev, {
         id: Date.now(),
         text: action === 'approve' ? approveText : rejectText,
@@ -668,7 +646,7 @@ const AgentChat: React.FC = () => {
         isError: true,
         timestamp: new Date(),
       }]);
-    } finally { 
+    } finally {
       setApprovalProcessing(false);
       setApprovalClickedAction(null);
     }
@@ -792,75 +770,18 @@ const AgentChat: React.FC = () => {
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
-        /*
-         * ══════════════════════════════════════════════════════════════════════
-         * ROOT LAYOUT FIX
-         *
-         * The problem: this component renders INSIDE your app shell which has
-         * a top navbar (~60px) and a sidebar. Using height:100vh makes .agc-root
-         * taller than the visible area, so the page scrolls and the input box
-         * disappears below the fold.
-         *
-         * The fix: use height:100% instead of height:100vh and make sure every
-         * ancestor up to <body> is also height:100% / display:flex.
-         *
-         * We also add a targeted override on the route wrapper your framework
-         * renders (commonly a <main>, <div class="content">, etc.) — adjust the
-         * selector ".agc-page-host" to whatever your layout's content wrapper is.
-         *
-         * If you cannot change parent CSS, use the "position:fixed" variant
-         * commented out below instead.
-         * ══════════════════════════════════════════════════════════════════════
-         */
-
-        /*
-         * Option A (preferred): make the component fill its flex parent.
-         * Works when the route content area is already a flex column that
-         * fills the remaining viewport height.
-         */
         .agc-root {
           display: flex;
           flex-direction: column;
-          /* Use 100% so we fill the parent container, NOT 100vh which
-             ignores the top navbar and causes scroll */
           height: 100%;
           width: 100%;
           background: #F9FAFB;
           overflow: hidden;
-          /* Fallback: if the parent isn't full-height, min-height pushes it */
           min-height: 0;
         }
-
-        /*
-         * Option B (nuclear fallback): if Option A still scrolls, uncomment
-         * the block below and comment out Option A above. This fixes layout
-         * by taking the component out of normal flow entirely.
-         *
-         * You will need to measure your app's top navbar height and set it as
-         * the "top" value (default 60px — change to match your navbar).
-         */
-        /*
-        .agc-root {
-          position: fixed;
-          top: 60px;
-          left: 240px;
-          right: 0;
-          bottom: 0;
-          display: flex;
-          flex-direction: column;
-          background: #F9FAFB;
-          overflow: hidden;
-          z-index: 10;
-        }
-        */
-
-        /* ── Header ── */
         .agc-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 8px 20px;
@@ -880,7 +801,6 @@ const AgentChat: React.FC = () => {
           transition: all 0.15s;
         }
         .agc-back-btn:hover { background: #eef2ff; }
-
         .agc-identity { display: flex; align-items: center; gap: 10px; }
         .agc-avatar-ring-wrap { position: relative; width: 38px; height: 38px; }
         .agc-avatar-ring {
@@ -922,20 +842,12 @@ const AgentChat: React.FC = () => {
         .agc-hbtn-neutral:hover { background: #f9fafb; color: #374151; }
         .agc-hbtn-red { background: #fff5f5; border-color: #fecaca; color: #ef4444; }
         .agc-hbtn-red:hover { background: #fee2e2; }
-
-        /*
-         * BODY — the critical flex row that contains avatar + chat.
-         * flex:1 + min-height:0 is the key combo that allows children
-         * to independently scroll within the remaining height.
-         */
         .agc-body {
           display: flex;
           flex: 1;
-          min-height: 0;   /* ← CRITICAL: without this, flex children ignore overflow */
+          min-height: 0;
           overflow: hidden;
         }
-
-        /* ── Avatar Panel — locked 350px ── */
         .agc-avatar-panel {
           width: 350px; min-width: 350px; max-width: 350px;
           flex-shrink: 0; flex-grow: 0;
@@ -944,13 +856,11 @@ const AgentChat: React.FC = () => {
           display: flex; flex-direction: column;
           overflow: hidden; position: relative;
         }
-
         .agc-avatar-stage {
           flex: 1; min-height: 0;
           position: relative; overflow: hidden;
           background: #f1f5f9;
         }
-
         .agc-speaking-ring {
           position: absolute; inset: 0; pointer-events: none; z-index: 5;
           border: 3px solid transparent; transition: border-color 0.3s;
@@ -963,8 +873,6 @@ const AgentChat: React.FC = () => {
           0%, 100% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.3); }
           50% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.7); }
         }
-
-        /* Top bar — fixed 44px height */
         .agc-avatar-top-bar {
           position: absolute; top: 0; left: 0; right: 0; z-index: 10;
           padding: 0 8px;
@@ -995,8 +903,6 @@ const AgentChat: React.FC = () => {
         .agc-overlay-btn-amber:hover:not(:disabled) { background: #fef3c7; }
         .agc-overlay-btn-white  { background: #f3f4f6; border-color: #e5e7eb; color: #374151; }
         .agc-overlay-btn-white:hover:not(:disabled) { background: #e5e7eb; }
-
-        /* Status pill — fixed 82px so label change never shifts bar */
         .agc-status-pill-fixed {
           display: flex; align-items: center; gap: 5px;
           background: #f3f4f6; border: 1px solid #e5e7eb;
@@ -1006,18 +912,12 @@ const AgentChat: React.FC = () => {
           overflow: hidden; white-space: nowrap;
           box-sizing: border-box; flex-shrink: 0;
         }
-
-        /* Idle state */
         .agc-avatar-idle {
           position: absolute; inset: 0; z-index: 2;
           display: flex; flex-direction: column;
           align-items: center; justify-content: flex-start;
-          padding-top: 52px; /* clear the top bar */
+          padding-top: 52px;
         }
-        /*
-         * FIX: idle image fills the full remaining stage height, anchored
-         * from the top so the head is never cropped.
-         */
         .agc-avatar-idle-img {
           width: 100%;
           height: 100%;
@@ -1033,8 +933,6 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; justify-content: center;
           font-size: 72px; font-weight: 700; color: #6366f1;
         }
-
-        /* Bottom info bar */
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
           padding: 10px 12px;
@@ -1048,12 +946,6 @@ const AgentChat: React.FC = () => {
           background: #f3f4f6; padding: 3px 10px; border-radius: 20px;
           font-variant-numeric: tabular-nums;
         }
-
-        /*
-         * CHAT PANEL — flex:1 so it takes all remaining horizontal space.
-         * The critical inner layout: header (fixed) + messages (flex:1 scroll) +
-         * input (fixed). This trio is what keeps the input always visible.
-         */
         .agc-chat-panel {
           flex: 1;
           min-width: 0;
@@ -1070,17 +962,9 @@ const AgentChat: React.FC = () => {
           background: #fff;
           display: flex; align-items: center; justify-content: space-between;
         }
-
-        /*
-         * MESSAGES — the scroll container.
-         * flex:1 expands to fill all available height.
-         * min-height:0 is required — without it a flex child won't honour
-         * overflow:auto and the content pushes the input off screen.
-         * overflow-y:auto gives the inner scroll.
-         */
         .agc-messages {
           flex: 1;
-          min-height: 0;        /* ← THE critical rule */
+          min-height: 0;
           overflow-y: auto;
           padding: 16px;
           display: flex; flex-direction: column; gap: 4px;
@@ -1088,8 +972,6 @@ const AgentChat: React.FC = () => {
         }
         .agc-messages::-webkit-scrollbar { width: 4px; }
         .agc-messages::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
-
-        /* Welcome */
         .agc-welcome {
           flex: 1; display: flex; flex-direction: column;
           align-items: center; justify-content: center;
@@ -1114,8 +996,6 @@ const AgentChat: React.FC = () => {
         @keyframes agc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         .agc-welcome-title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
         .agc-welcome-sub { font-size: 15px; color: #9ca3af; }
-
-        /* Messages */
         .agc-row { display: flex; align-items: flex-end; gap: 8px; animation: agc-msgin 0.22s ease; }
         .agc-row.user { justify-content: flex-end; }
         .agc-row.ai, .agc-row.system { justify-content: flex-start; }
@@ -1129,15 +1009,11 @@ const AgentChat: React.FC = () => {
         .agc-ts { font-size:10px; color:#d1d5db; margin-top:2px; display:flex; }
         .agc-ts.user { justify-content:flex-end; }
         .agc-ts.ai, .agc-ts.system { justify-content:flex-start; padding-left:36px; }
-
-        /* Typing */
         .agc-typing { background:#fff; border:1px solid #e5e7eb; border-radius:18px; border-bottom-left-radius:5px; padding:12px 16px; display:flex; gap:5px; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
         .agc-dot { width:7px; height:7px; border-radius:50%; background:#c7d2fe; animation:agc-bounce 1.2s ease-in-out infinite; }
         .agc-dot:nth-child(2) { animation-delay:.18s; background:#a5b4fc; }
         .agc-dot:nth-child(3) { animation-delay:.36s; background:#818cf8; }
         @keyframes agc-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-
-        /* Approval */
         .agc-approval {
           background: #fff; border: 1.5px solid #d1fae5;
           border-radius: 14px; padding: 14px 16px;
@@ -1176,21 +1052,6 @@ const AgentChat: React.FC = () => {
           flex-shrink: 0;
         }
         @keyframes agc-spin { to { transform: rotate(360deg); } }
-        .agc-approval { background:#fff; border:1.5px solid #d1fae5; border-radius:14px; padding:14px 16px; max-width:68%; }
-        .agc-approval-title { font-size:12.5px; font-weight:600; color:#374151; margin-bottom:10px; }
-        .agc-approval-actions { display:flex; gap:8px; }
-        .agc-approve { display:flex; align-items:center; gap:5px; padding:7px 14px; border-radius:8px; background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; font-size:12px; font-weight:500; cursor:pointer; }
-        .agc-approve:hover { background:#d1fae5; }
-        .agc-approve:disabled { opacity:.5; cursor:not-allowed; }
-        .agc-reject { display:flex; align-items:center; gap:5px; padding:7px 14px; border-radius:8px; background:#fff5f5; border:1px solid #fca5a5; color:#b91c1c; font-size:12px; font-weight:500; cursor:pointer; }
-        .agc-reject:hover { background:#fee2e2; }
-        .agc-reject:disabled { opacity:.5; cursor:not-allowed; }
-
-        /*
-         * INPUT ZONE — flex-shrink:0 is essential.
-         * It must NEVER shrink, or the messages will push it off screen
-         * when the content grows taller than the available height.
-         */
         .agc-input-zone {
           flex-shrink: 0;
           background: #fff; border-top: 1px solid #eaecf0;
@@ -1213,12 +1074,9 @@ const AgentChat: React.FC = () => {
         .agc-send-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(99,102,241,.38); }
         .agc-send-btn:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
         .agc-spinner { width:11px; height:11px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:agc-spin .65s linear infinite; }
-        @keyframes agc-spin { to{transform:rotate(360deg)} }
       `}</style>
 
       <div className="agc-root">
-
-        {/* ── TOP HEADER ── */}
         <header className="agc-header">
           <div className="agc-header-left">
             <button className="agc-back-btn" onClick={handleBack}>
@@ -1235,18 +1093,12 @@ const AgentChat: React.FC = () => {
           </div>
         </header>
 
-        {/* ── BODY ── */}
         <div className="agc-body">
-
-          {/* ══ LEFT: AVATAR PANEL ══ */}
           <div className="agc-avatar-panel">
             <div className="agc-avatar-stage">
-
               <div className={`agc-speaking-ring ${isPlaying ? 'active' : ''}`} />
-
               <video ref={videoRef} autoPlay playsInline muted
                 style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }} />
-
               {hasVideo && (
                 <canvas ref={canvasRef} style={{
                   position: 'absolute', top: 0, left: 0,
@@ -1255,7 +1107,6 @@ const AgentChat: React.FC = () => {
                   display: 'block', background: '#f8fafc',
                 }} />
               )}
-
               {!hasVideo && (
                 <div className="agc-avatar-idle">
                   {isLoadingSession ? (
@@ -1270,8 +1121,6 @@ const AgentChat: React.FC = () => {
                   )}
                 </div>
               )}
-
-              {/* ── TOP BAR ── */}
               <div className="agc-avatar-top-bar">
                 <span className="agc-status-pill-fixed">
                   <span style={{
@@ -1280,7 +1129,6 @@ const AgentChat: React.FC = () => {
                   }} />
                   {isPlaying ? 'Speaking' : isListening ? 'Listening' : isTyping ? 'Thinking' : isAvatarActive ? 'Ready' : 'Inactive'}
                 </span>
-
                 <div className="agc-avatar-top-bar-actions">
                   {!isAvatarActive ? (
                     <button className="agc-overlay-btn agc-overlay-btn-green" onClick={startSession} disabled={isLoadingSession}>
@@ -1301,8 +1149,6 @@ const AgentChat: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              {/* ── BOTTOM BAR ── */}
               <div className="agc-avatar-info-bar">
                 {isAvatarActive && (
                   <span style={{ fontSize: 11, color: '#065f46', fontWeight: 600, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10, border: '1px solid #6ee7b7' }}>
@@ -1315,14 +1161,10 @@ const AgentChat: React.FC = () => {
                   </span>
                 )}
               </div>
-
             </div>
           </div>
 
-          {/* ══ RIGHT: CHAT PANEL ══ */}
           <div className="agc-chat-panel">
-
-            {/* Chat header */}
             <div className="agc-chat-header">
               <div className="agc-identity">
                 <div className="agc-avatar-ring-wrap">
@@ -1344,14 +1186,9 @@ const AgentChat: React.FC = () => {
               </button>
             </div>
 
-            {/* Messages — independently scrollable */}
             <div className="agc-messages">
               {messages.length === 0 && showWelcomeMessage ? (
                 <div className="agc-welcome">
-                  {/* {avatarImg
-                    ? <div className="agc-welcome-orb"><img src={avatarImg} alt={avatarName} className="w-full h-full object-cover object-top" /></div>
-                    : <div className="agc-welcome-orb-icon"><span style={{ fontSize: 28 }}>✨</span></div>
-                  } */}
                   <div className="agc-welcome-title">{loadingAgent ? 'Loading agent…' : 'How may I help you?'}</div>
                   <div className="agc-welcome-sub">{agent?.description || agent?.role || 'Your intelligent license agent'}</div>
                 </div>
@@ -1417,21 +1254,17 @@ const AgentChat: React.FC = () => {
                             className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
                             onClick={() => handleApprovalButtonClick('approve')}
                             disabled={approvalProcessing}>
-                            ✓ Approve
+                            {approvalProcessing && approvalClickedAction === 'approve'
+                              ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} />
+                              : '✓'} Approve
                           </button>
                           <button
                             className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`}
                             onClick={() => handleApprovalButtonClick('reject')}
                             disabled={approvalProcessing}>
-                            ✗ Reject
-                          🔐 Approve license installation for <strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?
-                        </div>
-                        <div className="agc-approval-actions">
-                          <button className="agc-approve" onClick={() => handleApprovalButtonClick('approve')} disabled={approvalProcessing}>
-                            {approvalProcessing ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} /> : '✓'} Approve
-                          </button>
-                          <button className="agc-reject" onClick={() => handleApprovalButtonClick('reject')} disabled={approvalProcessing}>
-                            {approvalProcessing ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} /> : '✗'} Reject
+                            {approvalProcessing && approvalClickedAction === 'reject'
+                              ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} />
+                              : '✗'} Reject
                           </button>
                         </div>
                         {approvalProcessing && (
@@ -1452,7 +1285,6 @@ const AgentChat: React.FC = () => {
               )}
             </div>
 
-            {/* Input zone — always pinned at bottom */}
             <div className="agc-input-zone">
               {attachedFiles.length > 0 && (
                 <div className="agc-file-chips">
@@ -1465,9 +1297,7 @@ const AgentChat: React.FC = () => {
                   ))}
                 </div>
               )}
-
               <input ref={fileInputRef} type="file" onChange={handleFileSelect} multiple accept=".lic,.txt,.pem,.crt,.key,.license" style={{ display: 'none' }} />
-
               <div className="agc-input-wrap">
                 <button className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
                 <input type="text" className="agc-text-input" value={inputValue}
@@ -1484,12 +1314,11 @@ const AgentChat: React.FC = () => {
                 </button>
               </div>
             </div>
-
-          </div>{/* end chat panel */}
-        </div>{/* end body */}
+          </div>
+        </div>
       </div>
     </>
   );
 };
 
-export default AgentChat; 
+export default AgentChat;
