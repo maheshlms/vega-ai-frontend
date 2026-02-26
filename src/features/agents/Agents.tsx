@@ -215,11 +215,11 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, metrics, onDelete,
             {agent.name}
           </h3>
           <p className={`text-xs 2xl:text-sm ${isKilled ? 'text-gray-400' : 'text-gray-500'}`}>{agent.role}</p>
-          {agent.avatarName && (
+          {/* {agent.avatarName && (
             <p className={`text-xs mt-0.5 font-medium ${isKilled ? 'text-gray-300' : 'text-indigo-400'}`}>
               {agent.avatarName}
             </p>
-          )}
+          )} */}
         </div>
 
         {/* Type pill */}
@@ -236,7 +236,7 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, metrics, onDelete,
         <div className="flex justify-around">
           <div className="text-center">
             <div className={`text-lg 2xl:text-xl font-bold ${isKilled ? 'text-gray-400' : 'text-gray-800'}`}>
-              {metrics?.total_tasks ?? agent.tasks}
+              {metrics?.total_tasks ?? 0}
             </div>
             <div className="text-xs 2xl:text-sm text-gray-400 mt-0.5">Tasks</div>
           </div>
