@@ -296,6 +296,8 @@ interface Bubble {
   delay: number;
   dur: number;
   color: string;
+}
+
 /* ══════════════════════════════════════════════════════════
    DARK MODE EFFECTS
 ══════════════════════════════════════════════════════════ */
@@ -357,7 +359,7 @@ function DarkGrid() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   LIGHT MODE EFFECTS  (same floating bubbles as LoginPage)
+   LIGHT MODE EFFECTS
 ══════════════════════════════════════════════════════════ */
 const DOTS = [
   { size: 5,  left: '3%',  delay: 0,    dur: 12, color: 'rgba(167,139,250,0.6)'  },
@@ -473,54 +475,6 @@ const AdminLoginForm: React.FC = () => {
     toggleClr:   '#fbbf24',
   };
 
-  return (
-    <>
-      <button className="lp-back-btn" onClick={() => navigate("/login")}>
-        <span className="lp-back-arrow">←</span>
-        Back to User Login
-      </button>
-      <div className="lp-card">
-      <div className="lp-logo-area">
-        <div className="lp-logo-mark"><span>A</span></div>
-        <h1>Welcome back.</h1>
-        <p className="lp-subtitle">Sign in to continue your session.</p>
-      </div>
-      <div className="lp-form">
-        {gErr && <div className="lp-global-err" key={gErr}>{gErr}</div>}
-        <div className="lp-field">
-          <label>Username</label>
-          <input
-            type="text"
-            value={form.username}
-            onChange={set("username")}
-            onKeyDown={onKey}
-            placeholder="admin"
-            className={errors.username ? "lp-err" : ""}
-          />
-          {errors.username && <span className="lp-field-error">{errors.username}</span>}
-        </div>
-        <div className="lp-field">
-          <label>Password</label>
-          <input
-            type="password"
-            value={form.password}
-            onChange={set("password")}
-            onKeyDown={onKey}
-            placeholder="••••••••"
-            className={errors.password ? "lp-err" : ""}
-          />
-          {errors.password && <span className="lp-field-error">{errors.password}</span>}
-        </div>
-        <div className="lp-forgot"><span>Forgot password?</span></div>
-        <button className="lp-btn" onClick={submit} disabled={loading}>
-          {loading && <span className="lp-spinner" />}
-          {loading ? "Signing in…" : "Sign In"}
-        </button>
-      </div>
-      </div>
-    </>
-  );
-}
   const L = {
     pageBg:      'linear-gradient(135deg,#fce7f3 0%,#f3e8ff 40%,#dbeafe 75%,#c8dff5 100%)',
     cardBg:      'var(--card-bg, #fff)',
@@ -606,18 +560,16 @@ const AdminLoginForm: React.FC = () => {
         className="adm-theme hidden md:flex h-screen w-full items-center justify-center relative overflow-hidden p-6"
         style={{ background: T.pageBg }}
       >
-        {/* ── background layer ── */}
+        {/* background layer */}
         {dark ? (
           <>
             <StarField />
             <DarkGrid />
-            {/* centre teal glow */}
             <div className="absolute pointer-events-none" style={{
               top: '10%', left: '50%', transform: 'translateX(-50%)',
               width: 'min(600px,90vw)', height: 'min(600px,90vh)',
               background: 'radial-gradient(ellipse,rgba(13,148,136,0.1) 0%,transparent 65%)',
             }} />
-            {/* corner brackets */}
             {(['tl','tr','bl','br'] as const).map(c => (
               <div key={c} className="absolute pointer-events-none" style={{
                 top:    c[0]==='t' ? 20 : undefined,
@@ -634,7 +586,6 @@ const AdminLoginForm: React.FC = () => {
                 }} />
               </div>
             ))}
-            {/* top status label */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none">
               <span style={{
                 color: 'rgba(45,212,191,0.18)',
@@ -650,7 +601,7 @@ const AdminLoginForm: React.FC = () => {
           <FloatingDots />
         )}
 
-        {/* ── THEME TOGGLE — identical button style to LoginPage ── */}
+        {/* THEME TOGGLE */}
         <div className="absolute top-6 right-6 z-50">
           <button
             onClick={() => setDark(d => !d)}
@@ -665,12 +616,9 @@ const AdminLoginForm: React.FC = () => {
           </button>
         </div>
 
-        {/* ════════════════════════════════════════
-            CARD  — same w-[420px] as LoginPage
-        ════════════════════════════════════════ */}
+        {/* CARD */}
         <div className="adm-card relative" style={{ width: 420 }}>
 
-          {/* glow ring wrapper — dark only */}
           {dark && (
             <div className="absolute -inset-px rounded-md pointer-events-none" style={{
               background: 'linear-gradient(135deg,rgba(45,212,191,0.22),rgba(99,102,241,0.12),rgba(45,212,191,0.06))',
@@ -684,12 +632,10 @@ const AdminLoginForm: React.FC = () => {
             backdropFilter: dark ? 'blur(28px)' : undefined,
           }}>
 
-            {/* top accent — dark only */}
             {dark && <div className="h-px w-full" style={{ background: T.topBar }} />}
 
             <div className="pb-6">
 
-              {/* logo — same size/position as LoginPage */}
               <div className="flex justify-center pt-6">
                 <img
                   src={dark ? '/logo-dark.png' : '/logo-light.png'}
@@ -698,7 +644,6 @@ const AdminLoginForm: React.FC = () => {
                 />
               </div>
 
-              {/* title */}
               <h1
                 className="text-center text-2xl font-bold mt-4"
                 style={{
@@ -722,7 +667,7 @@ const AdminLoginForm: React.FC = () => {
               <div className="px-7">
                 <form onSubmit={handleLogin} className="space-y-4">
 
-                  {/* ── USERNAME ── */}
+                  {/* USERNAME */}
                   <div>
                     <label
                       className="text-sm font-medium mb-1 block"
@@ -744,12 +689,11 @@ const AdminLoginForm: React.FC = () => {
                       disabled={isLoading}
                       className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
                       style={{
-                        background:    T.inputBg,
-                        border:        `1px solid ${T.inputBorder}`,
-                        color:         T.inputColor,
-                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                        fontSize:      13,
-                        // placeholder colour via CSS class above; inline not possible
+                        background: T.inputBg,
+                        border:     `1px solid ${T.inputBorder}`,
+                        color:      T.inputColor,
+                        fontFamily: dark ? "'Courier New',monospace" : undefined,
+                        fontSize:   13,
                       }}
                       onFocus={e => {
                         e.currentTarget.style.border = `1px solid ${T.inputFocus}`;
@@ -764,7 +708,7 @@ const AdminLoginForm: React.FC = () => {
                     />
                   </div>
 
-                  {/* ── PASSWORD ── */}
+                  {/* PASSWORD */}
                   <div>
                     <label
                       className="text-sm font-medium mb-1 block"
@@ -805,7 +749,7 @@ const AdminLoginForm: React.FC = () => {
                     />
                   </div>
 
-                  {/* ── ERROR ── */}
+                  {/* ERROR */}
                   {error && (
                     <div
                       key={error}
@@ -825,7 +769,7 @@ const AdminLoginForm: React.FC = () => {
                     </div>
                   )}
 
-                  {/* ── SUBMIT — same h-10 as LoginPage Btn ── */}
+                  {/* SUBMIT */}
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -841,7 +785,6 @@ const AdminLoginForm: React.FC = () => {
                       textTransform: dark ? 'uppercase' : undefined,
                     }}
                   >
-                    {/* hover shimmer */}
                     <div
                       className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                       style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)' }}
@@ -872,7 +815,6 @@ const AdminLoginForm: React.FC = () => {
                 >
                   {dark ? (
                     <span className="flex items-center justify-center gap-2">
-                      {/* <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> */}
                       © 2026 Product of Like Minds Consulting Inc.
                     </span>
                   ) : (
@@ -882,7 +824,6 @@ const AdminLoginForm: React.FC = () => {
               </div>
             </div>
 
-            {/* bottom accent — dark only */}
             {dark && (
               <div className="h-px w-full" style={{ background: T.botBar }} />
             )}
