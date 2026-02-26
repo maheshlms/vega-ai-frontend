@@ -559,7 +559,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         [name]: isCheckbox
           ? checked
           : (name === 'port' || name === 'engine_port' || name === 'ldap_port' || name === 'ldaps_port')
-            ? parseInt(value) || 0
+            ? (value === '' ? prev[name as keyof FormData] : (parseInt(value) || prev[name as keyof FormData]))
             : value,
       };
 
@@ -643,8 +643,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     const updates: Partial<FormData> = { auth_method: method };
     const isPF = formData.type === 'PingFederate';
     if (isPF && method === 'BearerToken') {
-      updates.port = 9999;
-      updates.engine_port = 9031;
+      // Only reset port/engine_port to defaults if the user hasn't customised them
+      const currentDefaults = getIntegrationDefaults('PingFederate');
+      if (formData.port === getIntegrationDefaults(formData.type).port) {
+        updates.port = currentDefaults.port;
+      }
+      if (formData.engine_port === (getIntegrationDefaults(formData.type).engine_port ?? 9031)) {
+        updates.engine_port = currentDefaults.engine_port ?? 9031;
+      }
     }
     setFormData(prev => ({ ...prev, ...updates }));
     
