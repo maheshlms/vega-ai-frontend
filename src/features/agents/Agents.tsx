@@ -175,6 +175,15 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, metrics, onDelete,
         ${isKilled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 hover:shadow-2xl'}`}
       style={{ width: 260, background: isKilled ? '#f3f4f6' : '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
     >
+      {/* Delete button — appears on hover, top-left corner */}
+      <button
+        onClick={(e) => onDelete(e, agent)}
+        title="Delete agent"
+        className="absolute top-3 left-3 z-10 w-7 h-7 2xl:w-9 2xl:h-9 flex items-center justify-center rounded-full bg-white shadow-md border border-gray-100 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+      >
+        <FaTrash size={11} />
+      </button>
+
       <div className="p-5 2xl:p-7">
         {/* Status dot */}
         <div className="flex justify-end mb-2">

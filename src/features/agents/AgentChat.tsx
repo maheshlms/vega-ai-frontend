@@ -52,6 +52,7 @@ interface PendingApproval {
   filename: string;
   expires_at?: string;
   session_id?: string;
+  action_type?: string; // e.g. 'update_ssl_certificate' | 'update_license'
 }
 
 interface FileData {
@@ -153,6 +154,7 @@ const AgentChat: React.FC = () => {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const [approvalProcessing, setApprovalProcessing] = useState<boolean>(false);
+  const [approvalClickedAction, setApprovalClickedAction] = useState<'approve' | 'reject' | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
   // ── Avatar (HeyGen Streaming SDK) state ───────────────────────────────────
@@ -633,6 +635,7 @@ const AgentChat: React.FC = () => {
   // ── Approval ──────────────────────────────────────────────────────────────
   const handleApprovalButtonClick = async (action: string) => {
     if (!pendingApproval) return;
+    setApprovalClickedAction(action as 'approve' | 'reject');
     setApprovalProcessing(true);
     try {
       const endpoint = action === 'approve'
@@ -645,12 +648,22 @@ const AgentChat: React.FC = () => {
       if (!response.ok) throw new Error(`Approval request failed: ${response.statusText}`);
       await response.json();
 
+      const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
+      const approveText = isSSL
+        ? '✓ SSL certificate update approved. Proceeding with activation...'
+        : '✓ License approval confirmed. Proceeding with installation...';
+      const rejectText = isSSL
+        ? '✗ SSL certificate update rejected. Process aborted.'
+        : '✗ License approval rejected. Process aborted.';
+      const successText = isSSL
+        ? '✓ SSL certificate imported and activated successfully!'
+        : '✓ License installation completed!';
+      const failText = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
+
       const actionMessage: Message = {
         id: Date.now(),
-        text: action === 'approve'
-          ? '✓ License approval confirmed. Proceeding with installation...'
-          : '✗ License approval rejected.',
-        sender: 'system',
+        text: action === 'approve' ? approveText : rejectText,
+        sender: 'ai',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, actionMessage]);
@@ -665,8 +678,8 @@ const AgentChat: React.FC = () => {
             const executeData = await executeResponse.json();
             setMessages(prev => [...prev, {
               id: Date.now() + 1,
-              text: executeData.message || '✓ License installation completed!',
-              sender: 'system',
+              text: executeData.message || successText,
+              sender: 'ai',
               timestamp: new Date(),
               isSuccess: executeData.success,
             }]);
@@ -674,8 +687,8 @@ const AgentChat: React.FC = () => {
             const errorData = await executeResponse.json();
             setMessages(prev => [...prev, {
               id: Date.now() + 1,
-              text: errorData.message || '✗ License installation failed',
-              sender: 'system',
+              text: errorData.message || failText,
+              sender: 'ai',
               timestamp: new Date(),
               isError: true,
             }]);
@@ -683,8 +696,8 @@ const AgentChat: React.FC = () => {
         } catch (executeError: any) {
           setMessages(prev => [...prev, {
             id: Date.now() + 1,
-            text: `Error during installation: ${executeError.message}`,
-            sender: 'system',
+            text: `Error during update: ${executeError.message}`,
+            sender: 'ai',
             timestamp: new Date(),
             isError: true,
           }]);
@@ -695,11 +708,14 @@ const AgentChat: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now(),
         text: `Error processing approval: ${error.message}`,
-        sender: 'system',
+        sender: 'ai',
         isError: true,
         timestamp: new Date(),
       }]);
-    } finally { setApprovalProcessing(false); }
+    } finally { 
+      setApprovalProcessing(false);
+      setApprovalClickedAction(null);
+    }
   };
 
 
@@ -758,6 +774,7 @@ const AgentChat: React.FC = () => {
   const handleSend = useCallback(async () => {
     if (!inputValue.trim()) return;
 
+    setPendingApproval(null);
     setShowWelcomeMessage(false);
     const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
     const userKey = `User${userMessageIndex}`;
@@ -818,9 +835,10 @@ const AgentChat: React.FC = () => {
       if (data.approval_metadata?.approval_id && data.approval_metadata?.approval_method === 'button') {
         setPendingApproval({
           approval_id: data.approval_metadata.approval_id,
-          filename: data.approval_metadata.filename || 'license file',
+          filename: data.approval_metadata.filename || 'file',
           expires_at: data.approval_metadata.expires_at,
           session_id: data.session_id,
+          action_type: data.approval_metadata.action_type,
         });
       }
 
@@ -1325,6 +1343,7 @@ const AgentChat: React.FC = () => {
         }
         .agc-approve:hover { background: #d1fae5; }
         .agc-approve:disabled { opacity: 0.5; cursor: not-allowed; }
+        .agc-approve.agc-btn-active { box-shadow: 0 0 0 2px #6ee7b7; opacity: 1 !important; }
         .agc-reject {
           display: flex; align-items: center; gap: 5px;
           padding: 7px 14px; border-radius: 8px;
@@ -1334,6 +1353,18 @@ const AgentChat: React.FC = () => {
         }
         .agc-reject:hover { background: #fee2e2; }
         .agc-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+        .agc-reject.agc-btn-active { box-shadow: 0 0 0 2px #fca5a5; opacity: 1 !important; }
+        .agc-approval-processing {
+          display: flex; align-items: center; gap: 7px;
+          margin-top: 10px; font-size: 11.5px; color: #6b7280;
+        }
+        .agc-approval-processing .agc-spinner {
+          width: 13px; height: 13px;
+          border: 2px solid #d1d5db; border-top-color: #6366f1;
+          border-radius: 50%; animation: agc-spin 0.7s linear infinite;
+          flex-shrink: 0;
+        }
+        @keyframes agc-spin { to { transform: rotate(360deg); } }
 
         /* Input zone */
         .agc-input-zone {
@@ -1707,27 +1738,32 @@ const AgentChat: React.FC = () => {
                       </div>
                       <div className="agc-approval">
                         <div className="agc-approval-title">
-                          🔐 Approve license installation for{' '}
-                          <strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?
+                          🔐{' '}
+                          {pendingApproval.action_type === 'update_ssl_certificate'
+                            ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
+                            : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
+                          }
                         </div>
                         <div className="agc-approval-actions">
-                          <button className="agc-approve"
+                          <button
+                            className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
                             onClick={() => handleApprovalButtonClick('approve')}
                             disabled={approvalProcessing}>
-                            {approvalProcessing
-                              ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} />
-                              : '✓'}
-                            Approve
+                            ✓ Approve
                           </button>
-                          <button className="agc-reject"
+                          <button
+                            className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`}
                             onClick={() => handleApprovalButtonClick('reject')}
                             disabled={approvalProcessing}>
-                            {approvalProcessing
-                              ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} />
-                              : '✗'}
-                            Reject
+                            ✗ Reject
                           </button>
                         </div>
+                        {approvalProcessing && (
+                          <div className="agc-approval-processing">
+                            <div className="agc-spinner" />
+                            {approvalClickedAction === 'approve' ? 'Approving…' : 'Rejecting…'}
+                          </div>
+                        )}
                         {pendingApproval.expires_at && (
                           <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>
                             Expires {new Date(pendingApproval.expires_at).toLocaleString()}
