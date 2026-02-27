@@ -859,12 +859,12 @@ const AgentChat: React.FC = () => {
         .agc-header-left { display: flex; align-items: center; gap: 16px; }
         .agc-back-btn {
           display: flex; align-items: center; gap: 6px;
-          background: none; border: none; cursor: pointer;
-          color: #6366f1; font-size: 13px; font-weight: 600;
-          padding: 6px 10px; border-radius: 8px;
-          transition: all 0.15s;
+          background: #111; border: none; cursor: pointer;
+          color: #fff; font-size: 13px; font-weight: 500;
+          padding: 0 16px; height: 32px; border-radius: 8px;
+          transition: background 0.2s;
         }
-        .agc-back-btn:hover { background: #eef2ff; }
+        .agc-back-btn:hover { background: #333; }
         .agc-identity { display: flex; align-items: center; gap: 10px; }
         .agc-avatar-ring-wrap { position: relative; width: 38px; height: 38px; }
         .agc-avatar-ring {
