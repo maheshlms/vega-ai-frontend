@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "🔄 Rebuilding and restarting all services..."
           sudo docker compose down
-          docker compose up --build -d
+          sudo docker compose up --build -d
 
       - name: Verify Services Running
         run: sudo docker compose ps
