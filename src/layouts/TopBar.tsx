@@ -1,64 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { IoIosSearch } from "react-icons/io";
-import { MdOutlineDarkMode } from "react-icons/md";
-import { GoSun } from "react-icons/go";
-import { IconType } from "react-icons";
-
-// Import all dropdown components
-import NotificationDropdown from '../features/NotificationDropdown.js';
-import HelpDropdown from '../features/HelpDropdown.js';
-import ProfileDropdown from '../features/ProfileDropdown.js';
-import SearchBox from '../features/SearchBox.js';
-import SystemStatusIndicator from '../features/SystemStatusIndicator.js';
-
-/* ===================== DARK MODE ===================== */
-const DarkMode: React.FC = () => {
-  const [dark, setDark] = useState<boolean>(false);
-
-  useEffect(() => {
-    setDark(localStorage.getItem("darkMode") === "true");
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("darkMode", dark.toString());
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
-
-  return (
-    <button
-      onClick={() => setDark(!dark)}
-      className="p-2 rounded-md shadow bg-white cursor-pointer hover:bg-gray-50 transition-colors"
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {dark ? <GoSun size={20} /> : <MdOutlineDarkMode size={20} />}
-    </button>
-  );
-};
+import { useTheme } from '../state/ThemeContext';
+import NotificationDropdown from './NotificationDropdown.js';
+import HelpDropdown from './HelpDropdown.js';
+import ProfileDropdown from './ProfileDropdown.js';
+import SearchBox from './SearchBox.js';
 
 /* ===================== TOP BAR ===================== */
 const TopBar: React.FC = () => {
-  const [dark, setDark] = useState<boolean>(false);
-
-  useEffect(() => {
-    setDark(localStorage.getItem("darkMode") === "true");
-  }, []);
-
-  useEffect(() => {
-    const handleStorageChange = (): void => {
-      setDark(localStorage.getItem("darkMode") === "true");
-    };
-    window.addEventListener('storage', handleStorageChange);
-    
-    const interval: NodeJS.Timeout = setInterval(handleStorageChange, 100);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+  const { isDark } = useTheme();
 
   return (
-    <div className="sticky top-0 z-50 w-full bg-navbar border-b border-navbar-profile">
+    <div className="sticky top-0 z-50 w-full bg-white dark:bg-[#0f1623] border-b border-gray-200 dark:border-gray-700">
 
       {/* MOBILE BLOCKER */}
       <div className="md:hidden h-screen flex items-center justify-center bg-slate-900 text-white p-6">
@@ -73,10 +26,10 @@ const TopBar: React.FC = () => {
 
         {/* LEFT - Logo */}
         <div className="flex items-center">
-          <img 
-            src={dark ? "/logo-dark.png" : "/logo-light.png"} 
-            alt="Vega AI" 
-            className="h-9" 
+          <img
+            src={isDark ? "/logo-dark.png" : "/logo-light.png"}
+            alt="Vega AI"
+            className="h-9"
           />
         </div>
 
@@ -85,30 +38,18 @@ const TopBar: React.FC = () => {
 
         {/* RIGHT - Actions */}
         <div className="flex items-center gap-4">
-          <SystemStatusIndicator />
           <NotificationDropdown />
           <HelpDropdown />
           <ProfileDropdown />
-          <DarkMode />
         </div>
       </div>
 
       <style>{`
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-slideDown {
-          animation: slideDown 0.2s ease-out;
-        }
-
+        .animate-slideDown { animation: slideDown 0.2s ease-out; }
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
