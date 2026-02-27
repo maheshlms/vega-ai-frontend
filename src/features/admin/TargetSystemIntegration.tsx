@@ -151,7 +151,7 @@ const TargetSystemIntegration: React.FC = () => {
 
   const handleIntegrationSelect = (id: string, name: string, value: string, authMethods: string[]): void => {
     // Navigate to form creation page with integration details
-    navigate(`/admin/createtarsys`, {
+    navigate(`/systems/createtarsys`, {
       state: {
         integrationId: id,
         integrationName: name,
@@ -164,32 +164,28 @@ const TargetSystemIntegration: React.FC = () => {
   const IntegrationCard: React.FC<IntegrationCardProps> = ({ item }) => (
     <div
       onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+      className="tsi-card bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-[220ms] cursor-pointer overflow-hidden"
     >
-      <div className="flex items-start gap-3 2xl:gap-4 mb-4 2xl:mb-5">
-        <div className="w-12 h-12 2xl:w-16 2xl:h-16 bg-gray-100 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-11 h-11 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center p-2 shrink-0">
           {item.logo ? (
             <img src={item.logo} alt={item.name} className="w-full h-full object-contain" />
           ) : (
-            <FaPlug className="text-gray-400 2xl:text-xl" />
+            <FaPlug className="text-gray-400" />
           )}
         </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 text-sm 2xl:text-lg">{item.name}</h3>
-            <FaCheckCircle className="text-green-500 text-sm 2xl:text-base flex-shrink-0" />
+            <h3 className="font-semibold text-[#0A0A0A] text-[15px]">{item.name}</h3>
+            <FaCheckCircle className="text-green-500 text-sm shrink-0" />
           </div>
-          <p className="text-xs 2xl:text-sm text-gray-500 mt-1">{item.description}</p>
+          <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-2 2xl:gap-3">
-        {item.badges.map((badge, i) => (
-          <span
-            key={i}
-            className="px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium bg-blue-100 text-blue-700 border border-blue-300"
-          >
+      <div className="flex flex-wrap gap-1.5">
+        {item.badges.map((badge, bi) => (
+          <span key={bi} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-50 border border-gray-100 text-[11px] font-medium text-gray-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
             {badge}
           </span>
         ))}
@@ -198,72 +194,77 @@ const TargetSystemIntegration: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 2xl:px-20 py-6 2xl:py-10">
-        <button
-          onClick={() => navigate('/admin/avatarsys')}
-          className="group text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-4 2xl:mb-5"
-        >
-          <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
-          <span>Back to Target Systems</span>
-        </button>
-        <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-2xl 2xl:text-4xl font-semibold text-gray-900">Available Integrations </h1>
-        </div>
-        <p className="text-sm 2xl:text-base text-gray-500">
-          Choose the type of system you want to connect
-        </p>
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <div className="flex justify-center py-12 2xl:py-20">
-          <div className="animate-spin h-8 w-8 2xl:h-12 2xl:w-12 border-b-2 border-blue-600 rounded-full"></div>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 2xl:p-6 text-sm 2xl:text-base text-red-700">
-            Failed to load integrations: {error}
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+        .tsi-font { font-family: 'DM Sans', sans-serif; }
+        @keyframes tsi-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .tsi-card { animation: tsi-rise 0.35s ease both; }
+      `}</style>
+      <div className="tsi-font min-h-screen bg-[#FAFAFA]">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+          <div className="max-w-[1400px] mx-auto pt-10 pb-8">
+            <button
+              onClick={() => navigate('/systems')}
+              className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
+            >
+              <span>←</span>
+              <span>Back to Target Systems</span>
+            </button>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl mb-2">
+              Available Integrations
+            </h1>
+            <p className="text-[15px] text-gray-500 font-normal leading-relaxed m-0">
+              Choose the type of system you want to connect
+            </p>
           </div>
         </div>
-      )}
 
-      {/* Content */}
-      {!loading && !error && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10 space-y-8 2xl:space-y-14">
-          {Object.values(integrationsData).map((category, index) => {
-            const Icon = category.icon;
-            return (
-              <div key={index}>
-                <div className="flex items-center gap-3 2xl:gap-4 mb-4 2xl:mb-6">
-                  <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icon className="text-gray-600 text-base 2xl:text-xl" />
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin h-8 w-8 border-b-2 border-gray-400 rounded-full"></div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="max-w-[1400px] mx-auto px-12 py-6 max-md:px-5">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+              Failed to load integrations: {error}
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        {!loading && !error && (
+          <div className="max-w-[1400px] mx-auto px-12 pt-10 pb-20 max-md:px-5 space-y-12">
+            {Object.values(integrationsData).map((category, index) => {
+              const Icon = category.icon;
+              return (
+                <div key={index}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
+                      <Icon className="text-gray-600 text-sm" />
+                    </div>
+                    <div>
+                      <h2 className="text-[15px] font-semibold text-[#0A0A0A]">{category.category}</h2>
+                      <p className="text-[12px] text-gray-400">{category.items.length} integration{category.items.length !== 1 ? 's' : ''}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg 2xl:text-2xl font-semibold text-gray-900">
-                      {category.category}
-                    </h2>
-                    <p className="text-xs 2xl:text-sm text-gray-500">
-                      {category.items.length} integration{category.items.length !== 1 ? 's' : ''}
-                    </p>
+                  <div className="grid gap-5 max-md:grid-cols-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                    {category.items.map((item, i) => (
+                      <IntegrationCard key={item.id} item={item} />
+                    ))}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 2xl:gap-6">
-                  {category.items.map(item => (
-                    <IntegrationCard key={item.id} item={item} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

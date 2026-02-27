@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Btn from '../../components/Btn';
 import InputField from '../../components/InputField';
 import MouseMove from '../../effects/MouseMove';
@@ -6,7 +6,6 @@ import FloatingDots from '../../effects/FloatingDots';
 import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { IoSettingsSharp } from "react-icons/io5";
-import { useState, useEffect, useRef } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
@@ -104,6 +103,26 @@ const LoginPage: React.FC = () => {
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&display=swap');
+        .lp-font, .lp-font * { font-family: 'DM Sans', sans-serif; }
+        .lp-admin-menu {
+          position: absolute; top: calc(100% + 6px); right: 0;
+          width: 152px; background: var(--card-bg, #fff);
+          border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+          overflow: hidden; z-index: 50;
+        }
+        .lp-admin-menu button {
+          width: 100%; padding: 9px 14px;
+          font-size: 13px; font-weight: 500; color: var(--text-main, #374151);
+          background: none; border: none; text-align: left;
+          cursor: pointer; transition: background 0.12s;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .lp-admin-menu button:hover { background: rgba(0,0,0,0.04); }
+      `}</style>
+
       {/* MOBILE BLOCKER */}
       <div className="flex md:hidden h-screen w-full items-center justify-center bg-slate-900 text-white p-6" style={{ background: "var(--bg-gradient)" }}>
         <p className="text-center text-lg font-semibold">
@@ -114,21 +133,18 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* DESKTOP UI */}
-      <div className="hidden md:flex h-screen w-full items-center justify-center bg-gradient-to-l from-[#DBEAFE] via-[#F3E8FF] to-[#FCE7F3] p-6 relative" style={{ background: "var(--bg-gradient)" }}>
+      <div className="lp-font hidden md:flex h-screen w-full items-center justify-center bg-gradient-to-l from-[#DBEAFE] via-[#F3E8FF] to-[#FCE7F3] p-6 relative" style={{ background: "var(--bg-gradient)" }}>
         <MouseMove />
         <FloatingDots />
 
         {/* THEME ICON & ADMIN SETTINGS */}
         <div className="absolute top-6 right-6 flex items-center gap-2">
-          
-          {/* THEME TOGGLE BUTTON */}
           <button
             onClick={() => setDark(!dark)}
             className="p-2 rounded-md shadow bg-white cursor-pointer hover:bg-gray-100 transition-all duration-200"
           >
             {dark ? <GoSun /> : <MdOutlineDarkMode />}
           </button>
-        {/* ADMIN SETTINGS BUTTON */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowAdminMenu(!showAdminMenu)}
@@ -138,18 +154,9 @@ const LoginPage: React.FC = () => {
             >
               <IoSettingsSharp size={20} />
             </button>
-
-            {/* DROPDOWN MENU */}
             {showAdminMenu && (
-              <div className="absolute top-full right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden z-50" style={{ background: "var(--card-bg)" }}>
-                <button
-                  onClick={() => {
-                    navigate('/system-admin-login');
-                    setShowAdminMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 transition-colors"
-                  style={{ color: "var(--text-main)" }}
-                >
+              <div className="lp-admin-menu">
+                <button onClick={() => { navigate('/system-admin-login'); setShowAdminMenu(false); }}>
                   Admin Login
                 </button>
               </div>
@@ -158,7 +165,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* LOGIN CARD */}
-        <div className="w-[420px] relative rounded-md bg-white shadow-xl pb-6" style={{ background: "var(--card-bg)" }}>
+        <div className="w-[420px] relative rounded-2xl bg-white shadow-xl pb-6" style={{ background: "var(--card-bg)" }}>
           <div className="flex justify-center pt-6">
             <img src={dark ? "/logo-dark.png" : "/logo-light.png"} alt="Vega AI" className="h-32" />
           </div>
@@ -243,7 +250,6 @@ const LoginPage: React.FC = () => {
               style={{ color: '#000000' }}
               disabled={false}
             />
-            
           </div>
 
           <p className="w-full text-center text-xs text-gray-400 mt-6" style={{ color: "var(--text-muted)" }}>

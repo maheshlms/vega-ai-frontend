@@ -1637,19 +1637,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   /* Shared style tokens                                                       */
   /* ─────────────────────────────────────────────────────────────────────── */
   const inputCls =
-    'w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300';
+    'w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300';
 
   /* ─────────────────────────────────────────────────────────────────────── */
   /* Render                                                                   */
   /* ─────────────────────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-indigo-50/30 relative overflow-hidden">
-      {/* Animated Background Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
-      </div>
+    <div className="relative w-full">
 
       {/* Success Modal */}
       {showSuccess && (
@@ -1696,23 +1690,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       )}
 
       {/* Main Content */}
-      <div className={isModal ? 'relative z-10 w-full' : 'relative z-10 flex items-start justify-center min-h-screen p-8 2xl:p-14'}>
-        <div className={isModal ? 'w-full' : 'w-full max-w-4xl 2xl:max-w-5xl'}>
-          {!isModal && onCancel && (
-            <button
-              onClick={onCancel}
-              className="group text-gray-700 hover:text-gray-900 mb-6 2xl:mb-8 flex items-center gap-2 transition-all duration-300 text-sm 2xl:text-base font-medium"
-            >
-              <span className="inline-block transform group-hover:-translate-x-1 transition-transform duration-300">←</span>
-              <span>Back</span>
-            </button>
-          )}
+      <div className="relative z-10 w-full">
+        <div className="w-full">
 
           {/* Form Card */}
-          <div className={`bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-slideUp ${isModal ? 'max-h-[90vh] overflow-y-auto' : ''}`}>
+          <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-slideUp ${isModal ? 'max-h-[90vh] overflow-y-auto' : ''}`}>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-8 2xl:px-12 py-6 2xl:py-8 border-b border-gray-100 bg-gradient-to-r from-white/50 to-purple-50/30">
+            <div className="flex items-center justify-between px-8 2xl:px-12 py-6 2xl:py-8 border-b border-gray-100 bg-white">
               <div>
                 <div className="flex items-center gap-2 text-sm 2xl:text-base text-gray-500 mb-2">
                   <span className="w-6 h-6 2xl:w-8 2xl:h-8 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs 2xl:text-sm font-bold shadow-sm">
@@ -1802,7 +1787,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                     value={formData.auth_method}
                     onChange={(e) => handleAuthMethodChange(e.target.value)}
                     required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300 cursor-pointer"
+                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent bg-white transition-colors hover:border-gray-300 cursor-pointer"
                   >
                     {authMethodOptions.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -1830,7 +1815,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       value={formData.engine_port}
                       onChange={handleChange}
                       placeholder="9031"
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-gray-300"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300"
                     />
                     <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                       <span>💡</span>
@@ -1890,14 +1875,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               <div className="flex gap-4 mt-8 2xl:mt-10 pt-6 2xl:pt-8 border-t border-gray-100">
                 <button
                   type="button" onClick={handleReset}
-                  className="flex-1 px-6 py-3 2xl:px-8 2xl:py-4 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-2 border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-sm 2xl:text-base font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
+                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="text-lg 2xl:text-xl">🔄</span>
                   <span>Reset</span>
                 </button>
                 <button
                   type="submit" disabled={loading}
-                  className="flex-1 px-6 py-3 2xl:px-8 2xl:py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-sm 2xl:text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                  className="flex-1 px-6 py-3 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Saving…' : system ? 'Update System' : 'Create System'}
                 </button>

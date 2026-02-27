@@ -26,7 +26,7 @@ const clearSession = () => {
 };
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&display=swap');
 
   html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow-x: hidden; }
   #root { width: 100% !important; min-height: 100vh !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
@@ -70,8 +70,8 @@ const STYLES = `
   .as-body { max-width: 1000px; margin: 0 auto; padding: 48px 40px; }
   .as-header { margin-bottom: 40px; animation: asFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both; }
   .as-header h1 {
-    font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: #1a1a2e;
-    margin: 0 0 6px; letter-spacing: -0.02em;
+    font-family: 'DM Sans', sans-serif; font-size: 36px; font-weight: 700; color: #1a1a2e;
+    margin: 0 0 6px; letter-spacing: -0.03em;
   }
   .as-header p { font-size: 14px; color: #9090a8; margin: 0; font-weight: 300; }
   .as-label {

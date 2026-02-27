@@ -31,8 +31,8 @@ const Sidebar: React.FC = () => {
     { icon: MdOutlineVerifiedUser, value: "Integration Bay", path: "/integration" },
   ];
 
-  // Admin menu item (conditionally added)
-  const adminMenuItem: MenuItem = { icon: RiAdminLine, value: "Admin", path: "/admin" };
+  // Systems menu item (conditionally added — admin only)
+  const adminMenuItem: MenuItem = { icon: RiAdminLine, value: "Systems", path: "/systems" };
 
   // Bottom menu items (always visible)
   const bottomMenuItems: MenuItem[] = [

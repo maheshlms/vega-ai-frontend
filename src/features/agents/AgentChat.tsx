@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { IoClose, IoPause, IoPlay, IoStop } from "react-icons/io5";
-import { FaArrowLeft, FaMicrophone, FaPaperPlane, FaTrash } from "react-icons/fa";
+import { IoClose } from "react-icons/io5";
+import { FaArrowLeft, FaMicrophone, FaPaperPlane} from "react-icons/fa";
 import { IoAttachOutline } from "react-icons/io5";
 import StreamingAvatar, {
   AvatarQuality,
@@ -108,8 +108,9 @@ interface AvatarImgProps {
   name?: string;
   size: number;
   className?: string;
+  style?: React.CSSProperties;
 }
-const AvatarImg: React.FC<AvatarImgProps> = ({ src, name = 'A', size, className = '' }) => {
+const AvatarImg: React.FC<AvatarImgProps> = ({ src, name = 'A', size, className = '', style }) => {
   const [error, setError] = useState(false);
   if (!src || error) {
     return (
@@ -127,7 +128,7 @@ const AvatarImg: React.FC<AvatarImgProps> = ({ src, name = 'A', size, className 
   return (
     <img src={src} alt={name}
       className={`object-cover object-top rounded-full flex-shrink-0 ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, ...style }}
       onError={() => setError(true)}
     />
   );
@@ -141,7 +142,7 @@ const AgentChat: React.FC = () => {
   const preloadedAgent = location.state?.agent;
 
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
-  const [agentError, setAgentError] = useState<string>('');
+  // const [agentError, setAgentError] = useState<string>('');
   const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -164,6 +165,7 @@ const AgentChat: React.FC = () => {
   const [debugLines, setDebugLines] = useState<string[]>([]);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.8);
   const [autoSendVoice, setAutoSendVoice] = useState(false);
 
   const [isListening, setIsListening] = useState(false);
@@ -177,9 +179,10 @@ const AgentChat: React.FC = () => {
   const chromaRafRef = useRef<number | null>(null);
   const hasSpokenInit = useRef(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioTracksRef = useRef<MediaStreamTrack[]>([]);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const volumeRef = useRef(0.8);
   const latestAIResponseRef = useRef<string>('');
 
   const avatarImg  = agent?.config?.selectedAvatarImg  || (agent as any)?.avatarImg  || '';
@@ -202,7 +205,7 @@ const AgentChat: React.FC = () => {
         setAgent(data);
       } catch (err) {
         console.error('Failed to load agent details', err);
-        setAgentError('Unable to load agent details');
+        // setAgentError('Unable to load agent details');
         if (preloadedAgent) setAgent(preloadedAgent);
       } finally { setLoadingAgent(false); }
     };
@@ -219,7 +222,7 @@ const AgentChat: React.FC = () => {
     if (!audioElRef.current) {
       audioElRef.current = new Audio();
       audioElRef.current.autoplay = true;
-      audioElRef.current.volume = 1.0;
+      audioElRef.current.volume = volumeRef.current;
     }
     audioElRef.current.srcObject = new MediaStream(audioTracksRef.current);
     audioElRef.current.play()
@@ -235,7 +238,17 @@ const AgentChat: React.FC = () => {
     const newMuted = !muted;
     setMuted(newMuted);
     if (audioElRef.current) {
-      audioElRef.current.volume = newMuted ? 0 : 1.0;
+      audioElRef.current.volume = newMuted ? 0 : volumeRef.current;
+    }
+  }, [muted]);
+
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    volumeRef.current = newVolume;
+    setVolume(newVolume);
+    if (newVolume > 0 && muted) setMuted(false);
+    if (newVolume === 0) setMuted(true);
+    if (audioElRef.current) {
+      audioElRef.current.volume = newVolume;
     }
   }, [muted]);
 
@@ -595,12 +608,17 @@ const AgentChat: React.FC = () => {
         : '✓ License installation completed!';
       const failText = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
 
+      const stripHtmlForSpeech = (html: string) =>
+        html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
       setMessages(prev => [...prev, {
         id: Date.now(),
         text: action === 'approve' ? approveText : rejectText,
         sender: 'ai',
         timestamp: new Date(),
       }]);
+      // Await speak so avatar finishes before the result message appears
+      if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
 
       if (action === 'approve') {
         try {
@@ -610,22 +628,26 @@ const AgentChat: React.FC = () => {
           });
           if (executeResponse.ok) {
             const executeData = await executeResponse.json();
+            const resultText = executeData.message || successText;
             setMessages(prev => [...prev, {
               id: Date.now() + 1,
-              text: executeData.message || successText,
+              text: resultText,
               sender: 'ai',
               timestamp: new Date(),
               isSuccess: executeData.success,
             }]);
+            if (isAvatarActive) await speakMessage(stripHtmlForSpeech(resultText));
           } else {
             const errorData = await executeResponse.json();
+            const errText = errorData.message || failText;
             setMessages(prev => [...prev, {
               id: Date.now() + 1,
-              text: errorData.message || failText,
+              text: errText,
               sender: 'ai',
               timestamp: new Date(),
               isError: true,
             }]);
+            if (isAvatarActive) await speakMessage(stripHtmlForSpeech(errText));
           }
         } catch (executeError: any) {
           setMessages(prev => [...prev, {
@@ -635,9 +657,14 @@ const AgentChat: React.FC = () => {
             timestamp: new Date(),
             isError: true,
           }]);
+          if (isAvatarActive) await speakMessage(`Error during update: ${executeError.message}`);
         }
       }
       setPendingApproval(null);
+      // Reset session so the next upload starts a fresh agent session.
+      // The old session is left in approval/rejected state and would cause
+      // immediate errors if reused.
+      sessionIdRef.current = null;
     } catch (error: any) {
       setMessages(prev => [...prev, {
         id: Date.now(),
@@ -740,11 +767,12 @@ const AgentChat: React.FC = () => {
       setMessages(prev => [...prev, aiMessage]);
       setChatHistory({ ...updatedHistory, [agentKey]: aiResponseText });
       latestAIResponseRef.current = aiResponseText;
-      await speakMessage(aiResponseText);
+      await speakMessage(data.speech_text ?? '');
 
     } catch (error: any) {
       setIsTyping(false);
-      setMessages(prev => [...prev, { id: Date.now() + 2, text: `Error: ${error.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
+      const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Something went wrong. Please try again.');
+      setMessages(prev => [...prev, { id: Date.now() + 2, text: `Error: ${errMsg}`, sender: 'ai', timestamp: new Date(), isError: true }]);
       await speakMessage("I'm sorry, I encountered an error. Please try again.");
     }
   }, [inputValue, chatHistory, agent, attachedFiles, isPlaying, speakMessage, handleInterrupt]);
@@ -935,15 +963,59 @@ const AgentChat: React.FC = () => {
         }
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-          padding: 10px 12px;
+          padding: 8px 12px;
           background: rgba(255,255,255,0.92);
           backdrop-filter: blur(12px);
           border-top: 1px solid rgba(0,0,0,0.06);
+          display: flex; flex-direction: column; gap: 6px;
+        }
+        .agc-info-bar-row {
           display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
         }
         .agc-timer {
           font-size: 11px; color: #9ca3af;
           background: #f3f4f6; padding: 3px 10px; border-radius: 20px;
+          font-variant-numeric: tabular-nums;
+        }
+        .agc-vol-icon-btn {
+          width: 28px; height: 28px;
+          display: flex; align-items: center; justify-content: center;
+          border: none; background: none; cursor: pointer;
+          color: #6b7280; border-radius: 6px;
+          flex-shrink: 0;
+          transition: color 0.15s, background 0.15s;
+        }
+        .agc-vol-icon-btn:hover { color: #374151; background: #f3f4f6; }
+        .agc-volume-slider {
+          flex: 1;
+          -webkit-appearance: none;
+          appearance: none;
+          height: 4px;
+          border-radius: 2px;
+          outline: none;
+          cursor: pointer;
+          background: linear-gradient(to right, #6366f1 0%, #6366f1 var(--vol-pct, 80%), #e5e7eb var(--vol-pct, 80%), #e5e7eb 100%);
+        }
+        .agc-volume-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          background: #6366f1;
+          cursor: pointer;
+          border: 2px solid #fff;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+        }
+        .agc-volume-slider::-moz-range-thumb {
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          background: #6366f1;
+          cursor: pointer;
+          border: 2px solid #fff;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+        }
+        .agc-vol-pct {
+          font-size: 10px; color: #9ca3af;
+          min-width: 30px; text-align: right;
           font-variant-numeric: tabular-nums;
         }
         .agc-chat-panel {
@@ -1151,15 +1223,49 @@ const AgentChat: React.FC = () => {
               </div>
               <div className="agc-avatar-info-bar">
                 {isAvatarActive && (
-                  <span style={{ fontSize: 11, color: '#065f46', fontWeight: 600, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10, border: '1px solid #6ee7b7' }}>
-                    🟢 Live · {fmt(sessionDuration)}s
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      className="agc-vol-icon-btn"
+                      onClick={handleMuteToggle}
+                      title={muted || volume === 0 ? 'Unmute' : 'Mute'}
+                    >
+                      {muted || volume === 0 ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                        </svg>
+                      ) : volume < 0.5 ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      )}
+                    </button>
+                    <input
+                      type="range"
+                      className="agc-volume-slider"
+                      min={0} max={1} step={0.02}
+                      value={muted ? 0 : volume}
+                      style={{ '--vol-pct': `${(muted ? 0 : volume) * 100}%` } as React.CSSProperties}
+                      onChange={e => handleVolumeChange(parseFloat(e.target.value))}
+                    />
+                    <span className="agc-vol-pct">{muted ? '0%' : `${Math.round(volume * 100)}%`}</span>
+                  </div>
                 )}
-                {agent?.description && (
-                  <span style={{ fontSize: 10, color: '#9ca3af' }}>
-                    {agent.description.substring(0, 40)}{agent.description.length > 40 ? '…' : ''}
-                  </span>
-                )}
+                <div className="agc-info-bar-row">
+                  {isAvatarActive && (
+                    <span style={{ fontSize: 11, color: '#065f46', fontWeight: 600, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10, border: '1px solid #6ee7b7' }}>
+                      🟢 Live · {fmt(sessionDuration)}s
+                    </span>
+                  )}
+                  {agent?.description && (
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>
+                      {agent.description.substring(0, 40)}{agent.description.length > 40 ? '…' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

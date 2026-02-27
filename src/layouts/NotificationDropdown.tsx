@@ -134,6 +134,13 @@ const NotificationDropdown: React.FC = () => {
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown">
+          {/* Future Release Banner */}
+          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200 text-gray-400 text-[11px] font-semibold tracking-wide select-none">
+              🚀 Future Release
+            </span>
+            <span className="text-[11px] text-gray-400">This feature is coming soon</span>
+          </div>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <div className="flex items-center gap-2">

@@ -1,35 +1,14 @@
 import React from "react";
 import { IoIosSearch } from "react-icons/io";
-import { MdOutlineDarkMode } from "react-icons/md";
-import { GoSun } from "react-icons/go";
-import { useTheme } from '../state/ThemeContext'; // ✅ Already imported
+import { useTheme } from '../state/ThemeContext';
 import NotificationDropdown from './NotificationDropdown.js';
 import HelpDropdown from './HelpDropdown.js';
 import ProfileDropdown from './ProfileDropdown.js';
 import SearchBox from './SearchBox.js';
-import SystemStatusIndicator from './SystemStatusIndicator.js';
-
-/* ===================== DARK MODE BUTTON ===================== */
-const DarkMode: React.FC = () => {
-  const { isDark, toggleTheme } = useTheme(); // ✅ Use context, no local state needed
-
-  return (
-    <button
-      onClick={toggleTheme}
-      className="p-2 rounded-md shadow bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {isDark 
-        ? <GoSun size={20} className="text-yellow-400" /> 
-        : <MdOutlineDarkMode size={20} className="text-gray-600" />
-      }
-    </button>
-  );
-};
 
 /* ===================== TOP BAR ===================== */
 const TopBar: React.FC = () => {
-  const { isDark } = useTheme(); // ✅ Use context for logo swap, no local state needed
+  const { isDark } = useTheme();
 
   return (
     <div className="sticky top-0 z-50 w-full bg-white dark:bg-[#0f1623] border-b border-gray-200 dark:border-gray-700">
@@ -59,11 +38,9 @@ const TopBar: React.FC = () => {
 
         {/* RIGHT - Actions */}
         <div className="flex items-center gap-4">
-          <SystemStatusIndicator />
           <NotificationDropdown />
           <HelpDropdown />
           <ProfileDropdown />
-          <DarkMode />
         </div>
       </div>
 

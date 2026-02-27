@@ -24,58 +24,23 @@ import FloatingChat from '../chatbot/FloatingChat';
 import { toast } from "react-toastify";
 import { useTheme } from '../../state/ThemeContext';
 
-// Add custom scrollbar styles
+// Scrollbar styles (kept for response-time chart)
 const customStyles = `
-  .custom-scrollbar {
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+  .aad-font { font-family: 'DM Sans', sans-serif; }
+
+  .aad-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #1e2d45 #111827;
+    scrollbar-color: #d1d5db #f1f5f9;
   }
+  .aad-scrollbar::-webkit-scrollbar { width: 5px; }
+  .aad-scrollbar::-webkit-scrollbar-track { background: #f9fafb; border-radius: 8px; }
+  .aad-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+  .aad-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111827;
-    border-radius: 10px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #1e2d45;
-    border-radius: 10px;
-    transition: background 0.2s ease;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #2d3f5c;
-  }
-
-  .custom-scrollbar {
-    scroll-behavior: smooth;
-  }
-
-  .light-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f5f9;
-  }
-
-  .light-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .light-scrollbar::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 10px;
-  }
-
-  .light-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-  }
-
-  .light-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-  }
+  /* legacy class aliases so existing JSX still works */
+  .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #d1d5db #f9fafb; }
+  .light-scrollbar  { scrollbar-width: thin; scrollbar-color: #d1d5db #f9fafb; }
 `;
 
 interface Agent {
@@ -207,7 +172,7 @@ const exportAgentsCSV = (agents: Agent[]) => {
     a.name, a.type,
     a.killswitchActivated ? 'Disabled' : a.softDeleted ? 'Deleted' : a.isActive ? 'Active' : 'Inactive',
     a.environment || 'N/A',
-    a.tasksCompleted, `${a.successRate}%`, `${a.responseTime}ms`,
+    a.tasksCompleted, `${a.successRate}%`, `${(a.responseTime / 1000).toFixed(2)}s`,
     a.createdBy,
     new Date(a.lastActivity).toLocaleString()
   ]);
@@ -652,174 +617,74 @@ const AdminAgentControll: React.FC = () => {
     : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] transition-colors duration-300 overflow-x-hidden">
+    <div className="aad-font min-h-screen bg-[#FAFAFA] text-[#111] overflow-x-hidden">
       <style>{customStyles}</style>
 
-      <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-16 py-4 lg:py-6 2xl:py-10">
-
-        {/* HEADER */}
-        <div className="mb-6 lg:mb-10">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2" style={{ fontFamily: "'SF Pro Display', -apple-system, sans-serif" }}>
-                AI Agent Dashboard
-              </h1>
-              <p className="text-gray-500 dark:text-slate-400 text-sm md:text-base lg:text-lg">Real-time monitoring and analytics for your AI workforce</p>
+      {/* ── Header ── */}
+      <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+        <div className="max-w-[1400px] mx-auto pt-10 pb-8 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
+              AI Agent Dashboard
+            </h1>
+            <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
+              Real-time monitoring and analytics for your AI workforce
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className={`px-4 py-2 rounded-xl border ${sessionBgColor}`}>
+              <div className="text-[11px] text-gray-500 mb-1 flex items-center gap-1 font-medium">
+                <FaClock className="text-xs" /> Session
+              </div>
+              <div className={`text-[13px] font-semibold font-mono ${sessionStatusColor}`}>{sessionTime}</div>
             </div>
-            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-              {/* ── Session Timer (replaces Login Time) ── */}
-              <div className={`px-4 py-2 rounded-lg border ${sessionBgColor}`}>
-                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                  <FaClock className="text-xs" /> Session Time
-                </div>
-                <div className={`text-sm font-semibold font-mono ${sessionStatusColor}`}>
-                  {sessionTime}
-                </div>
-              </div>
-              <div className={`px-4 py-2 rounded-lg border ${systemHealth.cpu < 70
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
-                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">System Status</div>
-                <div className={`text-sm font-semibold ${systemHealth.cpu < 70 ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
-                  {systemHealth.cpu < 70 ? 'Healthy' : 'Moderate'}
-                </div>
-              </div>
+            <div className={`px-4 py-2 rounded-xl border ${
+              systemHealth.cpu < 70 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+            }`}>
+              <div className="text-[11px] text-gray-500 mb-1 font-medium">System</div>
+              <div className={`text-[13px] font-semibold ${
+                systemHealth.cpu < 70 ? 'text-green-700' : 'text-amber-700'
+              }`}>{systemHealth.cpu < 70 ? 'Healthy' : 'Moderate'}</div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* PRIMARY STATS GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
-          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-                <FaRobot className="text-blue-600 dark:text-blue-400 text-2xl" />
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Total Agents</div>
-                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{totalAgents}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600 dark:text-slate-400">System-wide deployment</span>
-            </div>
-          </div>
+      <div className="max-w-[1400px] mx-auto px-12 max-md:px-5">
 
-          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
-                <FaCheckCircle className="text-green-600 dark:text-green-400 text-2xl" />
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Active Now</div>
-                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{activeAgents}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${totalAgents > 0 ? (activeAgents / totalAgents) * 100 : 0}%` }} />
-              </div>
-              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
-                {totalAgents > 0 ? Math.round((activeAgents / totalAgents) * 100) : 0}%
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl">
-                <FaTimesCircle className="text-orange-600 dark:text-orange-400 text-2xl" />
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Inactive</div>
-                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{inactiveAgents}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600 dark:text-slate-400">Paused or disabled</span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#1a2234] border shadow-md border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
-                <FaChartLine className="text-purple-600 dark:text-purple-400 text-2xl" />
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Success Rate</div>
-                <div className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">{avgSuccessRate}%</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${avgSuccessRate}%` }} />
-              </div>
-              <span className="text-sm text-gray-600 dark:text-slate-400">Avg performance</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SECONDARY STATS ROW */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
-          <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-white dark:to-[#1a2234] border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
-                <FaBolt className="text-blue-600 dark:text-blue-400 text-xl" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">Tasks Completed</div>
-                <div className="text-xl md:text-2xl xl:text-3xl font-bold text-gray-900 dark:text-white">{totalTasks.toLocaleString()}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 dark:from-green-900/20 to-white dark:to-[#1a2234] border border-green-100 dark:border-green-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
-                <MdSpeed className="text-green-600 dark:text-green-400 text-xl" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">Avg Response Time</div>
-                <div className="text-xl md:text-2xl xl:text-3xl font-bold text-gray-900 dark:text-white">{avgResponseTime}ms</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-[#1a2234] border border-purple-100 dark:border-purple-900/40 rounded-2xl p-4 md:p-5 xl:p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm">
-                <MdSecurity className="text-purple-600 dark:text-purple-400 text-xl" />
-              </div>
-              <div className="flex-1">
-                <div className="text-sm text-gray-600 dark:text-slate-400 mb-2">System Health</div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500 dark:text-slate-500 w-16">CPU:</span>
-                    <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-1.5">
-                      <div className={`h-1.5 rounded-full ${systemHealth.cpu < 70 ? 'bg-green-500' : 'bg-yellow-500'}`}
-                        style={{ width: `${systemHealth.cpu}%` }} />
-                    </div>
-                    <span className="text-gray-700 dark:text-slate-300 font-semibold w-8">{systemHealth.cpu}%</span>
+        {/* ── Stats strip ── */}
+        <div className="py-5 border-b border-gray-100">
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            {[
+              { icon: FaRobot,      label: 'Total Agents',     value: totalAgents,                    bg: '#EFF6FF', color: '#3B82F6' },
+              { icon: FaCheckCircle,label: 'Active',           value: activeAgents,                   bg: '#F0FDF4', color: '#22C55E' },
+              { icon: FaTimesCircle,label: 'Inactive',         value: inactiveAgents,                 bg: '#FFF7ED', color: '#F97316' },
+              { icon: FaChartLine,  label: 'Success Rate',     value: `${avgSuccessRate}%`,            bg: '#FAF5FF', color: '#A855F7' },
+              { icon: FaBolt,       label: 'Tasks Done',       value: totalTasks.toLocaleString(),    bg: '#EFF6FF', color: '#3B82F6' },
+              { icon: MdSpeed,      label: 'Avg Response',     value: `${(avgResponseTime / 1000).toFixed(2)}s`,    bg: '#F0FDF4', color: '#22C55E' },
+              { icon: MdSecurity,   label: 'System',           value: systemHealth.cpu < 70 ? 'Healthy' : 'Moderate', bg: systemHealth.cpu < 70 ? '#F0FDF4' : '#FFFBEB', color: systemHealth.cpu < 70 ? '#22C55E' : '#F59E0B' },
+            ].map((s, i) => {
+              const Icon = s.icon as React.ElementType;
+              return (
+                <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
+                    <Icon style={{ color: s.color }} size={17} />
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500 dark:text-slate-500 w-16">Memory:</span>
-                    <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-1.5">
-                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${systemHealth.memory}%` }} />
-                    </div>
-                    <span className="text-gray-700 dark:text-slate-300 font-semibold w-8">{systemHealth.memory}%</span>
+                  <div>
+                    <div className="text-xl font-bold text-[#0A0A0A]">{s.value}</div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
         {/* MAIN CONTENT GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8 pt-8">
 
           {/* TASK OVERVIEW CHART */}
-          <div className="lg:col-span-2 shadow-md bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
+          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -970,21 +835,21 @@ const AdminAgentControll: React.FC = () => {
           </div>
 
           {/* AGENT DISTRIBUTION */}
-          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
-            <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">Agent Distribution</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">By environment and type</p>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h3 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight mb-1">Agent Distribution</h3>
+            <p className="text-[12.5px] text-gray-500 mb-6">By environment and type</p>
 
             <div className="mb-6">
-              <div className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Environments</div>
+              <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Environments</div>
               <div className="space-y-3">
                 {Object.entries(environmentStats).map(([env, count]) => (
                   <div key={env}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-700 dark:text-slate-300">{env}</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{count}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-medium text-[#0A0A0A]">{env}</span>
+                      <span className="text-[13px] font-bold text-[#0A0A0A]">{count}</span>
                     </div>
-                    <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
+                    <div className="bg-gray-100 rounded-full h-1.5">
+                      <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
                     </div>
                   </div>
                 ))}
@@ -992,16 +857,16 @@ const AdminAgentControll: React.FC = () => {
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Agent Types</div>
+              <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Agent Types</div>
               <div className="space-y-3">
                 {Object.entries(typeStats).map(([type, count]) => (
                   <div key={type}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-700 dark:text-slate-300">{type}</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{count}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-medium text-[#0A0A0A]">{type}</span>
+                      <span className="text-[13px] font-bold text-[#0A0A0A]">{count}</span>
                     </div>
-                    <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-2">
-                      <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
+                    <div className="bg-gray-100 rounded-full h-1.5">
+                      <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${(count / totalAgents) * 100}%` }} />
                     </div>
                   </div>
                 ))}
@@ -1011,59 +876,46 @@ const AdminAgentControll: React.FC = () => {
         </div>
 
         {/* ADDITIONAL VISUAL CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 xl:gap-6 mb-6 lg:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
 
           {/* AGENT ACTIVITY STATUS */}
-          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6">
-            <div className="mb-4 md:mb-6">
-              <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">Agent Activity Status</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400">Real-time agent availability</p>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <div className="mb-6">
+              <h3 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight mb-1">Agent Activity Status</h3>
+              <p className="text-[12.5px] text-gray-500">Real-time agent availability</p>
             </div>
 
-            <div className="mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Active Agents</span>
-                    </div>
-                    <span className="text-lg font-bold text-green-700 dark:text-green-400">{activeAgents}</span>
+            <div className="mb-6 space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse" />
+                    <span className="text-[13px] font-medium text-[#0A0A0A]">Active Agents</span>
                   </div>
-                  <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-4 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-4 rounded-full transition-all duration-700 flex items-center justify-end pr-2"
-                      style={{ width: `${totalAgents > 0 ? (activeAgents / totalAgents) * 100 : 0}%` }}
-                    >
-                      {activeAgents > 0 && <span className="text-xs font-bold text-white">{Math.round((activeAgents / totalAgents) * 100)}%</span>}
-                    </div>
-                  </div>
+                  <span className="text-[15px] font-bold text-green-700">{activeAgents}</span>
+                </div>
+                <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div className="bg-green-500 h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${totalAgents > 0 ? (activeAgents / totalAgents) * 100 : 0}%` }} />
                 </div>
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-gray-400 dark:bg-slate-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Inactive Agents</span>
-                    </div>
-                    <span className="text-lg font-bold text-gray-700 dark:text-slate-300">{inactiveAgents}</span>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                    <span className="text-[13px] font-medium text-[#0A0A0A]">Inactive Agents</span>
                   </div>
-                  <div className="bg-gray-100 dark:bg-[#0d1117] rounded-full h-4 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-gray-400 to-gray-500 h-4 rounded-full transition-all duration-700 flex items-center justify-end pr-2"
-                      style={{ width: `${totalAgents > 0 ? (inactiveAgents / totalAgents) * 100 : 0}%` }}
-                    >
-                      {inactiveAgents > 0 && <span className="text-xs font-bold text-white">{Math.round((inactiveAgents / totalAgents) * 100)}%</span>}
-                    </div>
-                  </div>
+                  <span className="text-[15px] font-bold text-gray-600">{inactiveAgents}</span>
+                </div>
+                <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div className="bg-gray-400 h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${totalAgents > 0 ? (inactiveAgents / totalAgents) * 100 : 0}%` }} />
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Agents by Type</h4>
+              <h4 className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Agents by Type</h4>
               <div className="space-y-3">
                 {Object.entries(typeStats).map(([type, count]) => {
                   const activeCount = agents.filter(
@@ -1072,9 +924,9 @@ const AdminAgentControll: React.FC = () => {
                   const inactiveCount = count - activeCount;
                   return (
                     <div key={type}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">{type}</span>
-                        <span className="text-xs text-gray-500 dark:text-slate-500">{count} total</span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[13px] font-medium text-[#0A0A0A]">{type}</span>
+                        <span className="text-[11px] text-gray-400">{count} total</span>
                       </div>
                       <div className="flex gap-1 h-6">
                         {activeCount > 0 && (
@@ -1102,39 +954,38 @@ const AdminAgentControll: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200 dark:border-[#1e2d45]">
+            <div className="pt-5 border-t border-gray-100">
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                  <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Avg Response</div>
-                  <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{avgResponseTime}ms</div>
+                <div className="bg-[#EFF6FF] rounded-xl p-3 border border-blue-100">
+                  <div className="text-[11px] text-blue-600 font-medium mb-1">Avg Response</div>
+                  <div className="text-[17px] font-bold text-blue-700">{(avgResponseTime / 1000).toFixed(2)}s</div>
                 </div>
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-                  <div className="text-xs text-purple-600 dark:text-purple-400 mb-1">Total Tasks</div>
-                  <div className="text-lg font-bold text-purple-700 dark:text-purple-300">{totalTasks}</div>
+                <div className="bg-[#FAF5FF] rounded-xl p-3 border border-purple-100">
+                  <div className="text-[11px] text-purple-600 font-medium mb-1">Total Tasks</div>
+                  <div className="text-[17px] font-bold text-purple-700">{totalTasks}</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* RESPONSE TIME CHART */}
-          <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl p-4 md:p-5 xl:p-6 flex flex-col">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col">
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white">Response Time Analysis</h3>
-                <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-[#111827] px-2 py-1 rounded">{agents.length}
-                  agents</span>
+                <h3 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight">Response Time Analysis</h3>
+                <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">{agents.length} agents</span>
               </div>
-              <p className="text-sm text-gray-500 dark:text-slate-400">Average response times by agent (all statuses)</p>
+              <p className="text-[12.5px] text-gray-500">Average response times by agent (all statuses)</p>
             </div>
 
-            <div className={`flex-1 overflow-y-auto max-h-[320px] pr-2 space-y-3 ${scrollbarClass}`}>
+            <div className="flex-1 overflow-y-auto max-h-[320px] pr-2 space-y-3 aad-scrollbar">
               {agents.map((agent) => {
                 const telemetryResponseTime = getAgentResponseTimeFromTelemetry(agent.id);
                 const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : agent.responseTime;
                 
                 return (
                 <div key={agent.id}
-                  className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${agent.killswitchActivated || agent.softDeleted ? 'bg-gray-50 dark:bg-[#111827]/50' : 'hover:bg-gray-50 dark:hover:bg-[#111827]'}`}>
+                  className={`flex items-center gap-3 p-2 rounded-xl transition-colors ${agent.killswitchActivated || agent.softDeleted ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
                   <div className="flex-shrink-0">
                     {agent.killswitchActivated ? (
                       <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center"><FaPowerOff className="text-red-600 dark:text-red-400 text-xs" /></div>
@@ -1147,22 +998,22 @@ const AdminAgentControll: React.FC = () => {
                     )}
                   </div>
                   <div className="w-28 flex-shrink-0">
-                    <div className={`text-sm font-medium truncate ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-400 dark:text-slate-600' : 'text-gray-700 dark:text-slate-200'}`}>{agent.name}</div>
-                    <div className="text-xs text-gray-400 dark:text-slate-500">{agent.type}</div>
+                    <div className={`text-[13px] font-medium truncate ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-400' : 'text-[#0A0A0A]'}`}>{agent.name}</div>
+                    <div className="text-[11px] text-gray-400">{agent.type}</div>
                   </div>
                   <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-8 relative overflow-hidden">
                     <div
                       className={`h-8 rounded-full transition-all duration-700 flex items-center justify-end pr-2 ${
                         agent.killswitchActivated || agent.softDeleted ? 'bg-gray-300 dark:bg-slate-600' :
                         displayResponseTime === 0 ? 'bg-gray-200 dark:bg-slate-700' :
-                        displayResponseTime < 200 ? 'bg-green-500' :
-                        displayResponseTime < 400 ? 'bg-blue-500' :
-                        displayResponseTime < 500 ? 'bg-yellow-500' : 'bg-red-500'
+                        displayResponseTime < 2000 ? 'bg-green-500' :
+                        displayResponseTime < 5000 ? 'bg-blue-500' :
+                        displayResponseTime < 10000 ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
-                      style={{ width: displayResponseTime === 0 ? '10%' : `${Math.min((displayResponseTime / 600) * 100, 100)}%` }}
+                      style={{ width: displayResponseTime === 0 ? '10%' : `${Math.min((displayResponseTime / 15000) * 100, 100)}%` }}
                     >
                       <span className={`text-xs font-semibold ${agent.killswitchActivated || agent.softDeleted ? 'text-gray-600 dark:text-slate-300' : 'text-white'}`}>
-                        {displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A'}
+                        {displayResponseTime > 0 ? `${(displayResponseTime / 1000).toFixed(2)}s` : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -1176,10 +1027,10 @@ const AdminAgentControll: React.FC = () => {
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#1e2d45]">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { color: 'bg-green-500', label: 'Excellent', sub: '<200ms' },
-                  { color: 'bg-blue-500', label: 'Good', sub: '200-400ms' },
-                  { color: 'bg-yellow-500', label: 'Fair', sub: '400-500ms' },
-                  { color: 'bg-red-500', label: 'Poor', sub: '>500ms' },
+                  { color: 'bg-green-500', label: 'Excellent', sub: '< 2s' },
+                  { color: 'bg-blue-500', label: 'Good', sub: '2s – 5s' },
+                  { color: 'bg-yellow-500', label: 'Fair', sub: '5s – 10s' },
+                  { color: 'bg-red-500', label: 'Poor', sub: '> 10s' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-2">
                     <div className={`w-4 h-4 ${item.color} rounded flex-shrink-0`}></div>
@@ -1195,49 +1046,31 @@ const AdminAgentControll: React.FC = () => {
         </div>
 
         {/* AGENT LIST */}
-        <div className="bg-white dark:bg-[#1a2234] border border-gray-200 dark:border-[#1e2d45] rounded-2xl overflow-hidden">
-          <div className="p-4 md:p-5 xl:p-6 border-b border-gray-200 dark:border-[#1e2d45]">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden mb-10">
+          <div className="px-6 py-5 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base md:text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-1">All AI Agents</h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400">{totalAgents} agents currently configured</p>
+                <h3 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight mb-0.5">All AI Agents</h3>
+                <p className="text-[12.5px] text-gray-500">{totalAgents} agents currently configured</p>
               </div>
 
               {/* ── Replaced dummy "View Details" with 3 useful action buttons ── */}
               <div className="flex items-center gap-2">
-                {/* Refresh */}
-                <button
-                  onClick={handleRefreshDetails}
-                  disabled={detailsRefreshing}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium
-                    bg-gray-100 dark:bg-[#111827] hover:bg-gray-200 dark:hover:bg-[#1e2d45]
-                    text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-[#1e2d45]"
-                  title="Refresh agent data"
-                >
+                <button onClick={handleRefreshDetails} disabled={detailsRefreshing}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-200 transition-colors disabled:opacity-40"
+                  title="Refresh agent data">
                   <FaSync className={`text-xs ${detailsRefreshing ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
-
-                {/* Export CSV */}
-                <button
-                  onClick={() => exportAgentsCSV(agents)}
-                  disabled={agents.length === 0}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium
-                    bg-gray-100 dark:bg-[#111827] hover:bg-gray-200 dark:hover:bg-[#1e2d45]
-                    text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-[#1e2d45]
-                    disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Export agents as CSV"
-                >
+                <button onClick={() => exportAgentsCSV(agents)} disabled={agents.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-200 transition-colors disabled:opacity-40"
+                  title="Export agents as CSV">
                   <FaDownload className="text-xs" />
                   <span className="hidden sm:inline">Export</span>
                 </button>
-
-                {/* View Details Panel */}
-                <button
-                  onClick={() => setShowDetailsPanel(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-blue-600 hover:bg-gray-800 dark:hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold"
-                  title="View detailed agent breakdown"
-                >
+                <button onClick={() => setShowDetailsPanel(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors"
+                  title="View detailed agent breakdown">
                   <FaUsers className="text-xs" />
                   View Details
                 </button>
@@ -1247,53 +1080,53 @@ const AdminAgentControll: React.FC = () => {
 
           {loading ? (
             <div className="flex items-center justify-center p-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 dark:border-blue-400"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#111]"></div>
             </div>
           ) : agents.length === 0 ? (
             <div className="p-12 text-center">
-              <FaRobot className="text-gray-300 dark:text-slate-600 text-5xl mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-slate-400 text-sm md:text-base lg:text-lg">No agents configured</p>
+              <FaRobot className="text-gray-300 text-5xl mx-auto mb-4" />
+              <p className="text-[14px] text-gray-500">No agents configured</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-[#111827]">
+                <thead className="bg-[#FAFAFA]">
                   <tr>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Agent</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Type</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Environment</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Tasks</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Success Rate</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider hidden xl:table-cell">Response Time</th>
-                    <th className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 text-left text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">Agent</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">Type</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] hidden md:table-cell">Environment</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] hidden lg:table-cell">Tasks</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] hidden lg:table-cell">Success Rate</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] hidden xl:table-cell">Response Time</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-[#1e2d45]">
+                <tbody className="divide-y divide-gray-100">
                   {agents.map((agent) => (
                     <tr key={agent.id}
-                      className="hover:bg-gray-50 dark:hover:bg-[#1e2d45]/50 transition-colors cursor-pointer"
+                      className="hover:bg-[#FAFAFA] transition-colors cursor-pointer"
                       onClick={() => { setSelectedAgent(agent); setShowAgentModal(true); }}>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 xl:gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${agent.isActive && !agent.killswitchActivated ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-slate-700'}`}>
-                            <FaRobot className={agent.isActive && !agent.killswitchActivated ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'} />
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${agent.isActive && !agent.killswitchActivated ? 'bg-green-50' : 'bg-gray-100'}`}>
+                            <FaRobot className={agent.isActive && !agent.killswitchActivated ? 'text-green-600' : 'text-gray-400'} size={15} />
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.name}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-500">ID: {agent.id.slice(0, 8)}...</div>
+                            <div className="text-[13px] font-semibold text-[#0A0A0A]">{agent.name}</div>
+                            <div className="text-[11px] text-gray-400">ID: {agent.id.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{agent.type}</span>
+                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#EFF6FF] text-blue-700">{agent.type}</span>
                       </td>
-                      <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300 hidden md:table-cell">{agent.environment || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-[13px] text-gray-600 hidden md:table-cell">{agent.environment || 'N/A'}</td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{(() => {
+                        <div className="text-[13px] font-semibold text-[#0A0A0A]">{(() => {
                           const telemetryTasks = getAgentTasksFromTelemetry(agent.id);
                           return telemetryTasks?.tasksCompleted ?? agent.tasksCompleted;
                         })()}</div>
-                        <div className="text-xs text-gray-500 dark:text-slate-500">completed</div>
+                        <div className="text-[11px] text-gray-400">completed</div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden lg:table-cell">
                         <div className="flex items-center gap-2">
@@ -1302,38 +1135,37 @@ const AdminAgentControll: React.FC = () => {
                             const rate = telemetryRate !== null ? telemetryRate : agent.successRate;
                             return (
                               <>
-                                <div className="flex-1 bg-gray-100 dark:bg-[#0d1117] rounded-full h-2 w-20">
-                                  <div className={`h-2 rounded-full ${rate >= 90 ? 'bg-green-500' : rate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 w-20">
+                                  <div className={`h-1.5 rounded-full ${rate >= 90 ? 'bg-green-500' : rate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
                                     style={{ width: `${rate}%` }} />
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">{rate}%</span>
+                                <span className="text-[13px] font-semibold text-[#0A0A0A]">{rate}%</span>
                               </>
                             );
                           })()}
                         </div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap hidden xl:table-cell">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        <div className="text-[13px] font-semibold text-[#0A0A0A]">
                           {(() => {
                             const telemetryResponseTime = getAgentResponseTimeFromTelemetry(agent.id);
                             const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : agent.responseTime;
-                            return displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A';
+                            return displayResponseTime > 0 ? `${(displayResponseTime / 1000).toFixed(2)}s` : 'N/A';
                           })()}
                         </div>
                       </td>
                       <td className="px-3 md:px-4 xl:px-6 py-3 xl:py-4 whitespace-nowrap">
                         {agent.killswitchActivated ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"><FaPowerOff className="w-2 h-2" />Disabled</span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-red-50 text-red-700 border border-red-100"><FaPowerOff className="w-2 h-2" />Disabled</span>
                         ) : agent.softDeleted ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600">Deleted</span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">Deleted</span>
                         ) : (
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
-                            ${
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium ${
                               agent.isActive
-                                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600'
+                                ? 'bg-green-50 text-green-700 border border-green-100'
+                                : 'bg-gray-100 text-gray-600 border border-gray-200'
                             }`}>
-                            <span className={`w-2 h-2 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-400 dark:bg-slate-500'}`}></span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${agent.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                             {agent.isActive ? 'Active' : 'Inactive'}
                           </span>
                         )}
@@ -1348,7 +1180,7 @@ const AdminAgentControll: React.FC = () => {
       </div>
 
       {/* Floating Chat */}
-      <FloatingChat />
+      {/* <FloatingChat /> */}
 
       {/* ════════════════════════════════════════════════════════════════════
           VIEW DETAILS PANEL — full sortable/filterable agent breakdown
@@ -1491,7 +1323,7 @@ const AdminAgentControll: React.FC = () => {
                         <div className="text-xs text-gray-400">Success</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">{agent.responseTime > 0 ? `${agent.responseTime}ms` : 'N/A'}</div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">{agent.responseTime > 0 ? `${(agent.responseTime / 1000).toFixed(2)}s` : 'N/A'}</div>
                         <div className="text-xs text-gray-400">Response</div>
                       </div>
                       <button
@@ -1612,7 +1444,7 @@ const AdminAgentControll: React.FC = () => {
                     {(() => {
                       const telemetryResponseTime = getAgentResponseTimeFromTelemetry(selectedAgent.id);
                       const displayResponseTime = telemetryResponseTime !== null ? telemetryResponseTime : selectedAgent.responseTime;
-                      return displayResponseTime > 0 ? `${displayResponseTime}ms` : 'N/A';
+                      return displayResponseTime > 0 ? `${(displayResponseTime / 1000).toFixed(2)}s` : 'N/A';
                     })()}
                   </div>
                 </div>

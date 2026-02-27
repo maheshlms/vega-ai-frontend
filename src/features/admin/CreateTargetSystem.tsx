@@ -37,7 +37,7 @@ const CreateTargetSystem: React.FC = () => {
       const result = await api.targetSystems.create(data);
       console.log('[CreateTargetSystem] Create successful:', result);
       toast.success('Target system created successfully!');
-      navigate('/admin/avatarsys');
+      navigate('/systems');
     } catch (err) {
       console.error('[CreateTargetSystem] Error creating target system:', err);
       toast.error('Failed to create target system: ' + (err as Error).message);
@@ -47,7 +47,7 @@ const CreateTargetSystem: React.FC = () => {
 
   const handleCancel = (): void => {
     console.log('[CreateTargetSystem] Cancel clicked');
-    navigate('/admin/targetsys');
+    navigate('/systems/targetsys');
   };
 
   console.log('[CreateTargetSystem] Rendering with props:', {
@@ -58,29 +58,35 @@ const CreateTargetSystem: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header — commented out, preserved as-is */}
-      {/* <div className="bg-white border-b border-gray-200 px-6 py-6 ">
-        <button
-          onClick={() => navigate('/admin/targetsys')}
-          className="group text-sm text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-1"
-        >
-          <FaArrowLeft className="transform group-hover:-translate-x-1 transition-transform" />
-          <span>Back to Integrations</span>
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Create {integrationName || 'Target System'}
-          </h1>
-          <p className="text-sm text-gray-500">
-            Configure your new {integrationName || 'target system'} connection
-          </p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+        .cts-font { font-family: 'DM Sans', sans-serif; }
+      `}</style>
+      <div className="cts-font min-h-screen bg-[#FAFAFA]">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+          <div className="max-w-[1400px] mx-auto pt-10 pb-8">
+            <button
+              onClick={() => navigate('/systems/targetsys')}
+              className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
+            >
+              <FaArrowLeft size={12} />
+              <span>Back to Integrations</span>
+            </button>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl mb-2">
+              {integrationName ? `Configure ${integrationName}` : 'Create Target System'}
+            </h1>
+            <p className="text-[15px] text-gray-500 font-normal leading-relaxed m-0">
+              {integrationName
+                ? `Set up your ${integrationName} connection`
+                : 'Configure a new target system connection'}
+            </p>
+          </div>
         </div>
-      </div> */}
 
-      {/* Form Container */}
-      <div className="px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20 py-6 sm:py-8 lg:py-10 xl:py-12 2xl:py-16 flex justify-center">
-        <div className="w-full max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
+        {/* Form */}
+        <div className="max-w-[1400px] mx-auto px-12 py-10 max-md:px-5">
           <TargetSystemForm
             system={null}
             typeOptions={[]}
@@ -93,7 +99,7 @@ const CreateTargetSystem: React.FC = () => {
           />
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
