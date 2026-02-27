@@ -11,6 +11,7 @@ import StreamingAvatar, {
 } from '@heygen/streaming-avatar';
 import api from '../../utils/api';
 import { auth } from '../../utils/auth';
+import { useTheme } from '../../state/ThemeContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,7 @@ const AgentChat: React.FC = () => {
   const { agentId } = useParams<{ agentId: string }>();
   const location = useLocation();
   const preloadedAgent = location.state?.agent;
+  const { isDark } = useTheme();
 
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
   // const [agentError, setAgentError] = useState<string>('');
@@ -1232,12 +1234,7 @@ const AgentChat: React.FC = () => {
               )}
               {!hasVideo && (
                 <div className="agc-avatar-idle">
-                  {isLoadingSession ? (
-                    <div style={{ marginTop: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 48, height: 48, border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'agc-spin 0.8s linear infinite' }} />
-                      <span style={{ color: '#6366f1', fontSize: 13, fontWeight: 500 }}>Connecting…</span>
-                    </div>
-                  ) : avatarImg ? (
+                  {avatarImg ? (
                     <img src={avatarImg} alt={avatarName} className="agc-avatar-idle-img" />
                   ) : (
                     <div className="agc-avatar-idle-placeholder">{(avatarName[0] ?? 'A').toUpperCase()}</div>
@@ -1272,7 +1269,24 @@ const AgentChat: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="agc-avatar-info-bar">
+              <div className="agc-avatar-info-bar" style={{
+                background: isDark ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255,255,255,0.92)',
+                borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+              }}>
+                {isLoadingSession && (
+                  <div style={{ 
+                    borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+                    paddingBottom: '16px',
+                    marginBottom: '8px',
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: 10 
+                  }}>
+                    <div style={{ width: 40, height: 40, border: `3px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderTopColor: '#6366f1', borderRadius: '50%', animation: 'agc-spin 0.8s linear infinite' }} />
+                    <span style={{ color: '#6366f1', fontSize: 13, fontWeight: 500 }}>Connecting to avatar…</span>
+                  </div>
+                )}
                 {isAvatarActive && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button
@@ -1470,7 +1484,7 @@ const AgentChat: React.FC = () => {
                 <button className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
                 <input type="text" className="agc-text-input" value={inputValue}
                   onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyPress}
-                  placeholder={isAvatarActive ? `Ask ${avatarName} anything…` : 'Type your message…'}
+                  placeholder={isAvatarActive ? `Ask ${agent?.name || avatarName} anything…` : 'Type your message…'}
                   disabled={isTyping} />
                 <button className={`agc-icon-btn ${isListening ? 'recording' : ''}`} onClick={startListening}
                   disabled={isListening || isTyping} title={isListening ? 'Listening…' : 'Voice input'}>
