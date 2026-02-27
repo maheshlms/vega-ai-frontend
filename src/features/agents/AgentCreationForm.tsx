@@ -549,97 +549,165 @@ const AgentCreationForm: React.FC = () => {
 
   const selectedAvatarObj = avatars.find(a => a.id === formData.selectedAvatarId) ?? null;
 
+  const agentLabel = agentTypeId
+    ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1)
+    : 'License';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 relative overflow-hidden">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
-      </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+        .acf-font { font-family: 'DM Sans', sans-serif; }
 
-      {/* ── Success Modal ── */}
-      {showSuccess && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-white/20">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Agent Created!</h2>
-            <p className="text-gray-500 mb-6">Your agent is now active and monitoring.</p>
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-3">
-              {([
-                ['Avatar',        selectedAvatarObj?.name ?? ''],
-                ['Agent Name',    formData.agentName],
-                ['Environment',   formData.environment],
-                ['Target System', formData.selectedTargetSystem?.name ?? ''],
-                ...(agentTypeId !== 'connection' ? [['Notification Window', `${formData.notificationWindow} days`]] : []),
-              ] as [string, string][]).map(([label, value], i) => (
-                <div key={i} className={`flex items-center justify-between ${i > 0 ? 'border-t border-gray-200 pt-3' : ''}`}>
-                  <span className="text-sm text-gray-500">{label}</span>
-                  <span className="text-sm font-semibold text-gray-900">{value}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => { setShowSuccess(false); navigate('/agents'); }}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg">
-              View Agents
-            </button>
-          </div>
-        </div>
-      )}
+        @keyframes acf-rise {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .acf-card { animation: acf-rise 0.35s ease both; }
 
-      {/* ── Page ── */}
-      <div className="relative z-10 flex items-start justify-center min-h-screen p-8 2xl:p-14">
-        <div className="w-full max-w-5xl 2xl:max-w-6xl">
-          <button onClick={() => navigate(-1)}
-            className="group text-gray-700 hover:text-gray-900 mb-6 flex items-center gap-2 text-sm font-medium transition-all">
-            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> Back
-          </button>
+        @keyframes acf-fade { from { opacity:0 } to { opacity:1 } }
+        .acf-modal-in { animation: acf-fade 0.2s ease-out; }
 
-          <div className="flex gap-6 items-start">
+        .acf-accent-bar {
+          height: 3px;
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform 0.3s ease;
+        }
+        .acf-card:hover .acf-accent-bar { transform: scaleX(1); }
 
-            {/* ── Left: Form ── */}
-            <div className="flex-1 min-w-0 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
-              <div className="flex items-center justify-between px-8 2xl:px-12 py-6 border-b border-gray-100 bg-gradient-to-r from-white/50 to-blue-50/30">
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <span className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">+</span>
-                    <span className="font-medium">Create Your AI Agent</span>
+        .acf-input {
+          width: 100%;
+          padding: 10px 14px;
+          font-size: 13.5px;
+          font-family: inherit;
+          border: 1px solid #E5E7EB;
+          border-radius: 10px;
+          background: #fff;
+          color: #111;
+          outline: none;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .acf-input:hover  { border-color: #D1D5DB; }
+        .acf-input:focus  { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .acf-input:disabled,
+        .acf-input[readonly] { background: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
+
+        .acf-label {
+          display: block;
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 6px;
+          letter-spacing: 0.01em;
+        }
+
+        @keyframes int-pulse-green {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.4; }
+        }
+        .acf-pulse { animation: int-pulse-green 2s ease infinite; }
+
+        .avatar-scroll::-webkit-scrollbar { display: none; }
+        .avatar-scroll { -ms-overflow-style:none; scrollbar-width:none; }
+      `}</style>
+
+      <div className="acf-font min-h-screen bg-[#FAFAFA] text-[#111]">
+
+        {/* ── Success Modal ── */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 acf-modal-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-gray-200">
+              <div className="w-14 h-14 rounded-full bg-green-50 border border-green-200 flex items-center justify-center mx-auto mb-4">
+                <FaCheckCircle size={24} className="text-green-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#0A0A0A] mb-1">Agent Created!</h2>
+              <p className="text-[13.5px] text-gray-500 mb-6">Your agent is now active and monitoring.</p>
+              <div className="bg-[#FAFAFA] rounded-xl border border-gray-200 p-4 mb-6 text-left space-y-3">
+                {([
+                  ['Avatar',        selectedAvatarObj?.name ?? ''],
+                  ['Agent Name',    formData.agentName],
+                  ['Environment',   formData.environment],
+                  ['Target System', formData.selectedTargetSystem?.name ?? ''],
+                  ...(agentTypeId !== 'connection' ? [['Notification Window', `${formData.notificationWindow} days`]] : []),
+                ] as [string, string][]).map(([label, value], i) => (
+                  <div key={i} className={`flex items-center justify-between ${i > 0 ? 'border-t border-gray-100 pt-3' : ''}`}>
+                    <span className="text-[12.5px] text-gray-400">{label}</span>
+                    <span className="text-[13px] font-semibold text-[#0A0A0A]">{value}</span>
                   </div>
-                  <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-900">
-                    {agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License'} Agent
+                ))}
+              </div>
+              <button
+                onClick={() => { setShowSuccess(false); navigate('/agents'); }}
+                className="w-full bg-[#111] hover:bg-[#222] text-white px-6 py-3 rounded-xl text-[13.5px] font-semibold transition-colors"
+              >
+                View Agents
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Page Header ── */}
+        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+          <div className="max-w-[1200px] mx-auto pt-10 pb-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl">
+                    Create {agentLabel} Agent
                   </h1>
                   {integrationTypeFromNav && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full">
-                      🔐 {integrationTypeFromNav.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                    </div>
+                    <span className="self-center text-[11px] font-semibold tracking-[0.06em] uppercase text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                      {integrationTypeFromNav.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                    </span>
                   )}
                 </div>
-                <button onClick={() => navigate(-1)}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all">
-                  <FaTimes />
-                </button>
+                <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
+                  Configure your AI agent — choose an avatar, set the environment, and link a target system.
+                </p>
               </div>
+              <button
+                onClick={() => navigate(-1)}
+                className="flex-shrink-0 mt-1 w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-all"
+              >
+                <FaTimes size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
 
-              <form onSubmit={handleSubmit} className="px-8 2xl:px-12 py-6 2xl:py-8 space-y-7">
+        {/* ── Content ── */}
+        <div className="max-w-[1200px] mx-auto px-12 pt-10 pb-20 max-md:px-5">
+          <div className="flex gap-6 items-start">
+
+            {/* ── Left: Form Card ── */}
+            <div className="flex-1 min-w-0 acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              {/* Accent bar */}
+              <div
+                className="acf-accent-bar"
+                style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6)' }}
+              />
+
+              <form onSubmit={handleSubmit} className="px-8 py-7 space-y-7">
                 {error && (
-                  <div className="rounded-lg bg-red-50 border border-red-100 text-red-700 px-4 py-3 text-sm">{error}</div>
+                  <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-[13px]">{error}</div>
                 )}
 
-
-
-                {/* 1. Avatar carousel — skeleton only shown on first-time HeyGen fetch */}
+                {/* 1. Avatar carousel */}
                 {loadingAvatars ? (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-1">
+                    <label className="acf-label">
                       Choose Your Avatar <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-4 py-3 overflow-hidden">
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2" style={{ minWidth: 88 }}>
-                          <div className="w-[72px] h-[72px] rounded-full bg-gray-200 animate-pulse" />
-                          <div className="w-14 h-2.5 bg-gray-200 rounded-full animate-pulse" />
+                          <div className="w-[72px] h-[72px] rounded-full bg-gray-100 animate-pulse" />
+                          <div className="w-14 h-2.5 bg-gray-100 rounded-full animate-pulse" />
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-400 flex items-center gap-2 mt-1">
+                    <p className="text-[11.5px] text-gray-400 flex items-center gap-2 mt-1">
                       <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin inline-block" />
                       Fetching avatars from HeyGen…
                     </p>
@@ -654,26 +722,30 @@ const AgentCreationForm: React.FC = () => {
 
                 {/* 2. Agent Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="acf-label">
                     Agent Name <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" name="agentName" value={formData.agentName}
+                  <input
+                    type="text" name="agentName" value={formData.agentName}
                     onChange={handleInputChange} required
                     placeholder={selectedAvatarObj ? `${selectedAvatarObj.name} Agent` : 'Select an avatar to auto-fill…'}
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-white/70 transition-all hover:border-gray-300" />
-                  <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                    className="acf-input"
+                  />
+                  <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
                     <span>💡</span><span>Auto-filled from avatar — edit anytime</span>
                   </p>
                 </div>
 
                 {/* 3. Environment */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="acf-label">
                     Environment <span className="text-red-500">*</span>
                   </label>
-                  <select name="environment" value={formData.environment}
+                  <select
+                    name="environment" value={formData.environment}
                     onChange={handleInputChange} required
-                    className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 hover:border-gray-300 cursor-pointer">
+                    className="acf-input cursor-pointer"
+                  >
                     <option value="">Select Environment</option>
                     <option value="production">Production</option>
                     <option value="staging">Staging</option>
@@ -684,17 +756,17 @@ const AgentCreationForm: React.FC = () => {
                 {/* 4. Target System */}
                 {formData.environment && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="acf-label">
                       Target System <span className="text-red-500">*</span>
                     </label>
                     {loadingTargetSystems ? (
-                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-200">
-                        <div className="animate-spin h-5 w-5 border-b-2 border-blue-600 rounded-full" />
-                        <span className="text-sm text-gray-600">Loading…</span>
+                      <div className="flex items-center gap-3 px-4 py-3 bg-[#FAFAFA] rounded-xl border border-gray-200">
+                        <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                        <span className="text-[13px] text-gray-500">Loading systems…</span>
                       </div>
                     ) : availableTargetSystems.length === 0 ? (
-                      <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200">
-                        <p className="text-sm text-yellow-700">No connected systems for <strong>{formData.environment}</strong>.</p>
+                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                        <p className="text-[13px] text-amber-700">No connected systems for <strong>{formData.environment}</strong>.</p>
                       </div>
                     ) : (
                       <select
@@ -704,7 +776,8 @@ const AgentCreationForm: React.FC = () => {
                           setFormData(p => ({ ...p, selectedTargetSystem: s ?? null }));
                         }}
                         required
-                        className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 hover:border-gray-300 cursor-pointer">
+                        className="acf-input cursor-pointer"
+                      >
                         <option value="">Select a target system…</option>
                         {availableTargetSystems.map(s => {
                           const id = s._id ?? s.id;
@@ -713,14 +786,14 @@ const AgentCreationForm: React.FC = () => {
                       </select>
                     )}
                     {formData.selectedTargetSystem && (
-                      <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
-                        <FaCheckCircle className="text-green-500 flex-shrink-0" />
+                      <div className="mt-2 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2.5">
+                        <FaCheckCircle className="text-green-500 flex-shrink-0" size={14} />
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-green-900 truncate">{formData.selectedTargetSystem.name}</p>
-                          <p className="text-xs text-green-700 truncate">{formData.selectedTargetSystem.base_url ?? formData.selectedTargetSystem.hostname}</p>
+                          <p className="text-[12.5px] font-semibold text-green-900 truncate">{formData.selectedTargetSystem.name}</p>
+                          <p className="text-[11.5px] text-green-700 truncate">{formData.selectedTargetSystem.base_url ?? formData.selectedTargetSystem.hostname}</p>
                           {(formData.selectedTargetSystem.type || integrationTypeFromNav) && (
-                            <p className="text-xs text-indigo-600 font-medium mt-0.5">
-                              🏷️ Category: {(formData.selectedTargetSystem.type || integrationTypeFromNav)?.replace(/_/g, ' ')}
+                            <p className="text-[11.5px] text-indigo-600 font-medium mt-0.5">
+                              {(formData.selectedTargetSystem.type || integrationTypeFromNav)?.replace(/_/g, ' ')}
                             </p>
                           )}
                         </div>
@@ -732,13 +805,15 @@ const AgentCreationForm: React.FC = () => {
                 {/* 5. Notification Window */}
                 {agentTypeId !== 'connection' && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="acf-label">
                       Notification Window (days) <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" name="notificationWindow" value={formData.notificationWindow}
+                    <input
+                      type="number" name="notificationWindow" value={formData.notificationWindow}
                       onChange={handleInputChange} min="1" max="365" required
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white/70 hover:border-gray-300" />
-                    <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                      className="acf-input"
+                    />
+                    <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
                       <span>💡</span><span>Days before license expiry to start alerting</span>
                     </p>
                   </div>
@@ -746,31 +821,34 @@ const AgentCreationForm: React.FC = () => {
 
                 {/* 6. Notification Channel */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Notification Channel</label>
+                  <label className="acf-label">Notification Channel</label>
                   <div className="relative">
-                    <input type="text" value="Slack" readOnly
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed" />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xl">💬</div>
+                    <input type="text" value="Slack" readOnly className="acf-input pr-10" />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-lg">💬</div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                  <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
                     <span>💡</span><span>Alerts go to: {formData.slackChannel}</span>
                   </p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-4 pt-4 border-t border-gray-100">
-                  <button type="button"
+                <div className="flex gap-3 pt-5 border-t border-gray-100">
+                  <button
+                    type="button"
                     onClick={() => setFormData({
                       agentName: '', selectedAvatarId: '', selectedAvatarImg: '',
                       selectedAvatarName: '', environment: '', notificationWindow: 30,
                       slackChannel: '#alerts', selectedTargetSystem: null,
                     })}
-                    className="flex-1 px-6 py-3 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
-                    <span>🔄</span> Reset
+                    className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-[13px] font-medium hover:bg-gray-50 hover:border-gray-300 transition-all font-[inherit]"
+                  >
+                    Reset
                   </button>
-                  <button type="submit"
+                  <button
+                    type="submit"
                     disabled={submitting || !formData.selectedTargetSystem || !formData.selectedAvatarId}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-semibold transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    className="flex-1 px-5 py-2.5 bg-[#111] hover:bg-[#222] text-white rounded-xl text-[13px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-[inherit]"
+                  >
                     {submitting ? 'Creating…' : 'Create Agent'}
                   </button>
                 </div>
@@ -778,53 +856,56 @@ const AgentCreationForm: React.FC = () => {
             </div>
 
             {/* ── Right: Live Preview ── */}
-            <div className="hidden lg:flex flex-col w-72 2xl:w-80 flex-shrink-0 gap-4 sticky top-8">
-              <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-                  Avatar Preview
-                </p>
-                <AvatarLargePreview avatar={selectedAvatarObj} />
-                {selectedAvatarObj && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Selected</span>
-                      <span className="text-xs font-bold truncate ml-2" style={{ color: selectedAvatarObj.color }}>
-                        {selectedAvatarObj.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Style</span>
-                      <span className="text-xs font-medium text-gray-700">👔 Formal</span>
-                    </div>
-                    {(formData.selectedTargetSystem?.type || integrationTypeFromNav) && (
+            <div className="hidden lg:flex flex-col w-68 2xl:w-72 flex-shrink-0 gap-4 sticky top-8">
+              <div className="acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden" style={{ animationDelay: '0.1s' }}>
+                <div className="acf-accent-bar" style={{ background: '#6366F1' }} />
+                <div className="p-5">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="acf-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    Avatar Preview
+                  </p>
+                  <AvatarLargePreview avatar={selectedAvatarObj} />
+                  {selectedAvatarObj && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Category</span>
-                        <span className="text-xs font-medium text-indigo-600">
-                          {(formData.selectedTargetSystem?.type || integrationTypeFromNav)
-                            ?.replace(/_/g, ' ')
-                            .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                        <span className="text-[11.5px] text-gray-400">Selected</span>
+                        <span className="text-[12px] font-bold truncate ml-2" style={{ color: selectedAvatarObj.color }}>
+                          {selectedAvatarObj.name}
                         </span>
                       </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Image source</span>
-                      <span className="text-xs font-medium text-gray-600">
-                        {selectedAvatarObj.img.startsWith('/avatars/') ? '📁 Local cache'
-                         : selectedAvatarObj.img.startsWith('http') ? '🌐 CDN'
-                         : '🔤 Initials only'}
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11.5px] text-gray-400">Style</span>
+                        <span className="text-[12px] font-medium text-gray-600">👔 Formal</span>
+                      </div>
+                      {(formData.selectedTargetSystem?.type || integrationTypeFromNav) && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11.5px] text-gray-400">Category</span>
+                          <span className="text-[12px] font-medium text-indigo-600">
+                            {(formData.selectedTargetSystem?.type || integrationTypeFromNav)
+                              ?.replace(/_/g, ' ')
+                              .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11.5px] text-gray-400">Source</span>
+                        <span className="text-[12px] font-medium text-gray-600">
+                          {selectedAvatarObj.img.startsWith('/avatars/') ? '📁 Local'
+                           : selectedAvatarObj.img.startsWith('http') ? '🌐 CDN'
+                           : '🔤 Initials'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-5">
-                <p className="text-xs font-semibold text-indigo-700 mb-3">💡 Tips</p>
-                <ul className="space-y-2 text-xs text-indigo-600/90 leading-relaxed">
-                  <li className="flex gap-2"><span>•</span><span>Click any avatar to preview it here</span></li>
-                  <li className="flex gap-2"><span>•</span><span>Agent name is auto-filled from avatar choice</span></li>
-                  <li className="flex gap-2"><span>•</span><span>The category (PingFederate etc.) is set automatically</span></li>
+              <div className="acf-card bg-white border border-gray-200 rounded-2xl p-5" style={{ animationDelay: '0.15s' }}>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Tips</p>
+                <ul className="space-y-2 text-[12.5px] text-gray-500 leading-relaxed">
+                  <li className="flex gap-2"><span className="text-gray-300">—</span><span>Click any avatar to preview it here</span></li>
+                  <li className="flex gap-2"><span className="text-gray-300">—</span><span>Agent name is auto-filled from avatar choice</span></li>
+                  <li className="flex gap-2"><span className="text-gray-300">—</span><span>Integration type is set automatically</span></li>
                 </ul>
               </div>
             </div>
@@ -832,22 +913,7 @@ const AgentCreationForm: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes blob {
-          0%,100% { transform: translate(0,0) scale(1); }
-          33%      { transform: translate(30px,-50px) scale(1.1); }
-          66%      { transform: translate(-20px,20px) scale(0.9); }
-        }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        .animate-blob   { animation: blob 7s infinite; }
-        .animate-fadeIn { animation: fadeIn .3s ease-out; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-        .avatar-scroll::-webkit-scrollbar { display: none; }
-        .avatar-scroll { -ms-overflow-style:none; scrollbar-width:none; }
-      `}</style>
-    </div>
+    </>
   );
 };
 

@@ -877,12 +877,22 @@ const AgentChat: React.FC = () => {
           overflow: hidden;
         }
         .agc-avatar-panel {
-          width: 350px; min-width: 350px; max-width: 350px;
+          width: clamp(220px, 28vw, 350px);
           flex-shrink: 0; flex-grow: 0;
           border-right: 1px solid #eaecf0;
           background: #fff;
           display: flex; flex-direction: column;
           overflow: hidden; position: relative;
+        }
+        @media (max-width: 1100px) {
+          .agc-avatar-panel { width: clamp(200px, 26vw, 300px); }
+        }
+        @media (max-width: 800px) {
+          .agc-avatar-panel { width: clamp(160px, 38vw, 240px); }
+        }
+        @media (max-width: 560px) {
+          .agc-body { flex-direction: column; }
+          .agc-avatar-panel { width: 100%; height: 220px; min-height: 220px; border-right: none; border-bottom: 1px solid #eaecf0; }
         }
         .agc-avatar-stage {
           flex: 1; min-height: 0;
@@ -943,14 +953,13 @@ const AgentChat: React.FC = () => {
         .agc-avatar-idle {
           position: absolute; inset: 0; z-index: 2;
           display: flex; flex-direction: column;
-          align-items: center; justify-content: flex-start;
-          padding-top: 52px;
+          align-items: center; justify-content: flex-end;
         }
         .agc-avatar-idle-img {
           width: 100%;
           height: 100%;
           object-fit: contain;
-          object-position: top center;
+          object-position: bottom center;
           display: block;
         }
         .agc-avatar-idle-placeholder {
@@ -1175,7 +1184,7 @@ const AgentChat: React.FC = () => {
                 <canvas ref={canvasRef} style={{
                   position: 'absolute', top: 0, left: 0,
                   width: '100%', height: '100%',
-                  objectFit: 'contain', objectPosition: 'top center',
+                  objectFit: 'contain', objectPosition: 'bottom center',
                   display: 'block', background: '#f8fafc',
                 }} />
               )}
