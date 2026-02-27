@@ -305,8 +305,8 @@ const STYLES = `
   .tm-btn-action.active:hover { transform: translateY(-1px); box-shadow: 0 3px 12px rgba(59,130,246,0.3); }
   .tm-jwks-modal {
     position: fixed;
-    top: 25%;
-    left: 30%;
+    top: 50%;
+    left: 50%;
     transform: translate(-50%, -50%);
     background: #ffffff;
     border-radius: 18px;
@@ -317,7 +317,7 @@ const STYLES = `
     overflow-y: auto;
     box-shadow: 0 25px 50px rgba(0,0,0,0.25);
     z-index: 10001;
-    animation: tmFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    animation: tmFadeUpCentered 0.3s cubic-bezier(0.22,1,0.36,1) both;
   }
   .tm-jwks-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -344,7 +344,7 @@ const STYLES = `
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: #ffffff; border-radius: 18px; padding: 32px; max-width: 500px;
     width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
-    z-index: 10001; animation: tmFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    z-index: 10001; animation: tmFadeUpCentered 0.3s cubic-bezier(0.22,1,0.36,1) both;
   }
   .tm-confirmation-header { margin-bottom: 16px; }
   .tm-confirmation-header h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1a1a2e; }
@@ -369,6 +369,7 @@ const STYLES = `
   }
   @keyframes tmSlideIn { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
   @keyframes tmFadeUp   { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes tmFadeUpCentered { from { opacity:0; transform: translate(-50%, calc(-50% + 14px)); } to { opacity:1; transform: translate(-50%, -50%); } }
 
   @media (max-width: 700px) {
     .tm-nav { padding: 0 20px; }
@@ -412,6 +413,7 @@ const AdminTokenManagement: React.FC = () => {
   const [loadingKeypair, setLoadingKeypair] = useState(false);
   const [generatingJwks, setGeneratingJwks] = useState(false);
   const [showKeypairConfirmation, setShowKeypairConfirmation] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Fetch existing configuration on component mount
   useEffect(() => {
@@ -471,7 +473,7 @@ const AdminTokenManagement: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.endpointUrl || !form.clientId || !form.clientSecret || !form.scope || !form.introspectionUrl || !form.introspectionClientId || !form.introspectionClientSecret) {
       showToast("All required fields must be filled.", "⚠️");
@@ -484,8 +486,20 @@ const AdminTokenManagement: React.FC = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setShowSaveConfirmation(true);
+  };
+
+  const proceedWithSave = async () => {
+    setShowSaveConfirmation(false);
     setLoading(true);
     try {
+      const token = auth.getToken();
+      if (!token) {
+        showToast("Not authenticated. Please login first.", "🔐");
+        return;
+      }
+
       const formData = { ...form, groups: form.groups || ["Vega_Admins"] };
       const response = await fetch("/api/v1/token-provider-config", {
         method: "POST",
@@ -960,6 +974,41 @@ const AdminTokenManagement: React.FC = () => {
                 disabled={loadingKeypair}
               >
                 {loadingKeypair ? "🔄 Generating…" : "Yes, Overwrite Keypair"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showSaveConfirmation && (
+        <>
+          <div className="tm-confirmation-overlay" onClick={() => setShowSaveConfirmation(false)} />
+          <div className="tm-confirmation-modal">
+            <div className="tm-confirmation-header">
+              <h3>⚠️ Save Token Provider Configuration?</h3>
+            </div>
+            <div className="tm-confirmation-content">
+              <p>You are about to save the token provider configuration.</p>
+              <p className="warning">⚠️ This will overwrite any existing settings</p>
+              <p>The current configuration will be replaced with the values you have entered. Make sure all settings are correct before proceeding.</p>
+              <p>Are you sure you want to save this configuration?</p>
+            </div>
+            <div className="tm-confirmation-actions">
+              <button 
+                type="button" 
+                className="tm-confirmation-cancel" 
+                onClick={() => setShowSaveConfirmation(false)}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="tm-confirmation-confirm" 
+                onClick={proceedWithSave}
+                disabled={loading}
+              >
+                {loading ? "💾 Saving…" : "Yes, Save Configuration"}
               </button>
             </div>
           </div>

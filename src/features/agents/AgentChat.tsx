@@ -44,6 +44,16 @@ interface Agent {
     selectedAvatarImg?: string;
     selectedAvatarName?: string;
     selectedAvatarId?: string;
+    targetId?: string;
+    target_system_id?: string;
+    server_url?: string;
+    [key: string]: any;
+  };
+  target_system?: {
+    id?: string;
+    name?: string;
+    server_url?: string;
+    [key: string]: any;
   };
 }
 
@@ -144,6 +154,7 @@ const AgentChat: React.FC = () => {
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
   // const [agentError, setAgentError] = useState<string>('');
   const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
+  const [targetSystem, setTargetSystem] = useState<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
@@ -202,6 +213,9 @@ const AgentChat: React.FC = () => {
       if (!agentId || agentId.startsWith('default-')) { setLoadingAgent(false); return; }
       try {
         const data = await api.llmRuntime.getAgent(agentId);
+        console.log('[AgentChat] Fetched agent data:', data);
+        console.log('[AgentChat] Agent config:', data?.config);
+        console.log('[AgentChat] Agent target_system:', data?.target_system);
         setAgent(data);
       } catch (err) {
         console.error('Failed to load agent details', err);
@@ -211,6 +225,28 @@ const AgentChat: React.FC = () => {
     };
     fetchAgent();
   }, [agentId]); // eslint-disable-line
+
+  // Fetch target system details when agent has a targetId
+  useEffect(() => {
+    const fetchTargetSystem = async () => {
+      const targetId = agent?.config?.targetId;
+      if (!targetId) {
+        setTargetSystem(null);
+        return;
+      }
+      try {
+        const data = await api.targetSystems.get(targetId);
+        console.log('[AgentChat] Fetched target system:', data);
+        setTargetSystem(data);
+        // Update agent with target system data
+        setAgent(prevAgent => prevAgent ? { ...prevAgent, target_system: data } : null);
+      } catch (err) {
+        console.error('Failed to load target system details', err);
+        setTargetSystem(null);
+      }
+    };
+    fetchTargetSystem();
+  }, [agent?.config?.targetId]); // eslint-disable-line
 
   const log = useCallback((msg: string) => {
     console.log('[AgentChat Avatar]', msg);
@@ -919,7 +955,7 @@ const AgentChat: React.FC = () => {
           -webkit-backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(0,0,0,0.06);
           display: flex; align-items: center; justify-content: space-between; gap: 4px;
-          height: 44px; box-sizing: border-box;
+          height: 56px; box-sizing: border-box;
           overflow: hidden;
         }
         .agc-avatar-top-bar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
@@ -972,11 +1008,15 @@ const AgentChat: React.FC = () => {
         }
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-          padding: 8px 12px;
+          padding: 10px 16px 12px;
           background: rgba(255,255,255,0.92);
           backdrop-filter: blur(12px);
           border-top: 1px solid rgba(0,0,0,0.06);
-          display: flex; flex-direction: column; gap: 6px;
+          display: flex; flex-direction: column;
+          justify-content: center;
+          gap: 8px;
+          min-height: 76px;
+          box-sizing: border-box;
         }
         .agc-info-bar-row {
           display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -1075,8 +1115,8 @@ const AgentChat: React.FC = () => {
           animation: agc-float 4s ease-in-out infinite;
         }
         @keyframes agc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-        .agc-welcome-title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
-        .agc-welcome-sub { font-size: 15px; color: #9ca3af; }
+        .agc-welcome-title { font-size: 36px; font-weight: 700; line-height: 1.25; letter-spacing: -0.025em; color: #0A0A0A; margin-bottom: 8px; }
+        .agc-welcome-sub { font-size: 15px; color: #9ca3af; text-transform: capitalize; }
         .agc-row { display: flex; align-items: flex-end; gap: 8px; animation: agc-msgin 0.22s ease; }
         .agc-row.user { justify-content: flex-end; }
         .agc-row.ai, .agc-row.system { justify-content: flex-start; }
@@ -1137,6 +1177,8 @@ const AgentChat: React.FC = () => {
           flex-shrink: 0;
           background: #fff; border-top: 1px solid #eaecf0;
           padding: 10px 16px 12px;
+          height: 76px;
+          box-sizing: border-box;
         }
         .agc-file-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
         .agc-chip { display:flex; align-items:center; gap:5px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:3px 8px; font-size:11.5px; color:#4f46e5; }
@@ -1264,16 +1306,17 @@ const AgentChat: React.FC = () => {
                   </div>
                 )}
                 <div className="agc-info-bar-row">
-                  {isAvatarActive && (
-                    <span style={{ fontSize: 11, color: '#065f46', fontWeight: 600, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10, border: '1px solid #6ee7b7' }}>
-                      🟢 Live · {fmt(sessionDuration)}s
-                    </span>
-                  )}
                   {agent?.description && (
-                    <span style={{ fontSize: 10, color: '#9ca3af' }}>
+                    <span style={{ fontSize: 15, color: '#9ca3af', textTransform: 'capitalize' }}>
                       {agent.description.substring(0, 40)}{agent.description.length > 40 ? '…' : ''}
                     </span>
                   )}
+                  {(agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url) && (
+                    <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
+                      🟢 {agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url}
+                    </span>
+                  )}
+                  
                 </div>
               </div>
             </div>
@@ -1305,7 +1348,17 @@ const AgentChat: React.FC = () => {
               {messages.length === 0 && showWelcomeMessage ? (
                 <div className="agc-welcome">
                   <div className="agc-welcome-title">{loadingAgent ? 'Loading agent…' : 'How may I help you?'}</div>
-                  <div className="agc-welcome-sub">{agent?.description || agent?.role || 'Your intelligent license agent'}</div>
+                  <div className="agc-welcome-sub">
+                    {agent?.description || agent?.role || 'Your intelligent license agent'}
+                    {(agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url) && (
+                      <>
+                        <br />
+                        <span style={{ textTransform: 'none' }}>
+                          ({agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url})
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>

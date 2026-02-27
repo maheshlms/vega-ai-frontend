@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { IoMdStats } from "react-icons/io";
 import { MdSecurity, MdSpeed } from "react-icons/md";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 import FloatingChat from '../chatbot/FloatingChat';
@@ -601,6 +602,10 @@ const AdminAgentControll: React.FC = () => {
   const chartMaxTaskValue = activityData.length > 0 ? Math.max(...activityData.map(d => d.tasksGiven), 1) : 1;
 
   const chartGridColor = isDark ? "#1e2d45" : "#e5e7eb";
+  const chartAxisColor = isDark ? "#64748b" : "#9ca3af";
+  const chartTextColor = isDark ? "#cbd5e1" : "#4b5563";
+  const tooltipBgColor = isDark ? "#1e293b" : "white";
+  const tooltipBorderColor = isDark ? "#334155" : "#e5e7eb";
   const scrollbarClass = isDark ? "custom-scrollbar" : "light-scrollbar";
 
   // ─── Session status color ───
@@ -708,90 +713,70 @@ const AdminAgentControll: React.FC = () => {
             ) : (
               <>
             {/* Chart Area */}
-            <div className="relative h-64 mb-4">
-              <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-gray-400 dark:text-slate-500 pr-2">
-                <span>{chartMaxTaskValue}</span>
-                <span>{Math.floor(chartMaxTaskValue * 0.75)}</span>
-                <span>{Math.floor(chartMaxTaskValue * 0.5)}</span>
-                <span>{Math.floor(chartMaxTaskValue * 0.25)}</span>
-                <span>0</span>
-              </div>
-              <div className="absolute left-12 right-0 top-0 bottom-6">
-                <svg className="w-full h-full" viewBox="0 0 700 240" preserveAspectRatio="none">
-                  <line x1="0" y1="0" x2="700" y2="0" stroke={chartGridColor} strokeWidth="1" />
-                  <line x1="0" y1="60" x2="700" y2="60" stroke={chartGridColor} strokeWidth="1" />
-                  <line x1="0" y1="120" x2="700" y2="120" stroke={chartGridColor} strokeWidth="1" />
-                  <line x1="0" y1="180" x2="700" y2="180" stroke={chartGridColor} strokeWidth="1" />
-                  <line x1="0" y1="240" x2="700" y2="240" stroke={chartGridColor} strokeWidth="1" />
-                  {/* Tasks Given line */}
-                  <polyline
-                    points={chartActivityData
-                      .map((d, i) => {
-                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                    fill="none" stroke="#22c55e" strokeWidth="3"
-                    strokeLinecap="round" strokeLinejoin="round"
+            <div className="h-80 mb-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={chartActivityData}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 12, fill: chartTextColor }}
+                    stroke={chartAxisColor}
                   />
-                  {/* Tasks Completed line */}
-                  <polyline
-                    points={chartActivityData
-                      .map((d, i) => {
-                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                    fill="none" stroke="#3b82f6" strokeWidth="3"
-                    strokeLinecap="round" strokeLinejoin="round"
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: chartTextColor }}
+                    stroke={chartAxisColor}
+                    width={30}
                   />
-                  {/* Tasks In Process line */}
-                  <polyline
-                    points={chartActivityData
-                      .map((d, i) => {
-                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksInProcess / chartMaxTaskValue) * 240;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                    fill="none" stroke="#eab308" strokeWidth="3"
-                    strokeLinecap="round" strokeLinejoin="round"
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: tooltipBgColor,
+                      border: `1px solid ${tooltipBorderColor}`,
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: chartTextColor
+                    }}
                   />
-                  {/* Tasks Failed line */}
-                  <polyline
-                    points={chartActivityData
-                      .map((d, i) => {
-                        const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
-                        const y = 240 - (d.tasksFailed / chartMaxTaskValue) * 240;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                    fill="none" stroke="#ef4444" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"
+                  <Line 
+                    type="linear" 
+                    dataKey="tasksGiven" 
+                    stroke="#22c55e" 
+                    strokeWidth={3}
+                    name="Tasks Given"
+                    dot={{ fill: '#22c55e', r: 4 }}
+                    activeDot={{ r: 6 }}
                   />
-                  {/* Dot markers */}
-                  {chartActivityData.map((d, i) => {
-                    const x = chartActivityData.length === 1 ? 350 : (i / (chartActivityData.length - 1)) * 700;
-                    const yGiven = 240 - (d.tasksGiven / chartMaxTaskValue) * 240;
-                    const yCompleted = 240 - (d.tasksCompleted / chartMaxTaskValue) * 240;
-                    return (
-                      <React.Fragment key={i}>
-                        <circle cx={x} cy={yGiven} r="4" fill="#22c55e" />
-                        <circle cx={x} cy={yCompleted} r="4" fill="#3b82f6" />
-                      </React.Fragment>
-                    );
-                  })}
-                </svg>
-              </div>
-              <div className="absolute left-12 right-0 bottom-0 flex justify-between text-xs text-gray-500 dark:text-slate-500">
-                {chartActivityData.map((d, i) => (
-                  <div key={i} className="text-center flex-1">
-                    <div className="font-medium">{d.day}</div>
-                  </div>
-                ))}
-              </div>
+                  <Line 
+                    type="linear" 
+                    dataKey="tasksCompleted" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    name="Completed"
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    type="linear" 
+                    dataKey="tasksInProcess" 
+                    stroke="#eab308" 
+                    strokeWidth={3}
+                    name="In Process"
+                    dot={{ fill: '#eab308', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    type="linear" 
+                    dataKey="tasksFailed" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    name="Failed"
+                    dot={{ fill: '#ef4444', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-[#1e2d45]">
