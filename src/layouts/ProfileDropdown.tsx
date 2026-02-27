@@ -54,7 +54,7 @@ const ProfileDropdown: React.FC = () => {
     {
       icon: FaUser,
       label: 'My Profile',
-      action: () => navigate('/profile')
+      action: () => {}
     },
     {
       icon: FaCog,

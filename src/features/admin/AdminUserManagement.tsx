@@ -43,7 +43,7 @@ const laDotClass = (iso: string | null | undefined) => {
 };
 
 const MINIMAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&display=swap');
   html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; }
   #root { width: 100% !important; min-height: 100vh !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
   .um-root { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -78,8 +78,8 @@ const MINIMAL_STYLES = `
   .um-header-icon { width: 62px; height: 62px; border-radius: 18px; background: rgba(124,58,237,0.08);
     border: 1px solid rgba(124,58,237,0.15); display: flex; align-items: center;
     justify-content: center; font-size: 26px; flex-shrink: 0; }
-  .um-header-text h1 { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700;
-    color: #1a1a2e; margin: 0 0 5px; letter-spacing: -0.02em; }
+  .um-header-text h1 { font-family: 'DM Sans', sans-serif; font-size: 36px; font-weight: 700;
+    color: #1a1a2e; margin: 0 0 5px; letter-spacing: -0.03em; }
   .um-header-text p { font-size: 14.5px; color: #9090a8; margin: 0; font-weight: 300; }
   .um-btn-add { display: flex; align-items: center; gap: 8px; padding: 12px 24px;
     background: linear-gradient(135deg, #6d28d9, #7c3aed); border: none; border-radius: 12px;
@@ -171,8 +171,8 @@ const MINIMAL_STYLES = `
     max-width: 520px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 32px;
     animation: umFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) 0.05s both; }
   .um-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; gap: 16px; }
-  .um-modal-header h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 24px;
-    font-weight: 700; color: #1a1a2e; letter-spacing: -0.01em; }
+  .um-modal-header h2 { margin: 0; font-family: 'DM Sans', sans-serif; font-size: 24px;
+    font-weight: 700; color: #1a1a2e; letter-spacing: -0.02em; }
   .um-modal-close { background: #f5f5f7; border: none; width: 32px; height: 32px;
     border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
     color: #7c3aed; cursor: pointer; transition: all 0.2s; flex-shrink: 0; font-weight: 600; }

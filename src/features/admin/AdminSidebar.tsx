@@ -8,7 +8,7 @@ const AdminSidebar: React.FC = () => {
 
   const handleNavigate = (type: string): void => {
     if (type === "target") {
-      navigate("/admin/avatarsys");
+      navigate("/systems");
     } else if (type === "settings") {
       navigate("/settings");
     }

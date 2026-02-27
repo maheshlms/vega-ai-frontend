@@ -3,6 +3,136 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { auth } from '../../utils/auth';
 
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&display=swap');
+
+  html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; }
+  #root { width: 100% !important; min-height: 100vh !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
+
+  .fpc-root {
+    position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    font-family: 'DM Sans', sans-serif;
+    background: #f5f5f7; overflow-y: auto; z-index: 9999 !important; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center; padding: 32px 20px;
+  }
+
+  .fpc-card {
+    background: #ffffff; border: 1px solid #e8e8ee; border-radius: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.07); width: 100%; max-width: 480px;
+    padding: 44px 44px 40px;
+    animation: fpcFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  }
+
+  .fpc-icon-wrap {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 22px;
+  }
+
+  .fpc-heading {
+    font-size: 30px; font-weight: 700; color: #0a0a0a;
+    letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.15;
+  }
+  .fpc-sub {
+    font-size: 14px; color: #9090a8; margin: 0 0 32px; font-weight: 300; line-height: 1.6;
+  }
+
+  .fpc-sep {
+    height: 1px; background: #f0f0f5; margin: 6px 0 28px;
+  }
+
+  .fpc-error-box {
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
+    padding: 12px 16px; margin-bottom: 24px;
+    font-size: 13.5px; color: #ef4444; font-weight: 400;
+  }
+
+  .fpc-field { margin-bottom: 20px; }
+  .fpc-label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: #4b4b6b; margin-bottom: 7px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .fpc-input {
+    width: 100%; padding: 12px 16px;
+    background: #fafafa; border: 1.5px solid #e8e8ee;
+    border-radius: 11px; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: #1a1a2e; outline: none;
+    transition: all 0.18s; box-sizing: border-box;
+  }
+  .fpc-input::placeholder { color: #c8c8d8; }
+  .fpc-input:focus { border-color: #7c3aed; background: #fff; box-shadow: 0 0 0 4px rgba(124,58,237,0.09); }
+  .fpc-input-err { border-color: #fca5a5 !important; }
+  .fpc-input-err:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 4px rgba(239,68,68,0.09) !important; }
+  .fpc-field-error { font-size: 12px; color: #ef4444; margin-top: 5px; display: block; }
+
+  .fpc-strength-bar-wrap {
+    margin-top: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .fpc-strength-seg {
+    flex: 1; height: 4px; border-radius: 4px;
+    background: #e8e8ee; transition: background 0.25s;
+  }
+  .fpc-strength-label {
+    font-size: 11.5px; font-weight: 600; min-width: 44px;
+    text-align: right; letter-spacing: 0.02em;
+  }
+  .fpc-s0 { background: #e8e8ee; }
+  .fpc-s1 { background: #ef4444; }
+  .fpc-s2 { background: #f59e0b; }
+  .fpc-s3 { background: #3b82f6; }
+  .fpc-s4 { background: #10b981; }
+
+  .fpc-reqs {
+    margin-top: 10px; padding: 12px 14px;
+    background: #fafafa; border: 1px solid #f0f0f5;
+    border-radius: 10px;
+  }
+  .fpc-reqs-title { font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #b0b0c8; margin-bottom: 8px; }
+  .fpc-req-item {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: #b0b0c8; margin-bottom: 5px; transition: color 0.18s;
+  }
+  .fpc-req-item:last-child { margin-bottom: 0; }
+  .fpc-req-item.met { color: #10b981; }
+  .fpc-req-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #d1d5db; flex-shrink: 0; transition: background 0.18s;
+  }
+  .fpc-req-item.met .fpc-req-dot { background: #10b981; }
+
+  .fpc-match {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 500; margin-top: 8px;
+  }
+  .fpc-match.ok { color: #10b981; }
+  .fpc-match.no { color: #ef4444; }
+  .fpc-match-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; flex-shrink: 0;
+  }
+
+  .fpc-submit {
+    width: 100%; margin-top: 8px; padding: 14px 24px;
+    background: #111; border: none; border-radius: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    color: #fff; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .fpc-submit:hover:not(:disabled) { background: #333; }
+  .fpc-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  @keyframes fpcFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fpcSpin { to { transform: rotate(360deg); } }
+  .fpc-spin { animation: fpcSpin 0.8s linear infinite; }
+`;
+
 export default function ForcedPasswordChange() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -164,195 +294,120 @@ export default function ForcedPasswordChange() {
     }
   };
 
-  const getStrengthColor = () => {
-    if (passwordStrength === 0) return 'bg-gray-300';
-    if (passwordStrength === 1) return 'bg-red-500';
-    if (passwordStrength === 2) return 'bg-yellow-500';
-    if (passwordStrength === 3) return 'bg-blue-500';
-    return 'bg-green-500';
-  };
-
-  const getStrengthText = () => {
-    if (passwordStrength === 0) return '';
-    if (passwordStrength === 1) return 'Weak';
-    if (passwordStrength === 2) return 'Fair';
-    if (passwordStrength === 3) return 'Good';
-    return 'Strong';
-  };
+  const strengthColor = ['fpc-s0', 'fpc-s1', 'fpc-s2', 'fpc-s3', 'fpc-s4'][passwordStrength];
+  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][passwordStrength];
+  const strengthLabelColor = ['#b0b0c8', '#ef4444', '#f59e0b', '#3b82f6', '#10b981'][passwordStrength];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
-            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.97 5.95m-6.02 0A6 6 0 015 9m10 0h.01M5 9a6 6 0 1110.325 4.997m0 0h.01" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Change Your Password</h1>
-          <p className="text-gray-600">
-            You must change your password before accessing Vega.
-          </p>
-        </div>
+    <>
+      <style>{STYLES}</style>
+      <div className="fpc-root">
+        <div className="fpc-card">
 
-        {/* Global Error */}
-        {globalError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-700 text-sm">{globalError}</p>
-          </div>
-        )}
+          {/* Icon + heading */}
+          <div className="fpc-icon-wrap">🔑</div>
+          <h1 className="fpc-heading">Change Your Password</h1>
+          <p className="fpc-sub">You must set a new password before accessing Vega. Use your current (temporary) password to verify.</p>
+          <div className="fpc-sep" />
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Current Password */}
-          <div>
-            <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Current Password
-            </label>
-            <input
-              type="password"
-              id="currentPassword"
-              value={currentPassword}
-              onChange={(e) => {
-                setCurrentPassword(e.target.value);
-                setErrors(prev => ({ ...prev, currentPassword: '' }));
-              }}
-              placeholder="Enter your current password"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.currentPassword ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.currentPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.currentPassword}</p>
-            )}
-          </div>
+          {/* Global error */}
+          {globalError && (
+            <div className="fpc-error-box">{globalError}</div>
+          )}
 
-          {/* New Password */}
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              New Password
-            </label>
-            <input
-              type="password"
-              id="newPassword"
-              value={newPassword}
-              onChange={handleNewPasswordChange}
-              placeholder="Enter new password"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.newPassword ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
+          <form onSubmit={handleSubmit}>
 
-            {/* Password Strength Indicator */}
-            {newPassword && (
-              <div className="mt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-gray-600">Password Strength</span>
-                  <span className="text-xs font-medium text-gray-600">{getStrengthText()}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${getStrengthColor()}`}
-                    style={{ width: `${(passwordStrength / 4) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {errors.newPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
-            )}
-
-            {/* Password Requirements */}
-            <div className="mt-3 p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-medium text-gray-700 mb-2">Requirements:</p>
-              <ul className="text-xs text-gray-600 space-y-1">
-                <li className={`flex items-center ${newPassword.length >= 8 ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">{newPassword.length >= 8 ? '✓' : '○'}</span>
-                  At least 8 characters
-                </li>
-                <li className={`flex items-center ${/[A-Z]/.test(newPassword) ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">{/[A-Z]/.test(newPassword) ? '✓' : '○'}</span>
-                  One uppercase letter
-                </li>
-                <li className={`flex items-center ${/[0-9]/.test(newPassword) ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">{/[0-9]/.test(newPassword) ? '✓' : '○'}</span>
-                  One number
-                </li>
-                <li className={`flex items-center ${/[!@#$%^&*]/.test(newPassword) ? 'text-green-600' : ''}`}>
-                  <span className="mr-2">{/[!@#$%^&*]/.test(newPassword) ? '✓' : '○'}</span>
-                  One special character (!@#$%^&*)
-                </li>
-              </ul>
+            {/* Current password */}
+            <div className="fpc-field">
+              <label className="fpc-label" htmlFor="currentPassword">Current Password</label>
+              <input
+                type="password" id="currentPassword"
+                className={`fpc-input${errors.currentPassword ? ' fpc-input-err' : ''}`}
+                value={currentPassword}
+                placeholder="Enter your current password"
+                onChange={(e) => { setCurrentPassword(e.target.value); setErrors(prev => ({ ...prev, currentPassword: '' })); }}
+              />
+              {errors.currentPassword && <span className="fpc-field-error">{errors.currentPassword}</span>}
             </div>
-          </div>
 
-          {/* Confirm Password */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setErrors(prev => ({ ...prev, confirmPassword: '' }));
-              }}
-              placeholder="Confirm your new password"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            
-            {/* Password Match Status */}
-            {confirmPassword && (
-              <div className="mt-2">
-                {newPassword === confirmPassword ? (
-                  <div className="flex items-center text-green-600">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm font-medium">Passwords match</span>
+            {/* New password */}
+            <div className="fpc-field">
+              <label className="fpc-label" htmlFor="newPassword">New Password</label>
+              <input
+                type="password" id="newPassword"
+                className={`fpc-input${errors.newPassword ? ' fpc-input-err' : ''}`}
+                value={newPassword}
+                placeholder="Enter new password"
+                onChange={handleNewPasswordChange}
+              />
+
+              {/* Strength bar */}
+              {newPassword && (
+                <div className="fpc-strength-bar-wrap">
+                  {[1,2,3,4].map(i => (
+                    <div
+                      key={i}
+                      className="fpc-strength-seg"
+                      style={{ background: i <= passwordStrength ? strengthLabelColor : undefined }}
+                    />
+                  ))}
+                  <span className="fpc-strength-label" style={{ color: strengthLabelColor }}>{strengthLabel}</span>
+                </div>
+              )}
+
+              {errors.newPassword && <span className="fpc-field-error">{errors.newPassword}</span>}
+
+              {/* Requirements checklist */}
+              <div className="fpc-reqs">
+                <div className="fpc-reqs-title">Requirements</div>
+                {[
+                  { label: 'At least 8 characters', met: newPassword.length >= 8 },
+                  { label: 'One uppercase letter', met: /[A-Z]/.test(newPassword) },
+                  { label: 'One number', met: /[0-9]/.test(newPassword) },
+                  { label: 'One special character (!@#$%^&*)', met: /[!@#$%^&*]/.test(newPassword) },
+                ].map(({ label, met }) => (
+                  <div key={label} className={`fpc-req-item${met ? ' met' : ''}`}>
+                    <div className="fpc-req-dot" />
+                    {label}
                   </div>
-                ) : (
-                  <div className="flex items-center text-red-600">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm font-medium">Passwords do not match</span>
-                  </div>
-                )}
+                ))}
               </div>
-            )}
-            
-            {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-            )}
-          </div>
+            </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-medium py-2 rounded-lg transition-colors duration-200 flex items-center justify-center"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Changing Password...
-              </>
-            ) : (
-              'Change Password'
-            )}
-          </button>
-        </form>
+            {/* Confirm password */}
+            <div className="fpc-field">
+              <label className="fpc-label" htmlFor="confirmPassword">Confirm Password</label>
+              <input
+                type="password" id="confirmPassword"
+                className={`fpc-input${errors.confirmPassword ? ' fpc-input-err' : ''}`}
+                value={confirmPassword}
+                placeholder="Re-enter new password"
+                onChange={(e) => { setConfirmPassword(e.target.value); setErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+              />
+              {confirmPassword && (
+                <div className={`fpc-match ${newPassword === confirmPassword ? 'ok' : 'no'}`}>
+                  <div className="fpc-match-dot" />
+                  {newPassword === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                </div>
+              )}
+              {errors.confirmPassword && <span className="fpc-field-error">{errors.confirmPassword}</span>}
+            </div>
+
+            {/* Submit */}
+            <button type="submit" className="fpc-submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <svg className="fpc-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                  Updating...
+                </>
+              ) : 'Set New Password'}
+            </button>
+
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

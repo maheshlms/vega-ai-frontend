@@ -357,7 +357,7 @@ const TargetSystems: React.FC = () => {
             <div>
               {integrationId && (
                 <button
-                  onClick={() => navigate('/admin/targetsys')}
+                  onClick={() => navigate('/systems/targetsys')}
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3 2xl:mb-4"
                 >
                   <FaArrowLeft size={16} className="2xl:text-lg" />

@@ -174,7 +174,7 @@ function AppContent() {
     location.pathname.startsWith('/system-admin');
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col">
+    <div className="h-screen overflow-hidden flex flex-col bg-white dark:bg-[#0d1117]">
       <MouseMove />
       <ToastContainer />
      
@@ -185,7 +185,7 @@ function AppContent() {
         
         <div 
           id="app-scroll-container"
-          className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}
+          className={`flex-1 overflow-y-auto bg-white dark:bg-[#0d1117] ${!hideLayout ? 'ml-[216px]' : ''}`}
         >
           <ScrollToTop />
           <Routes>
@@ -208,13 +208,13 @@ function AppContent() {
             <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
             <Route path="/agents/directory/:agentTypeId" element={<DirectoryAgentChat />} />
 
-            {/* Admin */}
-            <Route path="/admin" element={<ProtectedRoute><AdminSidebar /></ProtectedRoute>} />
-            <Route path="/admin/targetsys" element={<ProtectedRoute><TargetSystemIntegration /></ProtectedRoute>} />
-            <Route path="/admin/createtarsys" element={<ProtectedRoute><CreateTargetSystem /></ProtectedRoute>} />
-            <Route path="/admin/avatarsys" element={<ProtectedRoute><TargetSystemShow /></ProtectedRoute>} />
-            <Route path="/admin/agent" element={<ProtectedRoute><AdminAgentControll /></ProtectedRoute>} />
-            <Route path="/admin/integration/target-systems/:integrationId" element={<ProtectedRoute><TargetSystems /></ProtectedRoute>} />
+            {/* Systems (admin only) */}
+            <Route path="/systems" element={<ProtectedRoute><TargetSystemShow /></ProtectedRoute>} />
+            <Route path="/systems/targetsys" element={<ProtectedRoute><TargetSystemIntegration /></ProtectedRoute>} />
+            <Route path="/systems/createtarsys" element={<ProtectedRoute><CreateTargetSystem /></ProtectedRoute>} />
+            <Route path="/systems/targetsystems" element={<Navigate to="/systems" replace />} />
+            <Route path="/systems/agent" element={<ProtectedRoute><AdminAgentControll /></ProtectedRoute>} />
+            <Route path="/systems/integration/target-systems/:integrationId" element={<ProtectedRoute><TargetSystems /></ProtectedRoute>} />
             <Route path="/agent_dashboard" element={<ProtectedRoute><AdminAgentControll /></ProtectedRoute>} />
             <Route path="/integration" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
 

@@ -121,20 +121,14 @@ const IntegrationsPage: React.FC = () => {
         {/* ── Header ── */}
         <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
           <div className="max-w-[1400px] mx-auto pt-10 pb-8">
-            {/* Eyebrow */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-0.5 bg-[#111]" />
-              <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-gray-500">
-                Marketplace
-              </span>
-              <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-gray-400 bg-gray-100 px-2 py-0.5 rounded ml-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl">
+                Integrations Marketplace
+              </h1>
+              <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-gray-400 bg-gray-100 px-2 py-0.5 rounded self-center">
                 Future Release
               </span>
             </div>
-
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
-              Integrations Marketplace
-            </h1>
             <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
               Connect your IAM systems and manage integrations across your identity infrastructure.
             </p>

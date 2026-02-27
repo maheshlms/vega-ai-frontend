@@ -506,6 +506,10 @@ const AdminLoginForm: React.FC = () => {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+        .adm-root { font-family: 'DM Sans', sans-serif; }
+        .adm-root * { font-family: 'DM Sans', sans-serif; }
+        .adm-root input, .adm-root button { font-family: 'DM Sans', sans-serif; }
         @keyframes admScan {
           0%   { top: -2px; opacity: 0; }
           5%   { opacity: 1; }
@@ -557,7 +561,7 @@ const AdminLoginForm: React.FC = () => {
       {/* DESKTOP */}
       <div
         key={dark ? 'dark' : 'light'}
-        className="adm-theme hidden md:flex h-screen w-full items-center justify-center relative overflow-hidden p-6"
+        className="adm-root adm-theme hidden md:flex h-screen w-full items-center justify-center relative overflow-hidden p-6"
         style={{ background: T.pageBg }}
       >
         {/* background layer */}
@@ -601,8 +605,21 @@ const AdminLoginForm: React.FC = () => {
           <FloatingDots />
         )}
 
-        {/* THEME TOGGLE */}
-        <div className="absolute top-6 right-6 z-50">
+        {/* THEME TOGGLE + BACK TO LOGIN */}
+        <div className="absolute top-6 right-6 z-50 flex items-center gap-2">
+          <button
+            onClick={() => navigate('/login')}
+            className="px-3 py-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 text-sm font-medium"
+            style={{
+              background: T.toggleBg,
+              border:     dark ? '1px solid rgba(45,212,191,0.25)' : '1px solid #E5E7EB',
+              color:      dark ? '#2dd4bf' : '#374151',
+              fontFamily: "'DM Sans',sans-serif",
+              fontSize:   13,
+            }}
+          >
+            ← Login
+          </button>
           <button
             onClick={() => setDark(d => !d)}
             className="p-2 rounded-md shadow cursor-pointer hover:bg-gray-100 transition-all duration-200"
@@ -620,12 +637,12 @@ const AdminLoginForm: React.FC = () => {
         <div className="adm-card relative" style={{ width: 420 }}>
 
           {dark && (
-            <div className="absolute -inset-px rounded-md pointer-events-none" style={{
+            <div className="absolute -inset-px rounded-2xl pointer-events-none" style={{
               background: 'linear-gradient(135deg,rgba(45,212,191,0.22),rgba(99,102,241,0.12),rgba(45,212,191,0.06))',
             }} />
           )}
 
-          <div className="relative rounded-md overflow-hidden" style={{
+          <div className="relative rounded-2xl overflow-hidden" style={{
             background:     T.cardBg,
             border:         T.cardBorder,
             boxShadow:      T.cardShadow,
@@ -648,20 +665,20 @@ const AdminLoginForm: React.FC = () => {
                 className="text-center text-2xl font-bold mt-4"
                 style={{
                   color:      T.heading,
-                  fontFamily: dark ? "'Courier New',monospace" : undefined,
+                  fontFamily: "'DM Sans',sans-serif",
                 }}
               >
-                {dark ? 'Admin Access' : 'Admin Login'}
+                Admin Login
               </h1>
 
               <p
                 className="text-center text-xs font-medium mt-1 mb-6"
                 style={{
                   color:      T.sub,
-                  fontFamily: dark ? "'Courier New',monospace" : undefined,
+                  fontFamily: "'DM Sans',sans-serif",
                 }}
               >
-                {dark ? '// restricted — authenticate to proceed' : 'System administrator portal'}
+                System administrator portal
               </p>
 
               <div className="px-7">
@@ -672,27 +689,24 @@ const AdminLoginForm: React.FC = () => {
                     <label
                       className="text-sm font-medium mb-1 block"
                       style={{
-                        color:         T.heading,
-                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                        fontSize:      dark ? 11 : undefined,
-                        letterSpacing: dark ? '0.1em' : undefined,
-                        textTransform: dark ? 'uppercase' : undefined,
+                        color:      T.heading,
+                        fontFamily: "'DM Sans',sans-serif",
                       }}
                     >
-                      {dark ? '⟩ Username' : 'Username'}
+                      Username
                     </label>
                     <input
                       type="text"
                       value={username}
                       onChange={e => { setUsername(e.target.value); setError(''); }}
-                      placeholder={dark ? 'admin' : 'admin'}
+                      placeholder="admin"
                       disabled={isLoading}
                       className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
                       style={{
                         background: T.inputBg,
                         border:     `1px solid ${T.inputBorder}`,
                         color:      T.inputColor,
-                        fontFamily: dark ? "'Courier New',monospace" : undefined,
+                        fontFamily: "'DM Sans',sans-serif",
                         fontSize:   13,
                       }}
                       onFocus={e => {
@@ -713,14 +727,11 @@ const AdminLoginForm: React.FC = () => {
                     <label
                       className="text-sm font-medium mb-1 block"
                       style={{
-                        color:         T.heading,
-                        fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                        fontSize:      dark ? 11 : undefined,
-                        letterSpacing: dark ? '0.1em' : undefined,
-                        textTransform: dark ? 'uppercase' : undefined,
+                        color:      T.heading,
+                        fontFamily: "'DM Sans',sans-serif",
                       }}
                     >
-                      {dark ? '⟩ Password' : 'Password'}
+                      Password
                     </label>
                     <input
                       type="password"
@@ -733,7 +744,7 @@ const AdminLoginForm: React.FC = () => {
                         background: T.inputBg,
                         border:     `1px solid ${T.inputBorder}`,
                         color:      T.inputColor,
-                        fontFamily: dark ? "'Courier New',monospace" : undefined,
+                        fontFamily: "'DM Sans',sans-serif",
                         fontSize:   13,
                       }}
                       onFocus={e => {
@@ -754,18 +765,14 @@ const AdminLoginForm: React.FC = () => {
                     <div
                       key={error}
                       className="adm-shake text-xs text-center py-2 px-3 rounded-md"
-                      style={dark ? {
-                        background: 'rgba(239,68,68,0.08)',
-                        border:     '1px solid rgba(239,68,68,0.3)',
-                        color:      '#fca5a5',
-                        fontFamily: "'Courier New',monospace",
-                      } : {
-                        background: '#fef2f2',
-                        border:     '1px solid #fecaca',
-                        color:      '#b91c1c',
+                      style={{
+                        background: dark ? 'rgba(239,68,68,0.08)' : '#fef2f2',
+                        border:     dark ? '1px solid rgba(239,68,68,0.3)' : '1px solid #fecaca',
+                        color:      dark ? '#fca5a5' : '#b91c1c',
+                        fontFamily: "'DM Sans',sans-serif",
                       }}
                     >
-                      {dark ? `⚠ ${error}` : error}
+                      {error}
                     </div>
                   )}
 
@@ -780,9 +787,7 @@ const AdminLoginForm: React.FC = () => {
                       color:         T.btnColor,
                       cursor:        isLoading ? 'not-allowed' : 'pointer',
                       opacity:       isLoading ? 0.7 : 1,
-                      fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                      letterSpacing: dark ? '0.1em' : undefined,
-                      textTransform: dark ? 'uppercase' : undefined,
+                      fontFamily: "'DM Sans',sans-serif",
                     }}
                   >
                     <div
@@ -796,7 +801,7 @@ const AdminLoginForm: React.FC = () => {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/>
                             <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                           </svg>
-                          {dark ? 'Authenticating...' : 'Signing In...'}
+                          Signing In...
                         </>
                       ) : (
                         dark ? 'Sign In' : 'Sign In'
@@ -810,16 +815,10 @@ const AdminLoginForm: React.FC = () => {
                   className="w-full text-center text-xs mt-6"
                   style={{
                     color:      T.muted,
-                    fontFamily: dark ? "'Courier New',monospace" : undefined,
+                    fontFamily: "'DM Sans',sans-serif",
                   }}
                 >
-                  {dark ? (
-                    <span className="flex items-center justify-center gap-2">
-                      © 2026 Product of Like Minds Consulting Inc.
-                    </span>
-                  ) : (
-                    '© 2026 Product of Like Minds Consulting Inc.'
-                  )}
+                  © 2026 Product of Like Minds Consulting Inc.
                 </p>
               </div>
             </div>

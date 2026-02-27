@@ -274,21 +274,26 @@ const TargetSystemShow: React.FC = () => {
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'connected':
-        return 'bg-green-100 text-green-700 border border-green-300';
-      case 'disconnected':
-        return 'bg-red-100 text-red-700 border border-red-300';
-      case 'error':
-        return 'bg-red-100 text-red-700 border border-red-300';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700 border border-yellow-300';
-      default:
-        return 'bg-gray-100 text-gray-700 border border-gray-300';
+      case 'connected':    return 'bg-green-50 text-green-700';
+      case 'disconnected': return 'bg-red-50 text-red-700';
+      case 'error':        return 'bg-red-50 text-red-700';
+      case 'pending':      return 'bg-yellow-50 text-yellow-700';
+      default:             return 'bg-gray-50 text-gray-600';
+    }
+  };
+
+  const getStatusDot = (status: string): string => {
+    switch (status) {
+      case 'connected':    return 'bg-green-500';
+      case 'disconnected': return 'bg-red-500';
+      case 'error':        return 'bg-red-500';
+      case 'pending':      return 'bg-yellow-400';
+      default:             return 'bg-gray-400';
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="ts-font min-h-screen bg-[#FAFAFA]">
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -371,63 +376,62 @@ const TargetSystemShow: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
-          <div className="flex justify-between items-start">
+      <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+        <div className="max-w-[1400px] mx-auto pt-10 pb-8">
+          <div className="flex items-start justify-between gap-6 max-md:flex-col">
             <div>
-              {integrationId && (
+              {integrationId ? (
                 <button
-                  onClick={() => navigate('/admin/targetsys')}
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3 2xl:mb-4"
+                  onClick={() => navigate('/systems/targetsys')}
+                  className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
                 >
-                  <FaArrowLeft size={16} className="2xl:text-lg" />
-                  <span className="text-sm 2xl:text-base">Back to Integrations</span>
+                  <FaArrowLeft size={12} />
+                  <span>Back to Integrations</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/systems')}
+                  className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
+                >
+                  <span>←</span>
+                  <span>Back</span>
                 </button>
               )}
-
-              <button
-                onClick={() => navigate('/admin')}
-                className="group text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-1"
-              >
-                <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
-                <span>Back</span>
-              </button>
-              <h1 className="text-2xl 2xl:text-4xl font-bold text-gray-900 mb-1">
-                Available Target Systems
+              <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl mb-2">
+                {integrationName ? `${integrationName} Systems` : 'Target Systems'}
               </h1>
-              <p className="text-sm 2xl:text-base text-gray-500">
-                {integrationName 
-                  ? `Manage target systems for ${integrationName}` 
-                  : 'Manage your connected systems and integrations'
-                }
+              <p className="text-[15px] text-gray-500 font-normal leading-relaxed m-0">
+                {integrationName
+                  ? `Manage target systems for ${integrationName}`
+                  : 'Manage your connected systems and integrations'}
               </p>
             </div>
-            <div className="flex gap-2 2xl:gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 2xl:px-6 2xl:py-3 2xl:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50"
                 title="Refresh systems"
               >
-                <FaSync className={loading ? 'animate-spin' : ''} />
+                <FaSync className={loading ? 'animate-spin' : ''} size={12} />
                 Refresh
               </button>
               {canAdd ? (
                 <button
-                  onClick={() => navigate("/admin/targetsys")}
-                  className="flex items-center gap-2 px-4 py-2 2xl:px-6 2xl:py-3 2xl:text-base bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  onClick={() => navigate("/systems/targetsys")}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors"
                   title="Add a new target system"
                 >
-                  <FaPlus />
+                  <FaPlus size={12} />
                   Create Target System
                 </button>
               ) : (
                 <button
                   disabled
-                  className="flex items-center gap-2 px-4 py-2 2xl:px-6 2xl:py-3 2xl:text-base bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed"
                   title="You do not have permission to add target systems"
                 >
-                  <FaLock />
+                  <FaLock size={12} />
                   Restricted
                 </button>
               )}
@@ -436,89 +440,78 @@ const TargetSystemShow: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats Strip */}
       {stats && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 2xl:gap-6 mb-6 2xl:mb-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
-              <div className="flex items-center gap-3 2xl:gap-4">
-                <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FaCheckCircle className="text-blue-600 2xl:text-xl" />
+        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
+          <div className="max-w-[1400px] mx-auto py-5">
+            <div className="grid grid-cols-5 gap-4 max-md:grid-cols-3">
+              {[
+                { label: 'Total Systems', value: stats.total_systems || 0, dot: 'bg-gray-400' },
+                { label: 'Connected',     value: stats.connected     || 0, dot: 'bg-green-500' },
+                { label: 'Disconnected',  value: stats.disconnected  || 0, dot: 'bg-red-500' },
+                { label: 'Error',         value: stats.error         || 0, dot: 'bg-orange-500' },
+                { label: 'Pending',       value: stats.pending       || 0, dot: 'bg-yellow-400' },
+              ].map(({ label, value, dot }) => (
+                <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${dot}`} />
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">{label}</span>
+                  </div>
+                  <div className="text-3xl font-bold text-[#0A0A0A] tracking-tight">{value}</div>
                 </div>
-                <div>
-                  <div className="text-2xl 2xl:text-4xl font-bold text-gray-900">{stats.total_systems || 0}</div>
-                  <div className="text-xs 2xl:text-sm text-gray-500">Total Systems</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
-              <div className="flex items-center gap-3 2xl:gap-4">
-                <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-green-100 rounded-lg flex items-center justify-center">
-                  <FaCheckCircle className="text-green-600 2xl:text-xl" />
-                </div>
-                <div>
-                  <div className="text-2xl 2xl:text-4xl font-bold text-gray-900">{stats.connected || 0}</div>
-                  <div className="text-xs 2xl:text-sm text-gray-500">Connected</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
-              <div className="flex items-center gap-3 2xl:gap-4">
-                <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-red-100 rounded-lg flex items-center justify-center">
-                  <FaTimesCircle className="text-red-600 2xl:text-xl" />
-                </div>
-                <div>
-                  <div className="text-2xl 2xl:text-4xl font-bold text-gray-900">{stats.disconnected || 0}</div>
-                  <div className="text-xs 2xl:text-sm text-gray-500">Disconnected</div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="px-6 2xl:px-20 pb-4 2xl:pb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 2xl:gap-6">
-            <div>
-              <label className="block text-xs 2xl:text-sm font-semibold text-gray-600 mb-2">Environment</label>
-              <select
-                value={filters.environment}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, environment: e.target.value })}
-                className="w-full px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Environments</option>
-                <option value="development">Development</option>
-                <option value="staging">Staging</option>
-                <option value="production">Production</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs 2xl:text-sm font-semibold text-gray-600 mb-2">Connection Status</label>
-              <select
-                value={filters.status}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="connected">Connected</option>
-                <option value="disconnected">Disconnected</option>
-                <option value="error">Error</option>
-                <option value="pending">Pending</option>
-              </select>
-            </div>
+      {/* Filters Toolbar */}
+      <div className="bg-white border-b border-gray-200 px-12 sticky top-0 z-10 max-md:px-5">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6 h-14">
+          {/* Environment pills */}
+          <div className="flex items-center gap-0.5">
+            {['All', 'development', 'staging', 'production'].map(env => {
+              const label = env === 'All' ? 'All Environments' : env.charAt(0).toUpperCase() + env.slice(1);
+              const active = env === 'All' ? filters.environment === '' : filters.environment === env;
+              return (
+                <button
+                  key={env}
+                  onClick={() => setFilters({ ...filters, environment: env === 'All' ? '' : env })}
+                  className={`px-3.5 py-1.5 rounded-md border-none text-[13px] font-medium cursor-pointer transition-all duration-150 whitespace-nowrap font-[inherit]
+                    ${active ? 'bg-[#111] text-white' : 'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-[#111]'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
+          {/* Status pills */}
+          <div className="flex items-center gap-0.5">
+            {['All', 'connected', 'disconnected', 'error', 'pending'].map(st => {
+              const label = st === 'All' ? 'All Statuses' : st.charAt(0).toUpperCase() + st.slice(1);
+              const active = st === 'All' ? filters.status === '' : filters.status === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => setFilters({ ...filters, status: st === 'All' ? '' : st })}
+                  className={`px-3.5 py-1.5 rounded-md border-none text-[13px] font-medium cursor-pointer transition-all duration-150 whitespace-nowrap font-[inherit]
+                    ${active ? 'bg-[#111] text-white' : 'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-[#111]'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="text-[13px] text-gray-400 whitespace-nowrap font-normal shrink-0">
+            {systems.length} system{systems.length !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl 2xl:max-w-4xl my-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto animate-fadeIn">
+          <div className="w-full max-w-3xl my-auto">
             <TargetSystemForm
               system={editingSystem}
               typeOptions={typeOptions}
@@ -539,110 +532,119 @@ const TargetSystemShow: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="px-6 2xl:px-20 pb-4 2xl:pb-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 2xl:p-5 text-sm 2xl:text-base text-red-700">
+        <div className="max-w-[1400px] mx-auto px-12 pt-6 max-md:px-5">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
             {error}
           </div>
         </div>
       )}
 
       {/* Target Systems Grid */}
-      <div className="px-6 2xl:px-20 pb-6 2xl:pb-10">
+      <div className="max-w-[1400px] mx-auto px-12 pt-10 pb-20 max-md:px-5">
         {loading ? (
-          <div className="flex items-center justify-center p-12 2xl:p-20">
-            <div className="animate-spin rounded-full h-8 w-8 2xl:h-12 2xl:w-12 border-b-2 border-blue-600"></div>
+          <div className="flex items-center justify-center p-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
           </div>
         ) : systems.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 2xl:p-20 text-center">
-            <p className="text-gray-500 2xl:text-lg mb-4">No target systems found</p>
+          <div className="bg-white rounded-2xl border border-gray-200 p-20 text-center">
+            <div className="text-5xl mb-4 opacity-30">🖥️</div>
+            <p className="text-[15px] text-gray-400 mb-6">No target systems found</p>
             {canAdd && (
               <button
-                onClick={() => navigate("/admin/targetsys")}
-                className="inline-flex items-center gap-2 px-4 py-2 2xl:px-6 2xl:py-3 2xl:text-base bg-green-600 text-white rounded-lg hover:bg-green-700"
+                onClick={() => navigate("/systems/targetsys")}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors"
               >
-                <FaPlus />
+                <FaPlus size={12} />
                 Create your first target system
               </button>
             )}
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-4 2xl:gap-6">
-            {systems.map((system) => (
-              <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-md transition-shadow w-fit min-w-[400px] 2xl:min-w-[500px] max-w-full">
-                <div className="mb-4 2xl:mb-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg 2xl:text-xl font-semibold text-gray-900">{system.name}</h3>
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+            {systems.map((system, idx) => (
+              <div
+                key={system._id}
+                className="ts-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col transition-all duration-[220ms] hover:shadow-lg hover:-translate-y-0.5"
+                style={{ animationDelay: `${idx * 0.04}s` }}
+              >
+                {/* Accent bar */}
+                <div className="ts-accent-bar h-[3px] bg-gradient-to-r from-indigo-500 to-violet-500" />
+
+                {/* Card body */}
+                <div className="p-6 flex flex-col flex-1">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-[16px] font-semibold text-[#0A0A0A] leading-tight">{system.name}</h3>
+                      <p className="text-[13px] text-gray-500 mt-0.5">{system.type}</p>
+                    </div>
                     <TargetSystemStatus status={system.status} />
                   </div>
-                  <p className="text-sm 2xl:text-base text-gray-600">{system.type}</p>
-                </div>
 
-                <div className="space-y-2 2xl:space-y-3 mb-4 2xl:mb-5 text-sm 2xl:text-base">
-                  <div>
-                    <span className="text-gray-600">Environment:</span>
-                    <span className="ml-2 font-medium text-gray-900">{system.environment}</span>
+                  {/* Meta */}
+                  <div className="space-y-2 mb-4 text-[13px]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 w-24 shrink-0">Environment</span>
+                      <span className="font-medium text-[#111]">{system.environment}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 w-24 shrink-0">Host</span>
+                      <span className="font-medium text-[#111] break-all">{system.base_url || system.host}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 w-24 shrink-0">Status</span>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold ${getStatusColor(system.status)}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(system.status)}`} />
+                        {system.status}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Host:</span>
-                    <span className="ml-2 font-medium text-gray-900 break-all">{system.base_url || system.host}</span>
-                  </div>
-                  <div>
-                    <span className={`px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium ${getStatusColor(system.status)}`}>
-                      {system.status}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="border-t border-gray-200 pt-4 2xl:pt-5 flex gap-2 2xl:gap-3">
-                  {canEdit ? (
+                  {/* Actions */}
+                  <div className="border-t border-gray-100 pt-4 mt-auto flex gap-2">
+                    {canEdit ? (
+                      <button
+                        onClick={() => { setEditingSystem(system); setShowForm(true); }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[12px] font-medium transition-colors"
+                        title="Edit this target system"
+                      >
+                        <FaEdit size={11} />
+                        Edit
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-300 cursor-not-allowed rounded-lg text-[12px] font-medium"
+                      >
+                        <FaEdit size={11} />
+                        Edit
+                      </button>
+                    )}
                     <button
-                      onClick={() => {
-                        setEditingSystem(system);
-                        setShowForm(true);
-                      }}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-sm font-medium"
-                      title="Edit this target system"
+                      onClick={() => handleTestConnection(system._id)}
+                      disabled={testingId === system._id}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[12px] font-medium transition-colors disabled:opacity-50"
                     >
-                      <FaEdit className="text-sm 2xl:text-base" />
-                      Edit
+                      <FaCheckCircle size={11} className={testingId === system._id ? 'animate-spin' : ''} />
+                      {testingId === system._id ? 'Testing…' : 'Test'}
                     </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base bg-gray-100 text-gray-400 cursor-not-allowed rounded-md text-sm font-medium"
-                      title="You do not have permission to edit target systems"
-                    >
-                      <FaEdit className="text-sm 2xl:text-base" />
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleTestConnection(system._id)}
-                    disabled={testingId === system._id}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-sm font-medium disabled:opacity-50"
-                  >
-                    <FaCheckCircle className="text-sm 2xl:text-base" />
-                    Test
-                  </button>
-                  {canDelete ? (
-                    <button
-                      onClick={() => handleDeleteClick(system)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-sm font-medium"
-                      title="Delete this target system"
-                    >
-                      <FaTrash className="text-sm 2xl:text-base" />
-                      Delete
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 2xl:px-4 2xl:py-3 2xl:text-base bg-gray-100 text-gray-400 cursor-not-allowed rounded-md text-sm font-medium"
-                      title="You do not have permission to delete target systems"
-                    >
-                      <FaTrash className="text-sm 2xl:text-base" />
-                      Delete
-                    </button>
-                  )}
+                    {canDelete ? (
+                      <button
+                        onClick={() => handleDeleteClick(system)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[12px] font-medium transition-colors"
+                        title="Delete this target system"
+                      >
+                        <FaTrash size={11} />
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-300 cursor-not-allowed rounded-lg text-[12px] font-medium"
+                      >
+                        <FaTrash size={11} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -651,29 +653,36 @@ const TargetSystemShow: React.FC = () => {
       </div>
 
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+        .ts-font { font-family: 'DM Sans', sans-serif; }
+
+        /* Card rise animation */
+        @keyframes ts-rise {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .ts-card { animation: ts-rise 0.35s ease both; }
+
+        /* Accent bar: scaleX on hover */
+        .ts-accent-bar {
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform 0.3s ease;
+        }
+        .ts-card:hover .ts-accent-bar { transform: scaleX(1); }
+
+        /* Delete modal animations */
         @keyframes fadeIn {
           from { opacity: 0; }
-          to { opacity: 1; }
+          to   { opacity: 1; }
         }
-
         @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
+          from { opacity: 0; transform: scale(0.95); }
+          to   { opacity: 1; transform: scale(1); }
         }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
+        .animate-fadeIn  { animation: fadeIn  0.2s ease-out; }
+        .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
       `}</style>
     </div>
   );
