@@ -1,215 +1,393 @@
 import React, { useState } from "react";
 import { FaInfoCircle, FaCog, FaServer } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from '../../state/ThemeContext';
+
+/*
+  Responsive strategy (desktop-only — mobile not targeted):
+  ─────────────────────────────────────────────────────────
+  768–1023px  : tablet / small laptop
+  1024–1279px : laptop
+  1280–1535px : standard desktop
+  1536–1919px : large desktop / 1440p
+  1920px      : REFERENCE — no change
+  2560px+     : 2K / 4K scale-up
+  3840px+     : 4K max
+*/
+const buildResponsiveStyles = (isDark: boolean) => `
+  @keyframes blob {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33%      { transform: translate(30px,-50px) scale(1.1); }
+    66%      { transform: translate(-20px,20px) scale(0.9); }
+  }
+  @keyframes fadeIn {
+    from { opacity:0; transform: translateY(8px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .animate-blob { animation: blob 7s infinite; }
+  .animation-delay-2000 { animation-delay: 2s; }
+  .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+
+  .admin-card {
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
+                box-shadow 0.3s ease,
+                border-color 0.3s ease;
+  }
+  .admin-card:hover {
+    transform: scale(1.02) !important;
+    box-shadow: ${isDark ? '0 12px 40px rgba(0,0,0,0.4)' : '0 12px 40px rgba(0,0,0,0.12)'} !important;
+  }
+  .admin-card-target:hover  { border-color: ${isDark ? '#1d4ed8' : 'rgba(147,197,253,0.5)'} !important; }
+  .admin-card-settings:hover { border-color: ${isDark ? '#7e22ce' : 'rgba(196,181,253,0.5)'} !important; }
+
+  .admin-card .bottom-bar { transform: scaleX(0); transition: transform 0.5s ease; }
+  .admin-card:hover .bottom-bar { transform: scaleX(1) !important; }
+
+  .admin-card .icon-inner { transition: all 0.3s ease; }
+  .admin-card:hover .icon-inner { transform: scale(1.1) rotate(3deg) !important; }
+
+  .admin-card .hover-overlay { opacity: 0; transition: opacity 0.3s; }
+  .admin-card:hover .hover-overlay { opacity: 1 !important; }
+
+  .info-btn { transition: all 0.3s ease; }
+  .info-btn:hover { transform: scale(1.1) !important; }
+
+  /* ── Base shell ── */
+  .asc-root * { box-sizing: border-box; }
+  .asc-inner  { padding: 32px 40px; width: 100%; height: 100vh; box-sizing: border-box; background: ${isDark ? '#1a2234' : '#ffffff'}; }
+
+  /* ── Tablet (768–1023px) ── */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .asc-inner      { padding: 20px 20px !important; height: auto !important; min-height: 100vh; }
+    .asc-heading    { font-size: 1.5rem !important; }
+    .asc-cards-wrap { gap: 20px !important; }
+    .asc-card       { width: calc(50% - 10px) !important; height: 180px !important; }
+    .asc-card-icon  { width: 48px !important; height: 48px !important; border-radius: 12px !important; margin-bottom: 10px !important; }
+    .asc-card-icon svg { font-size: 18px !important; }
+    .asc-card-title  { font-size: 16px !important; }
+    .asc-card-sub    { font-size: 11px !important; }
+    .asc-info-btn    { width: 26px !important; height: 26px !important; top: 10px !important; right: 10px !important; }
+    .asc-header-mb   { margin-bottom: 24px !important; }
+  }
+
+  /* ── Laptop (1024–1279px) ── */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .asc-inner      { padding: 24px 28px !important; }
+    .asc-heading    { font-size: 1.75rem !important; }
+    .asc-cards-wrap { gap: 24px !important; }
+    .asc-card       { width: 280px !important; height: 200px !important; }
+    .asc-header-mb  { margin-bottom: 30px !important; }
+  }
+
+  /* ── Standard desktop (1280–1535px) ── */
+  @media (min-width: 1280px) and (max-width: 1535px) {
+    .asc-inner   { padding: 28px 36px !important; }
+    .asc-heading { font-size: 1.875rem !important; }
+    .asc-card    { width: 300px !important; height: 208px !important; }
+  }
+
+  /* ── 1536–1919px (near-reference) ── */
+  @media (min-width: 1536px) and (max-width: 1919px) {
+    .asc-inner { padding: 30px 38px !important; }
+    .asc-card  { width: 310px !important; }
+  }
+
+  /* ── 2K / 4K (2560px+) ── */
+  @media (min-width: 2560px) {
+    .asc-inner       { padding: 48px 60px !important; }
+    .asc-heading     { font-size: 3rem !important; }
+    .asc-header-mb   { margin-bottom: 56px !important; }
+    .asc-cards-wrap  { gap: 44px !important; }
+    .asc-card        { width: 420px !important; height: 300px !important; border-radius: 22px !important; }
+    .asc-card-icon   { width: 84px !important; height: 84px !important; border-radius: 20px !important; margin-bottom: 22px !important; }
+    .asc-card-icon svg { font-size: 32px !important; }
+    .asc-card-title  { font-size: 26px !important; }
+    .asc-card-sub    { font-size: 16px !important; }
+    .asc-info-btn    { width: 42px !important; height: 42px !important; top: 20px !important; right: 20px !important; }
+    .asc-bottom-bar  { height: 4px !important; }
+  }
+
+  /* ── 4K max (3840px+) ── */
+  @media (min-width: 3840px) {
+    .asc-inner       { padding: 64px 80px !important; }
+    .asc-heading     { font-size: 4rem !important; }
+    .asc-header-mb   { margin-bottom: 72px !important; }
+    .asc-cards-wrap  { gap: 60px !important; }
+    .asc-card        { width: 560px !important; height: 380px !important; border-radius: 28px !important; }
+    .asc-card-icon   { width: 108px !important; height: 108px !important; border-radius: 26px !important; margin-bottom: 28px !important; }
+    .asc-card-icon svg { font-size: 42px !important; }
+    .asc-card-title  { font-size: 34px !important; }
+    .asc-card-sub    { font-size: 20px !important; }
+    .asc-info-btn    { width: 54px !important; height: 54px !important; top: 26px !important; right: 26px !important; }
+    .asc-bottom-bar  { height: 5px !important; }
+  }
+`;
 
 const AdminSidebar: React.FC = () => {
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const [activeCard, setActiveCard] = useState<string | null>(null);
 
   const handleNavigate = (type: string): void => {
-    if (type === "target") {
-      navigate("/admin/avatarsys");
-    } else if (type === "settings") {
-      navigate("/settings");
-    }
+    if (type === "target") navigate("/admin/avatarsys");
+    else if (type === "settings") navigate("/settings");
+  };
+
+  /* ─── Card base shared style ─── */
+  const cardBase: React.CSSProperties = {
+    width: '320px',
+    height: '224px',
+    background: isDark ? '#1a2234' : '#ffffff',
+    border: isDark ? '1px solid #1e2d45' : '1px solid rgba(226,232,240,0.5)',
+    borderRadius: '16px',
+    boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.3)' : '0 4px 24px rgba(0,0,0,0.06)',
+    position: 'relative',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', cursor: 'pointer',
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/20 to-gray-100/20 relative overflow-hidden">
-      {/* Subtle Background Decoration */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-      </div>
+    <div className="asc-root" style={{
+      minHeight: '100vh',
+      background: isDark
+        ? '#0d1117'
+        : 'linear-gradient(135deg, #f8fafc, rgba(241,245,249,0.2), rgba(243,244,246,0.2))',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <style>{buildResponsiveStyles(isDark)}</style>
 
-      {/* Main Content */}
-      <div className="relative z-10 px-4 2xl:px-10 pb-8 2xl:pb-12 w-full h-screen bg-white dark:bg-[#1a2234]">
-        {/* Header */}
-        <div className="pt-4 2xl:pt-8">
-          <h1 className="text-2xl 2xl:text-4xl font-bold text-slate-800 dark:text-white">
+      {/* Decorative blobs — light mode only */}
+      {!isDark && (
+        <>
+          <div style={{
+            position: 'fixed', top: 0, left: '25%',
+            width: '384px', height: '384px',
+            background: '#dbeafe', borderRadius: '50%',
+            mixBlendMode: 'multiply', filter: 'blur(64px)', opacity: 0.2, pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'fixed', top: 0, right: '25%',
+            width: '384px', height: '384px',
+            background: '#ede9fe', borderRadius: '50%',
+            mixBlendMode: 'multiply', filter: 'blur(64px)', opacity: 0.2, pointerEvents: 'none',
+          }} />
+        </>
+      )}
+
+      <div className="asc-inner" style={{ position: 'relative', zIndex: 10 }}>
+
+        {/* ── Header ── */}
+        <div className="asc-header-mb" style={{ paddingTop: '16px', marginBottom: '40px' }}>
+          <h1
+            className="asc-heading font-bold leading-tight tracking-tight mb-2"
+            style={{
+              fontSize: 'clamp(1.5rem, 2.5vw, 2.5rem)',
+              color: isDark ? '#f1f5f9' : '#1e293b',
+            }}
+          >
             Admin Control Center
           </h1>
         </div>
 
-        {/* Cards Grid */}
-        <div className="flex flex-wrap gap-4 2xl:gap-8 mt-6 2xl:mt-10">
+        {/* ── Cards row ── */}
+        <div className="asc-cards-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: '32px' }}>
 
-          {/* TARGET SYSTEM CARD */}
+          {/* ─── TARGET SYSTEM CARD ─── */}
           <div
-            className="
-              w-80 h-56 2xl:w-[28rem] 2xl:h-72
-              bg-white/80 backdrop-blur-sm rounded-2xl dark:border-[#1e2d45] dark:bg-[#1a2234] border-slate-200/50
-              shadow-lg hover:shadow-xl relative flex items-center justify-center
-              overflow-hidden cursor-pointer group
-              transition-all duration-300 hover:scale-[1.02] hover:border-blue-200/50
-            "
+            className="admin-card admin-card-target asc-card"
+            style={cardBase}
             onClick={() => handleNavigate("target")}
           >
-            {/* Gradient overlay on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-sky-50/50 opacity-0
-                           group-hover:opacity-100 transition-opacity duration-300"></div>
+            {/* Hover overlay */}
+            <div className="hover-overlay" style={{
+              position: 'absolute', inset: 0,
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(14,165,233,0.08))'
+                : 'linear-gradient(135deg, rgba(239,246,255,0.5), rgba(240,249,255,0.5))',
+              pointerEvents: 'none',
+            }} />
 
             {/* Info button */}
             <button
-              className="absolute top-4 right-4 w-8 h-8 2xl:w-10 2xl:h-10 rounded-full bg-white/90 dark:bg-[#1a2234] backdrop-blur-sm
-                       flex items-center justify-center z-20
-                       hover:bg-white hover:scale-110 transition-all duration-300
-                       shadow-sm"
+              className="info-btn asc-info-btn"
+              style={{
+                position: 'absolute', top: '16px', right: '16px',
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: isDark ? '#111827' : 'rgba(255,255,255,0.9)',
+                border: isDark ? '1px solid #1e2d45' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 setActiveCard(activeCard === "target" ? null : "target");
               }}
             >
-              <FaInfoCircle className={`text-blue-400 2xl:text-lg transition-transform duration-300 
-                                      ${activeCard === "target" ? "rotate-180" : ""}`} />
+              <FaInfoCircle style={{
+                color: '#60a5fa', fontSize: '14px',
+                transform: activeCard === "target" ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.3s',
+              }} />
             </button>
 
-            {/* Content */}
-            <div className="relative z-10 text-center px-6 2xl:px-10">
-              {/* Icon */}
-              <div className="inline-flex items-center justify-center w-16 h-16 2xl:w-20 2xl:h-20 rounded-2xl
-                           bg-gradient-to-br from-blue-400 to-sky-400 mb-4 2xl:mb-6 shadow-lg
-                           group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <FaServer className="text-white text-2xl 2xl:text-3xl" />
+            {/* Card content */}
+            <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '0 24px' }}>
+              <div
+                className="icon-inner asc-card-icon"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: '64px', height: '64px', borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #3b82f6, #38bdf8)',
+                  marginBottom: '16px',
+                  boxShadow: '0 8px 20px rgba(59,130,246,0.35)',
+                }}
+              >
+                <FaServer style={{ color: '#fff', fontSize: '24px' }} />
               </div>
 
-              {/* Text */}
               <div
                 key={activeCard === "target" ? "info" : "normal"}
-                className="opacity-0 animate-fadeIn"
+                className="animate-fadeIn"
+                style={{ opacity: 0 }}
               >
                 {activeCard === "target" ? (
                   <div>
-                    <p className="text-lg 2xl:text-xl font-bold text-slate-800 mb-2 dark:text-white">
-                      Target System
-                    </p>
-                    <p className="text-sm 2xl:text-base text-slate-600 leading-relaxed dark:text-white">
-                      Create, configure, and manage your target systems securely
-                      from here.
+                    <p className="asc-card-title" style={{
+                      fontSize: '17px', fontWeight: 700,
+                      color: isDark ? '#f1f5f9' : '#1e293b',
+                      marginBottom: '8px',
+                    }}>Target System</p>
+                    <p className="asc-card-sub" style={{
+                      fontSize: '13px',
+                      color: isDark ? '#94a3b8' : '#64748b',
+                      lineHeight: 1.6, margin: 0,
+                    }}>
+                      Create, configure, and manage your target systems securely from here.
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-white">
-                      Target System
-                    </p>
-                    <p className="text-sm 2xl:text-base text-slate-500 dark:text-white mt-2">
-                      Manage your systems
-                    </p>
+                    <p className="asc-card-title" style={{
+                      fontSize: '20px', fontWeight: 700,
+                      color: isDark ? '#f1f5f9' : '#1e293b',
+                      margin: '0 0 6px',
+                    }}>Target System</p>
+                    <p className="asc-card-sub" style={{
+                      fontSize: '13px',
+                      color: isDark ? '#64748b' : '#94a3b8',
+                      margin: 0,
+                    }}>Manage your systems</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Bottom accent bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-300 to-sky-300
-                           transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+            <div className="bottom-bar asc-bottom-bar" style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px',
+              background: 'linear-gradient(90deg, #3b82f6, #38bdf8)',
+            }} />
           </div>
 
-          {/* SETTINGS CARD */}
+          {/* ─── SETTINGS CARD ─── */}
           <div
-            className="
-              w-80 h-56 2xl:w-[28rem] 2xl:h-72
-              bg-white/80 dark:bg-[#1a2234] backdrop-blur-sm rounded-2xl dark:border-[#1e2d45] border-slate-200/50
-              shadow-lg hover:shadow-xl relative flex items-center justify-center
-              overflow-hidden cursor-pointer group
-              transition-all duration-300 hover:scale-[1.02] hover:border-purple-200/50
-            "
-            // onClick={() => handleNavigate("settings")}
+            className="admin-card admin-card-settings asc-card"
+            style={cardBase}
           >
-            {/* Gradient overlay on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-pink-50/50 opacity-0
-                           group-hover:opacity-100 transition-opacity duration-300"></div>
+            {/* Hover overlay */}
+            <div className="hover-overlay" style={{
+              position: 'absolute', inset: 0,
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(236,72,153,0.08))'
+                : 'linear-gradient(135deg, rgba(245,243,255,0.5), rgba(253,242,248,0.5))',
+              pointerEvents: 'none',
+            }} />
 
             {/* Info button */}
             <button
-              className="absolute top-4 right-4 w-8 h-8 2xl:w-10 2xl:h-10 rounded-full bg-white/90 dark:bg-[#1a2234] backdrop-blur-sm
-                       flex items-center justify-center z-20
-                       hover:bg-white hover:scale-110 transition-all duration-300
-                       shadow-sm"
+              className="info-btn asc-info-btn"
+              style={{
+                position: 'absolute', top: '16px', right: '16px',
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: isDark ? '#111827' : 'rgba(255,255,255,0.9)',
+                border: isDark ? '1px solid #1e2d45' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 setActiveCard(activeCard === "settings" ? null : "settings");
               }}
             >
-              <FaInfoCircle className={`text-purple-400 2xl:text-lg transition-transform duration-300 
-                                      ${activeCard === "settings" ? "rotate-180" : ""}`} />
+              <FaInfoCircle style={{
+                color: '#c084fc', fontSize: '14px',
+                transform: activeCard === "settings" ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.3s',
+              }} />
             </button>
 
-            {/* Content */}
-            <div className="relative z-10 text-center px-6 2xl:px-10">
-              {/* Icon */}
-              <div className="inline-flex items-center justify-center w-16 h-16 2xl:w-20 2xl:h-20 rounded-2xl
-                           bg-gradient-to-br from-purple-400 to-pink-400 mb-4 2xl:mb-6 shadow-lg
-                           group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <FaCog className="text-white text-2xl 2xl:text-3xl" />
+            {/* Card content */}
+            <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '0 24px' }}>
+              <div
+                className="icon-inner asc-card-icon"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: '64px', height: '64px', borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                  marginBottom: '16px',
+                  boxShadow: '0 8px 20px rgba(168,85,247,0.35)',
+                }}
+              >
+                <FaCog style={{ color: '#fff', fontSize: '24px' }} />
               </div>
 
-              {/* Text */}
               <div
                 key={activeCard === "settings" ? "info" : "normal"}
-                className="opacity-0 animate-fadeIn"
+                className="animate-fadeIn"
+                style={{ opacity: 0 }}
               >
                 {activeCard === "settings" ? (
                   <div>
-                    <p className="text-lg 2xl:text-xl font-bold text-slate-800 dark:text-white mb-2">
-                      Settings
-                    </p>
-                    <p className="text-sm 2xl:text-base text-slate-600 dark:text-white leading-relaxed">
+                    <p className="asc-card-title" style={{
+                      fontSize: '17px', fontWeight: 700,
+                      color: isDark ? '#f1f5f9' : '#1e293b',
+                      marginBottom: '8px',
+                    }}>Settings</p>
+                    <p className="asc-card-sub" style={{
+                      fontSize: '13px',
+                      color: isDark ? '#94a3b8' : '#64748b',
+                      lineHeight: 1.6, margin: 0,
+                    }}>
                       Configure system settings and manage configurations.
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-white">
-                      Settings
-                    </p>
-                    <p className="text-sm 2xl:text-base text-slate-500 dark:text-white mt-2">
-                      System configuration
-                    </p>
+                    <p className="asc-card-title" style={{
+                      fontSize: '20px', fontWeight: 700,
+                      color: isDark ? '#f1f5f9' : '#1e293b',
+                      margin: '0 0 6px',
+                    }}>Settings</p>
+                    <p className="asc-card-sub" style={{
+                      fontSize: '13px',
+                      color: isDark ? '#64748b' : '#94a3b8',
+                      margin: 0,
+                    }}>System configuration</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Bottom accent bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-300 to-pink-300
-                           transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+            <div className="bottom-bar asc-bottom-bar" style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px',
+              background: 'linear-gradient(90deg, #a855f7, #ec4899)',
+            }} />
           </div>
 
-        </div>
+        </div>{/* end cards wrap */}
       </div>
-
-      <style>{`
-        @keyframes blob {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

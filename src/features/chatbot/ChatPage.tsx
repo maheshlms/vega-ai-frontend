@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaPaperPlane, FaRobot, FaUser, FaTimes, FaComments } from "react-icons/fa";
 import { BsThreeDots } from "react-icons/bs";
 import { api } from '../../utils/api';
+import { useTheme } from '../../state/ThemeContext';
 
 // Type Definitions
 interface Message {
@@ -17,6 +18,8 @@ interface ChatHistory {
 }
 
 const ChatPage: React.FC = () => {
+  const { isDark } = useTheme();
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -119,89 +122,108 @@ const ChatPage: React.FC = () => {
       {/* Floating Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center z-50 group"
+        className="fixed bottom-4 right-4 lg:bottom-6 lg:right-6 w-12 h-12 lg:w-16 lg:h-16 xl:w-18 xl:h-18 2xl:w-20 2xl:h-20 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center z-50 group"
         aria-label="Open chat"
       >
         {isOpen ? (
-          <FaTimes size={24} className="animate-spin-slow" />
+          <FaTimes size={20} className="animate-spin-slow lg:text-2xl" />
         ) : (
-          <FaComments size={24} className="group-hover:scale-110 transition-transform" />
+          <FaComments size={20} className="group-hover:scale-110 transition-transform lg:text-2xl" />
         )}
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+        <span className="absolute -top-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
       </button>
 
       {/* Floating Chat Window */}
       {isOpen && (
-        <div 
-          className="fixed top-20 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-slideDown"
-          style={{ maxHeight: 'calc(100vh - 120px)' }}
+        <div
+          className="fixed top-16 lg:top-20 right-2 lg:right-6 w-[calc(100vw-1rem)] max-w-sm lg:w-96 xl:w-[420px] 2xl:w-[460px] rounded-2xl shadow-2xl z-50 overflow-hidden animate-slideDown"
+          style={{
+            maxHeight: 'calc(100vh - 100px)',
+            backgroundColor: isDark ? '#1a2234' : 'white',
+            border: `1px solid ${isDark ? '#1e2d45' : '#e5e7eb'}`,
+          }}
         >
           {/* Chat Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <FaRobot className="text-white" size={20} />
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 lg:p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <FaRobot className="text-white" size={16} />
               </div>
               <div>
-                <h3 className="font-semibold text-white">AI Assistant</h3>
+                <h3 className="font-semibold text-white text-sm lg:text-base">AI Assistant</h3>
                 <p className="text-xs text-blue-100 flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                   Online
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button 
+            <div className="flex items-center gap-1 lg:gap-2">
+              <button
                 onClick={handleClearChat}
-                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="text-white/80 hover:text-white p-1.5 lg:p-2 hover:bg-white/10 rounded-lg transition-colors"
                 title="Clear chat"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
-                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="text-white/80 hover:text-white p-1.5 lg:p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
-                <FaTimes size={18} />
+                <FaTimes size={16} />
               </button>
             </div>
           </div>
 
           {/* Messages Area */}
-          <div className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50">
+          <div
+            className="h-72 lg:h-96 xl:h-[420px] 2xl:h-[460px] overflow-y-auto p-3 lg:p-4 space-y-3"
+            style={{ backgroundColor: isDark ? '#0d1117' : '#f9fafb' }}
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} items-start gap-2 animate-fadeIn`}
               >
                 {message.sender === 'bot' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                    <FaRobot className="text-white" size={14} />
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                    <FaRobot className="text-white" size={12} />
                   </div>
                 )}
-                
+
                 <div className={`max-w-[75%] ${message.sender === 'user' ? 'order-1' : ''}`}>
                   <div
-                    className={`rounded-2xl px-4 py-2 ${
+                    className={`rounded-2xl px-3 py-2 lg:px-4 lg:py-2 ${
                       message.sender === 'user'
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
                         : message.isError
                         ? 'bg-red-50 text-red-700 border border-red-200'
-                        : 'bg-white text-gray-900 border border-gray-200'
+                        : ''
                     }`}
+                    style={
+                      message.sender === 'bot' && !message.isError
+                        ? {
+                            backgroundColor: isDark ? '#1a2234' : 'white',
+                            color: isDark ? '#e2e8f0' : '#111827',
+                            border: `1px solid ${isDark ? '#1e2d45' : '#e5e7eb'}`,
+                          }
+                        : undefined
+                    }
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                    <p className="text-xs lg:text-sm whitespace-pre-wrap">{message.text}</p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1 px-1">
+                  <p
+                    className="text-xs mt-1 px-1"
+                    style={{ color: isDark ? '#475569' : '#9ca3af' }}
+                  >
                     {formatTime(message.timestamp)}
                   </p>
                 </div>
 
                 {message.sender === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                    <FaUser className="text-white" size={14} />
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <FaUser className="text-white" size={12} />
                   </div>
                 )}
               </div>
@@ -209,10 +231,16 @@ const ChatPage: React.FC = () => {
 
             {isLoading && (
               <div className="flex justify-start items-start gap-2 animate-fadeIn">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <FaRobot className="text-white" size={14} />
+                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                  <FaRobot className="text-white" size={12} />
                 </div>
-                <div className="bg-white rounded-2xl px-4 py-3 border border-gray-200">
+                <div
+                  className="rounded-2xl px-3 py-3 lg:px-4"
+                  style={{
+                    backgroundColor: isDark ? '#1a2234' : 'white',
+                    border: `1px solid ${isDark ? '#1e2d45' : '#e5e7eb'}`,
+                  }}
+                >
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -227,14 +255,36 @@ const ChatPage: React.FC = () => {
 
           {/* Suggested Questions */}
           {messages.length === 1 && (
-            <div className="px-4 py-3 bg-white border-t border-gray-200">
-              <p className="text-xs text-gray-500 mb-2 font-medium">Quick questions:</p>
-              <div className="grid grid-cols-2 gap-2">
+            <div
+              className="px-3 py-2 lg:px-4 lg:py-3 border-t"
+              style={{
+                backgroundColor: isDark ? '#1a2234' : 'white',
+                borderColor: isDark ? '#1e2d45' : '#e5e7eb',
+              }}
+            >
+              <p
+                className="text-xs mb-2 font-medium"
+                style={{ color: isDark ? '#64748b' : '#6b7280' }}
+              >
+                Quick questions:
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 lg:gap-2">
                 {suggestedQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => setInputMessage(question)}
-                    className="text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-xs text-gray-700 transition-colors border border-gray-200"
+                    className="text-left px-2 py-1.5 lg:px-3 lg:py-2 rounded-lg text-xs transition-colors"
+                    style={{
+                      backgroundColor: isDark ? '#0d1117' : '#f9fafb',
+                      color: isDark ? '#94a3b8' : '#374151',
+                      border: `1px solid ${isDark ? '#1e2d45' : '#e5e7eb'}`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1e2d45' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#0d1117' : '#f9fafb';
+                    }}
                   >
                     {question}
                   </button>
@@ -244,7 +294,14 @@ const ChatPage: React.FC = () => {
           )}
 
           {/* Input Area */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white">
+          <form
+            onSubmit={handleSendMessage}
+            className="p-3 lg:p-4 border-t"
+            style={{
+              backgroundColor: isDark ? '#1a2234' : 'white',
+              borderColor: isDark ? '#1e2d45' : '#e5e7eb',
+            }}
+          >
             <div className="flex gap-2">
               <input
                 type="text"
@@ -252,14 +309,21 @@ const ChatPage: React.FC = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed text-sm"
+                className="flex-1 px-3 py-2 lg:px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs lg:text-sm transition-colors"
+                style={{
+                  backgroundColor: isDark ? '#0d1117' : 'white',
+                  color: isDark ? '#e2e8f0' : '#111827',
+                  border: `1px solid ${isDark ? '#1e2d45' : '#d1d5db'}`,
+                  cursor: isLoading ? 'not-allowed' : 'text',
+                  opacity: isLoading ? 0.6 : 1,
+                }}
               />
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 lg:px-4 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
               >
-                <FaPaperPlane size={16} />
+                <FaPaperPlane size={14} />
               </button>
             </div>
           </form>

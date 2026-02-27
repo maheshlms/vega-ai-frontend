@@ -71,9 +71,9 @@ const FloatingChat: React.FC = () => {
 
       <button 
         onClick={() => setOpen(!open)}  
-        className="chatbot-button fixed bottom-6 right-6 z-50 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+        className="chatbot-button fixed bottom-4 right-4 lg:bottom-6 lg:right-6 xl:bottom-8 xl:right-8 2xl:bottom-10 2xl:right-10 z-50 bg-blue-600 text-white p-3 lg:p-4 xl:p-5 2xl:p-6 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
       >
-        <MdChat size={22} />
+        <MdChat size={20} className="lg:text-[22px] xl:text-[26px] 2xl:text-[30px]" />
       </button>
 
       {open && <ChatBox onClose={closeChat} />}

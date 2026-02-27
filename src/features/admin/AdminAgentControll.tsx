@@ -657,14 +657,14 @@ const AdminAgentControll: React.FC = () => {
 
       <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-16 py-4 lg:py-6 2xl:py-10">
 
-        {/* HEADER */}
+        {/* HEADER */}  
         <div className="mb-6 lg:mb-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2" style={{ fontFamily: "'SF Pro Display', -apple-system, sans-serif" }}>
                 AI Agent Dashboard
               </h1>
-              <p className="text-gray-500 dark:text-slate-400 text-sm md:text-base lg:text-lg">Real-time monitoring and analytics for your AI workforce</p>
+              <p className="text-gray-400 text-sm 2xl:text-base mt-1">Real-time monitoring and analytics for your AI workforce</p>
             </div>
             <div className="flex items-center gap-2 md:gap-4 flex-wrap">
               {/* ── Session Timer (replaces Login Time) ── */}

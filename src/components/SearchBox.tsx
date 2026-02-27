@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from '../state/ThemeContext';
 
 interface SearchBoxProps {
   text?: string;
@@ -13,6 +14,8 @@ const SearchBox: React.FC<SearchBoxProps> = ({
   className = "",
   icon: Icon,
 }) => {
+  const { isDark } = useTheme();
+
   const words: string[] = [
     placeholder || "Search users...",
     "Search IAM roles...",
@@ -64,14 +67,27 @@ const SearchBox: React.FC<SearchBoxProps> = ({
           setValue(e.target.value)
         }
         placeholder={value.length > 0 ? placeholder : typedPlaceholder}
-        className={`w-full h-10 pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
-          focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 ${className}`}
+        className={`w-full h-10 pl-10 pr-3 rounded-md border focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 transition-colors ${className}`}
+        style={{
+          backgroundColor: isDark ? '#0d1117' : 'white',
+          borderColor: isDark ? '#1e2d45' : '#CBD5E1',
+          color: isDark ? '#e2e8f0' : 'inherit',
+        }}
       />
       {Icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
+        <span
+          className="absolute left-3 top-1/2 -translate-y-1/2"
+          style={{ color: isDark ? '#475569' : '#64748B' }}
+        >
           <Icon size={18} />
         </span>
       )}
+
+      <style>{`
+        input::placeholder {
+          color: ${isDark ? '#475569' : '#94a3b8'};
+        }
+      `}</style>
     </div>
   );
 };

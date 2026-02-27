@@ -773,6 +773,7 @@ const AgentChat: React.FC = () => {
   return (
     <>
       <style>{`
+        /* ── Base styles (1920×1080 — unchanged) ── */
         .agc-root {
           display: flex;
           flex-direction: column;
@@ -782,6 +783,8 @@ const AgentChat: React.FC = () => {
           overflow: hidden;
           min-height: 0;
         }
+        .dark .agc-root { background: #0d1117; }
+
         .agc-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 8px 20px;
@@ -792,6 +795,8 @@ const AgentChat: React.FC = () => {
           height: 50px;
           box-sizing: border-box;
         }
+        .dark .agc-header { background: #1a2234; box-shadow: 0 1px 6px rgba(0,0,0,0.3); }
+
         .agc-header-left { display: flex; align-items: center; gap: 16px; }
         .agc-back-btn {
           display: flex; align-items: center; gap: 6px;
@@ -801,6 +806,8 @@ const AgentChat: React.FC = () => {
           transition: all 0.15s;
         }
         .agc-back-btn:hover { background: #eef2ff; }
+        .dark .agc-back-btn:hover { background: #1e2d45; }
+
         .agc-identity { display: flex; align-items: center; gap: 10px; }
         .agc-avatar-ring-wrap { position: relative; width: 38px; height: 38px; }
         .agc-avatar-ring {
@@ -821,11 +828,13 @@ const AgentChat: React.FC = () => {
           border: 2px solid #fff; z-index: 2;
           animation: agc-pulse 2s ease infinite;
         }
+        .dark .agc-online-dot { border-color: #1a2234; }
         @keyframes agc-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
           50% { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
         }
         .agc-agent-name { font-size: 18px; font-weight: 700; color: #111827; }
+        .dark .agc-agent-name { color: #f9fafb; }
         .agc-agent-status {
           font-size: 13px; color: #10b981; font-weight: 500;
           display: flex; align-items: center; gap: 4px;
@@ -840,14 +849,21 @@ const AgentChat: React.FC = () => {
         }
         .agc-hbtn-neutral { background: #fff; border-color: #e5e7eb; color: #6b7280; }
         .agc-hbtn-neutral:hover { background: #f9fafb; color: #374151; }
+        .dark .agc-hbtn-neutral { background: #1e2d45; border-color: #374151; color: #9ca3af; }
+        .dark .agc-hbtn-neutral:hover { background: #253350; color: #d1d5db; }
         .agc-hbtn-red { background: #fff5f5; border-color: #fecaca; color: #ef4444; }
         .agc-hbtn-red:hover { background: #fee2e2; }
+        .dark .agc-hbtn-red { background: rgba(239,68,68,0.1); border-color: #fca5a5; }
+        .dark .agc-hbtn-red:hover { background: rgba(239,68,68,0.2); }
+
         .agc-body {
           display: flex;
           flex: 1;
           min-height: 0;
           overflow: hidden;
         }
+
+        /* Avatar panel — 350px at 1920 */
         .agc-avatar-panel {
           width: 350px; min-width: 350px; max-width: 350px;
           flex-shrink: 0; flex-grow: 0;
@@ -856,11 +872,15 @@ const AgentChat: React.FC = () => {
           display: flex; flex-direction: column;
           overflow: hidden; position: relative;
         }
+        .dark .agc-avatar-panel { border-right-color: #1e2d45; background: #1a2234; }
+
         .agc-avatar-stage {
           flex: 1; min-height: 0;
           position: relative; overflow: hidden;
           background: #f1f5f9;
         }
+        .dark .agc-avatar-stage { background: #111827; }
+
         .agc-speaking-ring {
           position: absolute; inset: 0; pointer-events: none; z-index: 5;
           border: 3px solid transparent; transition: border-color 0.3s;
@@ -873,6 +893,7 @@ const AgentChat: React.FC = () => {
           0%, 100% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.3); }
           50% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.7); }
         }
+
         .agc-avatar-top-bar {
           position: absolute; top: 0; left: 0; right: 0; z-index: 10;
           padding: 0 8px;
@@ -884,7 +905,9 @@ const AgentChat: React.FC = () => {
           height: 44px; box-sizing: border-box;
           overflow: hidden;
         }
+        .dark .agc-avatar-top-bar { background: rgba(26,34,52,0.92); border-bottom-color: rgba(255,255,255,0.06); }
         .agc-avatar-top-bar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
         .agc-overlay-btn {
           display: flex; align-items: center; gap: 4px;
           height: 26px; box-sizing: border-box;
@@ -897,12 +920,20 @@ const AgentChat: React.FC = () => {
         .agc-overlay-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .agc-overlay-btn-green  { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
         .agc-overlay-btn-green:hover:not(:disabled) { background: #d1fae5; }
+        .dark .agc-overlay-btn-green { background: rgba(16,185,129,0.15); border-color: #6ee7b7; color: #6ee7b7; }
+        .dark .agc-overlay-btn-green:hover:not(:disabled) { background: rgba(16,185,129,0.25); }
         .agc-overlay-btn-red    { background: #fff5f5; border-color: #fca5a5; color: #b91c1c; }
         .agc-overlay-btn-red:hover:not(:disabled) { background: #fee2e2; }
+        .dark .agc-overlay-btn-red { background: rgba(239,68,68,0.12); border-color: #fca5a5; color: #fca5a5; }
+        .dark .agc-overlay-btn-red:hover:not(:disabled) { background: rgba(239,68,68,0.22); }
         .agc-overlay-btn-amber  { background: #fffbeb; border-color: #fbbf24; color: #92400e; }
         .agc-overlay-btn-amber:hover:not(:disabled) { background: #fef3c7; }
+        .dark .agc-overlay-btn-amber { background: rgba(251,191,36,0.12); border-color: #fbbf24; color: #fbbf24; }
         .agc-overlay-btn-white  { background: #f3f4f6; border-color: #e5e7eb; color: #374151; }
         .agc-overlay-btn-white:hover:not(:disabled) { background: #e5e7eb; }
+        .dark .agc-overlay-btn-white { background: #1e2d45; border-color: #374151; color: #d1d5db; }
+        .dark .agc-overlay-btn-white:hover:not(:disabled) { background: #253350; }
+
         .agc-status-pill-fixed {
           display: flex; align-items: center; gap: 5px;
           background: #f3f4f6; border: 1px solid #e5e7eb;
@@ -912,6 +943,8 @@ const AgentChat: React.FC = () => {
           overflow: hidden; white-space: nowrap;
           box-sizing: border-box; flex-shrink: 0;
         }
+        .dark .agc-status-pill-fixed { background: #1e2d45; border-color: #374151; color: #d1d5db; }
+
         .agc-avatar-idle {
           position: absolute; inset: 0; z-index: 2;
           display: flex; flex-direction: column;
@@ -933,6 +966,8 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; justify-content: center;
           font-size: 72px; font-weight: 700; color: #6366f1;
         }
+        .dark .agc-avatar-idle-placeholder { background: linear-gradient(135deg, #1e1b4b, #1e2d45); border-color: #4338ca; }
+
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
           padding: 10px 12px;
@@ -941,11 +976,15 @@ const AgentChat: React.FC = () => {
           border-top: 1px solid rgba(0,0,0,0.06);
           display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
         }
+        .dark .agc-avatar-info-bar { background: rgba(26,34,52,0.92); border-top-color: rgba(255,255,255,0.06); }
+
         .agc-timer {
           font-size: 11px; color: #9ca3af;
           background: #f3f4f6; padding: 3px 10px; border-radius: 20px;
           font-variant-numeric: tabular-nums;
         }
+        .dark .agc-timer { background: #1e2d45; color: #6b7280; }
+
         .agc-chat-panel {
           flex: 1;
           min-width: 0;
@@ -955,6 +994,8 @@ const AgentChat: React.FC = () => {
           overflow: hidden;
           background: #F9FAFB;
         }
+        .dark .agc-chat-panel { background: #0d1117; }
+
         .agc-chat-header {
           height: 56px; flex-shrink: 0;
           padding: 0 16px; box-sizing: border-box;
@@ -962,6 +1003,8 @@ const AgentChat: React.FC = () => {
           background: #fff;
           display: flex; align-items: center; justify-content: space-between;
         }
+        .dark .agc-chat-header { border-bottom-color: #1e2d45; background: #1a2234; }
+
         .agc-messages {
           flex: 1;
           min-height: 0;
@@ -970,8 +1013,11 @@ const AgentChat: React.FC = () => {
           display: flex; flex-direction: column; gap: 4px;
           scrollbar-width: thin; scrollbar-color: #e5e7eb transparent;
         }
+        .dark .agc-messages { scrollbar-color: #1e2d45 transparent; }
         .agc-messages::-webkit-scrollbar { width: 4px; }
         .agc-messages::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+        .dark .agc-messages::-webkit-scrollbar-thumb { background: #1e2d45; }
+
         .agc-welcome {
           flex: 1; display: flex; flex-direction: column;
           align-items: center; justify-content: center;
@@ -985,6 +1031,7 @@ const AgentChat: React.FC = () => {
           margin: 0 auto 16px;
           animation: agc-float 4s ease-in-out infinite;
         }
+        .dark .agc-welcome-orb { border-color: #4338ca; }
         .agc-welcome-orb-icon {
           width: 72px; height: 72px; border-radius: 50%;
           background: linear-gradient(135deg, #eef2ff, #ede9fe);
@@ -993,33 +1040,48 @@ const AgentChat: React.FC = () => {
           margin: 0 auto 16px;
           animation: agc-float 4s ease-in-out infinite;
         }
+        .dark .agc-welcome-orb-icon { background: linear-gradient(135deg, #1e1b4b, #1e2d45); border-color: #4338ca; }
         @keyframes agc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         .agc-welcome-title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 8px; }
+        .dark .agc-welcome-title { color: #f9fafb; }
         .agc-welcome-sub { font-size: 15px; color: #9ca3af; }
+        .dark .agc-welcome-sub { color: #6b7280; }
+
         .agc-row { display: flex; align-items: flex-end; gap: 8px; animation: agc-msgin 0.22s ease; }
         .agc-row.user { justify-content: flex-end; }
         .agc-row.ai, .agc-row.system { justify-content: flex-start; }
         @keyframes agc-msgin { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         .agc-msg-avatar { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1.5px solid #e5e7eb; }
+        .dark .agc-msg-avatar { border-color: #1e2d45; }
         .agc-bubble { max-width: 68%; padding: 10px 14px; border-radius: 18px; font-size: 14px; word-break: break-word; line-height: 1.65; }
         .agc-bubble.user { background: linear-gradient(135deg,#4f46e5,#6366f1); color:#fff; border-bottom-right-radius:5px; box-shadow:0 4px 14px rgba(99,102,241,0.28); }
         .agc-bubble.ai { background:#fff; color:#1f2937; border:1px solid #e5e7eb; border-bottom-left-radius:5px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .dark .agc-bubble.ai { background:#1e2d45; color:#e5e7eb; border-color:#374151; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
         .agc-bubble.system { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:12px; font-size:12.5px; }
+        .dark .agc-bubble.system { background:rgba(16,185,129,0.1); color:#6ee7b7; border-color:rgba(16,185,129,0.3); }
         .agc-bubble.error { background:#fff5f5; color:#b91c1c; border-color:#fecaca; }
+        .dark .agc-bubble.error { background:rgba(239,68,68,0.1); color:#fca5a5; border-color:rgba(239,68,68,0.3); }
+
         .agc-ts { font-size:10px; color:#d1d5db; margin-top:2px; display:flex; }
+        .dark .agc-ts { color:#374151; }
         .agc-ts.user { justify-content:flex-end; }
         .agc-ts.ai, .agc-ts.system { justify-content:flex-start; padding-left:36px; }
+
         .agc-typing { background:#fff; border:1px solid #e5e7eb; border-radius:18px; border-bottom-left-radius:5px; padding:12px 16px; display:flex; gap:5px; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .dark .agc-typing { background:#1e2d45; border-color:#374151; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
         .agc-dot { width:7px; height:7px; border-radius:50%; background:#c7d2fe; animation:agc-bounce 1.2s ease-in-out infinite; }
         .agc-dot:nth-child(2) { animation-delay:.18s; background:#a5b4fc; }
         .agc-dot:nth-child(3) { animation-delay:.36s; background:#818cf8; }
         @keyframes agc-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
         .agc-approval {
           background: #fff; border: 1.5px solid #d1fae5;
           border-radius: 14px; padding: 14px 16px;
           max-width: 68%; box-shadow: 0 2px 10px rgba(16,185,129,0.08);
         }
+        .dark .agc-approval { background: #1a2234; border-color: rgba(16,185,129,0.3); box-shadow: 0 2px 10px rgba(16,185,129,0.05); }
         .agc-approval-title { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 10px; }
+        .dark .agc-approval-title { color: #d1d5db; }
         .agc-approval-actions { display: flex; gap: 8px; }
         .agc-approve {
           display: flex; align-items: center; gap: 5px;
@@ -1031,6 +1093,8 @@ const AgentChat: React.FC = () => {
         .agc-approve:hover { background: #d1fae5; }
         .agc-approve:disabled { opacity: 0.5; cursor: not-allowed; }
         .agc-approve.agc-btn-active { box-shadow: 0 0 0 2px #6ee7b7; opacity: 1 !important; }
+        .dark .agc-approve { background: rgba(16,185,129,0.15); border-color: #6ee7b7; color: #6ee7b7; }
+        .dark .agc-approve:hover { background: rgba(16,185,129,0.25); }
         .agc-reject {
           display: flex; align-items: center; gap: 5px;
           padding: 7px 14px; border-radius: 8px;
@@ -1041,10 +1105,13 @@ const AgentChat: React.FC = () => {
         .agc-reject:hover { background: #fee2e2; }
         .agc-reject:disabled { opacity: 0.5; cursor: not-allowed; }
         .agc-reject.agc-btn-active { box-shadow: 0 0 0 2px #fca5a5; opacity: 1 !important; }
+        .dark .agc-reject { background: rgba(239,68,68,0.12); border-color: #fca5a5; color: #fca5a5; }
+        .dark .agc-reject:hover { background: rgba(239,68,68,0.22); }
         .agc-approval-processing {
           display: flex; align-items: center; gap: 7px;
           margin-top: 10px; font-size: 11.5px; color: #6b7280;
         }
+        .dark .agc-approval-processing { color: #9ca3af; }
         .agc-approval-processing .agc-spinner {
           width: 13px; height: 13px;
           border: 2px solid #d1d5db; border-top-color: #6366f1;
@@ -1052,28 +1119,135 @@ const AgentChat: React.FC = () => {
           flex-shrink: 0;
         }
         @keyframes agc-spin { to { transform: rotate(360deg); } }
+
         .agc-input-zone {
           flex-shrink: 0;
           background: #fff; border-top: 1px solid #eaecf0;
           padding: 10px 16px 12px;
         }
+        .dark .agc-input-zone { background: #1a2234; border-top-color: #1e2d45; }
         .agc-file-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
         .agc-chip { display:flex; align-items:center; gap:5px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:3px 8px; font-size:11.5px; color:#4f46e5; }
+        .dark .agc-chip { background:rgba(99,102,241,0.15); border-color:#4338ca; color:#818cf8; }
         .agc-chip-x { background:none; border:none; color:#a5b4fc; cursor:pointer; font-size:13px; padding:0; }
         .agc-chip-x:hover { color:#ef4444; }
         .agc-input-wrap { display:flex; align-items:center; gap:8px; background:#f9fafb; border:1.5px solid #e5e7eb; border-radius:14px; padding:7px 10px; transition:border-color .2s,box-shadow .2s; }
         .agc-input-wrap:focus-within { border-color:#a5b4fc; box-shadow:0 0 0 3px rgba(99,102,241,0.08); background:#fff; }
+        .dark .agc-input-wrap { background:#111827; border-color:#374151; }
+        .dark .agc-input-wrap:focus-within { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,0.15); background:#0d1117; }
         .agc-icon-btn { background:none; border:none; color:#d1d5db; cursor:pointer; padding:5px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; transition:color .15s,background .15s; }
         .agc-icon-btn:hover { color:#9ca3af; background:#f3f4f6; }
+        .dark .agc-icon-btn { color:#374151; }
+        .dark .agc-icon-btn:hover { color:#9ca3af; background:#1e2d45; }
         .agc-icon-btn.recording { color:#ef4444; animation:agc-pulse-red 1s ease-in-out infinite; }
         @keyframes agc-pulse-red { 0%,100%{opacity:1} 50%{opacity:.5} }
         .agc-text-input { flex:1; background:none; border:none; outline:none; color:#111827; font-size:13.5px; padding:4px 0; }
         .agc-text-input::placeholder { color:#d1d5db; }
+        .dark .agc-text-input { color:#f9fafb; }
+        .dark .agc-text-input::placeholder { color:#374151; }
         .agc-divider { width:1px; height:18px; background:#e5e7eb; flex-shrink:0; }
+        .dark .agc-divider { background:#374151; }
         .agc-send-btn { display:flex; align-items:center; gap:6px; padding:8px 18px; border-radius:10px; background:linear-gradient(135deg,#4f46e5,#6366f1); border:none; color:#fff; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0; box-shadow:0 4px 12px rgba(99,102,241,.3); transition:all .18s; }
         .agc-send-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(99,102,241,.38); }
         .agc-send-btn:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
         .agc-spinner { width:11px; height:11px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:agc-spin .65s linear infinite; }
+
+        /* ── Smaller than 1920: scale down proportionally ── */
+        /* 1280px–1535px (e.g. standard laptop 1280–1440) */
+        @media (max-width: 1535px) {
+          .agc-header { height: 46px; padding: 6px 16px; }
+          .agc-back-btn { font-size: 12px; padding: 5px 9px; }
+          .agc-agent-name { font-size: 15px; }
+          .agc-agent-status { font-size: 11px; }
+          .agc-hbtn { font-size: 12px; padding: 5px 11px; }
+          .agc-avatar-panel { width: 290px; min-width: 290px; max-width: 290px; }
+          .agc-avatar-top-bar { height: 40px; }
+          .agc-overlay-btn { font-size: 10px; height: 24px; padding: 0 7px; }
+          .agc-status-pill-fixed { font-size: 10px; width: 74px; min-width: 74px; max-width: 74px; padding: 3px 7px; }
+          .agc-avatar-idle-placeholder { width: 180px; height: 230px; font-size: 60px; }
+          .agc-bubble { font-size: 13px; padding: 9px 12px; }
+          .agc-send-btn { font-size: 12px; padding: 7px 15px; }
+          .agc-text-input { font-size: 12.5px; }
+          .agc-welcome-title { font-size: 24px; }
+          .agc-welcome-sub { font-size: 13px; }
+          .agc-chat-header { height: 50px; padding: 0 14px; }
+          .agc-avatar-ring-wrap { width: 34px; height: 34px; }
+          .agc-messages { padding: 12px; }
+          .agc-input-zone { padding: 8px 14px 10px; }
+        }
+
+        /* 1536px–1919px (intermediate, e.g. 1600, 1680, 1792) */
+        @media (min-width: 1536px) and (max-width: 1919px) {
+          .agc-header { height: 48px; padding: 7px 18px; }
+          .agc-agent-name { font-size: 16px; }
+          .agc-avatar-panel { width: 320px; min-width: 320px; max-width: 320px; }
+          .agc-chat-header { height: 53px; }
+        }
+
+        /* 1920px — base, no overrides needed */
+
+        /* 2560px+ (e.g. 1440p/4K displays) */
+        @media (min-width: 2560px) {
+          .agc-header { height: 66px; padding: 10px 32px; }
+          .agc-back-btn { font-size: 16px; padding: 8px 14px; gap: 8px; }
+          .agc-agent-name { font-size: 22px; }
+          .agc-agent-status { font-size: 15px; }
+          .agc-hbtn { font-size: 15px; padding: 8px 18px; border-radius: 11px; }
+          .agc-avatar-panel { width: 460px; min-width: 460px; max-width: 460px; }
+          .agc-avatar-ring-wrap { width: 50px; height: 50px; }
+          .agc-avatar-top-bar { height: 56px; padding: 0 12px; }
+          .agc-overlay-btn { font-size: 13px; height: 32px; padding: 0 12px; border-radius: 9px; }
+          .agc-status-pill-fixed { font-size: 13px; width: 100px; min-width: 100px; max-width: 100px; padding: 5px 10px; }
+          .agc-avatar-idle-placeholder { width: 290px; height: 370px; font-size: 96px; }
+          .agc-chat-header { height: 72px; padding: 0 24px; }
+          .agc-bubble { font-size: 16px; padding: 13px 18px; border-radius: 22px; }
+          .agc-msg-avatar { width: 36px; height: 36px; }
+          .agc-ts { font-size: 12px; }
+          .agc-ts.ai, .agc-ts.system { padding-left: 44px; }
+          .agc-welcome-title { font-size: 36px; }
+          .agc-welcome-sub { font-size: 18px; }
+          .agc-input-zone { padding: 14px 24px 16px; }
+          .agc-text-input { font-size: 16px; }
+          .agc-send-btn { font-size: 15px; padding: 10px 24px; border-radius: 12px; }
+          .agc-icon-btn { font-size: 21px; }
+          .agc-typing { padding: 14px 20px; }
+          .agc-dot { width: 9px; height: 9px; }
+          .agc-approval { padding: 18px 22px; border-radius: 18px; }
+          .agc-approval-title { font-size: 15px; }
+          .agc-approve, .agc-reject { font-size: 14px; padding: 9px 18px; border-radius: 10px; }
+          .agc-messages { padding: 22px; gap: 6px; }
+          .agc-timer { font-size: 13px; padding: 4px 13px; }
+        }
+
+        /* 3840px+ (4K and above) */
+        @media (min-width: 3840px) {
+          .agc-header { height: 90px; padding: 14px 48px; }
+          .agc-back-btn { font-size: 20px; padding: 10px 18px; }
+          .agc-agent-name { font-size: 30px; }
+          .agc-agent-status { font-size: 19px; }
+          .agc-hbtn { font-size: 19px; padding: 10px 24px; border-radius: 14px; }
+          .agc-avatar-panel { width: 640px; min-width: 640px; max-width: 640px; }
+          .agc-avatar-ring-wrap { width: 68px; height: 68px; }
+          .agc-avatar-top-bar { height: 76px; padding: 0 18px; }
+          .agc-overlay-btn { font-size: 17px; height: 44px; padding: 0 18px; border-radius: 12px; }
+          .agc-status-pill-fixed { font-size: 17px; width: 138px; min-width: 138px; max-width: 138px; padding: 7px 14px; }
+          .agc-avatar-idle-placeholder { width: 400px; height: 520px; font-size: 130px; }
+          .agc-chat-header { height: 100px; padding: 0 36px; }
+          .agc-bubble { font-size: 22px; padding: 18px 26px; border-radius: 28px; }
+          .agc-msg-avatar { width: 50px; height: 50px; }
+          .agc-ts { font-size: 16px; }
+          .agc-ts.ai, .agc-ts.system { padding-left: 60px; }
+          .agc-welcome-title { font-size: 50px; }
+          .agc-welcome-sub { font-size: 24px; }
+          .agc-input-zone { padding: 20px 36px 24px; }
+          .agc-text-input { font-size: 22px; }
+          .agc-send-btn { font-size: 20px; padding: 14px 34px; border-radius: 16px; }
+          .agc-icon-btn { font-size: 30px; }
+          .agc-approval { padding: 26px 32px; border-radius: 24px; }
+          .agc-approval-title { font-size: 20px; }
+          .agc-approve, .agc-reject { font-size: 19px; padding: 12px 26px; border-radius: 14px; }
+          .agc-messages { padding: 32px; gap: 8px; }
+        }
       `}</style>
 
       <div className="agc-root">
@@ -1172,7 +1346,6 @@ const AgentChat: React.FC = () => {
                   <AvatarImg src={avatarImg} name={avatarName} size={38}
                     className="relative z-10 border-2 border-white"
                     style={{ position: 'relative', zIndex: 1 } as React.CSSProperties} />
-                  <div className="agc-online-dot" />
                 </div>
                 <div>
                   <div className="agc-agent-name">{agent?.name || avatarName}</div>

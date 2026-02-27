@@ -45,7 +45,6 @@ const AgentTypeSelection: React.FC = () => {
     integrationType || "pingfederate"
   );
 
-  // This is the actual integration ID passed from previous screen
   const actualIntegrationId = targetId;
 
   useEffect(() => {
@@ -56,8 +55,6 @@ const AgentTypeSelection: React.FC = () => {
       setIntegrationId(normalized);
     }
   }, [integrationType]);
-
-  /* ===================== AGENT DATA (UNCHANGED) ===================== */
 
   const agentTypesData: AgentTypesData = {
     pingfederate: {
@@ -114,61 +111,61 @@ const AgentTypeSelection: React.FC = () => {
   const currentIntegration: IntegrationData =
     agentTypesData[integrationId] || agentTypesData.pingfederate;
 
-  /* ===================== THEME ===================== */
-
   const themeConfig: ThemeConfig = {
     blue: {
-      headerBg: "bg-gradient-to-br from-blue-50 to-indigo-50",
-      accent: "text-blue-600",
-      hoverBorder: "hover:border-blue-500",
-      hoverBg: "group-hover:bg-blue-50",
-      actionText: "group-hover:text-blue-600",
-      progressBar: "bg-blue-600"
+      headerBg: "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-[#0d1117] dark:to-[#0d1117]",
+      accent: "text-blue-600 dark:text-blue-400",
+      hoverBorder: "hover:border-blue-500 dark:hover:border-blue-400",
+      hoverBg: "group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20",
+      actionText: "group-hover:text-blue-600 dark:group-hover:text-blue-400",
+      progressBar: "bg-blue-600 dark:bg-blue-500"
     },
     emerald: {
-      headerBg: "bg-gradient-to-br from-emerald-50 to-teal-50",
-      accent: "text-emerald-600",
-      hoverBorder: "hover:border-emerald-500",
-      hoverBg: "group-hover:bg-emerald-50",
-      actionText: "group-hover:text-emerald-600",
-      progressBar: "bg-emerald-600"
+      headerBg: "bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-[#0d1117] dark:to-[#0d1117]",
+      accent: "text-emerald-600 dark:text-emerald-400",
+      hoverBorder: "hover:border-emerald-500 dark:hover:border-emerald-400",
+      hoverBg: "group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20",
+      actionText: "group-hover:text-emerald-600 dark:group-hover:text-emerald-400",
+      progressBar: "bg-emerald-600 dark:bg-emerald-500"
     },
     violet: {
-      headerBg: "bg-gradient-to-br from-violet-50 to-purple-50",
-      accent: "text-violet-600",
-      hoverBorder: "hover:border-violet-500",
-      hoverBg: "group-hover:bg-violet-50",
-      actionText: "group-hover:text-violet-600",
-      progressBar: "bg-violet-600"
+      headerBg: "bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[#0d1117] dark:to-[#0d1117]",
+      accent: "text-violet-600 dark:text-violet-400",
+      hoverBorder: "hover:border-violet-500 dark:hover:border-violet-400",
+      hoverBg: "group-hover:bg-violet-50 dark:group-hover:bg-violet-900/20",
+      actionText: "group-hover:text-violet-600 dark:group-hover:text-violet-400",
+      progressBar: "bg-violet-600 dark:bg-violet-500"
     }
   };
 
   const theme: ThemeColors = themeConfig[currentIntegration.theme];
 
-  /* ===================== UI ===================== */
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-[#0d1117]">
       {/* Header */}
-      <div className={`${theme.headerBg} border-b border-gray-100`}>
-        <div className="max-w-7xl 2xl:max-w-[1920px] mx-auto px-8 2xl:px-20 py-8 2xl:py-12">
+      <div className={`${theme.headerBg} border-b border-gray-100 dark:border-[#1e2d45]`}>
+        <div className="max-w-5xl xl:max-w-7xl 2xl:max-w-[1920px] mx-auto
+          px-4 xl:px-8 2xl:px-20
+          py-5 xl:py-8 2xl:py-12">
           <button
             onClick={() => navigate("/agents/select-target")}
-            className="text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2"
+            className="text-xs xl:text-sm 2xl:text-base text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2"
           >
             ← Back to Integrations
           </button>
 
-          <h1 className={`text-2xl 2xl:text-4xl font-light mt-2 2xl:mt-3 ${theme.accent}`}>
+          <h1 className={`text-xl xl:text-2xl 2xl:text-4xl font-light mt-2 2xl:mt-3 ${theme.accent}`}>
             {currentIntegration.title}
           </h1>
-          <p className="text-gray-600 2xl:text-lg">{currentIntegration.subtitle}</p>
+          <p className="text-sm xl:text-base text-gray-600 dark:text-slate-400 2xl:text-lg">{currentIntegration.subtitle}</p>
         </div>
       </div>
 
       {/* Cards */}
-      <div className="max-w-7xl 2xl:max-w-[1920px] mx-auto px-8 2xl:px-20 py-12 2xl:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 2xl:gap-8">
+      <div className="max-w-5xl xl:max-w-7xl 2xl:max-w-[1920px] mx-auto
+        px-4 xl:px-8 2xl:px-20
+        py-8 xl:py-12 2xl:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6 2xl:gap-8">
           {currentIntegration.agents.map((agent) => {
             const isActive = agent.active;
 
@@ -188,21 +185,23 @@ const AgentTypeSelection: React.FC = () => {
                   group rounded-xl border-2 overflow-hidden transition-all duration-300
                   ${
                     isActive
-                      ? `bg-white border-gray-200 ${theme.hoverBorder} hover:shadow-xl hover:-translate-y-1 cursor-pointer`
-                      : `bg-gray-50 border-gray-100 opacity-50 grayscale cursor-not-allowed`
+                      ? `bg-white dark:bg-[#1a2234] border-gray-200 dark:border-[#1e2d45] ${theme.hoverBorder} hover:shadow-xl hover:-translate-y-1 cursor-pointer`
+                      : `bg-gray-50 dark:bg-[#111827] border-gray-100 dark:border-[#1e2d45] opacity-50 grayscale cursor-not-allowed`
                   }
                 `}
               >
-                <div className="p-8 2xl:p-10">
+                <div className="p-5 xl:p-8 2xl:p-10">
                   {/* Icon */}
                   <div
                     className={`
-                      w-14 h-14 2xl:w-18 2xl:h-18 mb-6 2xl:mb-7 flex items-center justify-center rounded-xl
-                      ${isActive ? `bg-gray-50 ${theme.hoverBg}` : `bg-gray-100`}
+                      w-11 h-11 xl:w-14 xl:h-14 2xl:w-18 2xl:h-18
+                      mb-4 xl:mb-6 2xl:mb-7
+                      flex items-center justify-center rounded-xl
+                      ${isActive ? `bg-gray-50 dark:bg-[#111827] ${theme.hoverBg}` : `bg-gray-100 dark:bg-[#1e2d45]`}
                     `}
                   >
                     <span
-                      className={`text-4xl 2xl:text-5xl ${
+                      className={`text-3xl xl:text-4xl 2xl:text-5xl ${
                         isActive ? "group-hover:scale-110 transition-transform" : "opacity-40"
                       }`}
                     >
@@ -211,17 +210,17 @@ const AgentTypeSelection: React.FC = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className={`text-xl 2xl:text-2xl font-semibold mb-3 2xl:mb-4 ${isActive ? "text-gray-900" : "text-gray-400"}`}>
+                  <h3 className={`text-lg xl:text-xl 2xl:text-2xl font-semibold mb-2 xl:mb-3 2xl:mb-4 ${isActive ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-slate-600"}`}>
                     {agent.name}
                   </h3>
 
                   {/* Description */}
-                  <p className={`text-sm 2xl:text-base mb-6 2xl:mb-7 ${isActive ? "text-gray-600" : "text-gray-400"}`}>
+                  <p className={`text-xs xl:text-sm 2xl:text-base mb-4 xl:mb-6 2xl:mb-7 ${isActive ? "text-gray-600 dark:text-slate-400" : "text-gray-400 dark:text-slate-600"}`}>
                     {agent.description}
                   </p>
 
                   {/* Action */}
-                  <div className={`text-sm 2xl:text-base font-medium flex items-center ${isActive ? `text-gray-400 ${theme.actionText}` : "text-gray-300"}`}>
+                  <div className={`text-xs xl:text-sm 2xl:text-base font-medium flex items-center ${isActive ? `text-gray-400 dark:text-slate-500 ${theme.actionText}` : "text-gray-300 dark:text-slate-700"}`}>
                     <span>{isActive ? "Create Agent" : "Coming Soon"}</span>
                     {isActive && <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>}
                   </div>

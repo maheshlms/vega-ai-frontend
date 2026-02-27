@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaStar, FaPlug, FaShieldAlt, FaServer } from 'react-icons/fa';
 import { IconType } from 'react-icons';
@@ -14,7 +14,7 @@ const ALLOWED_INTEGRATIONS: string[] = [
   'ping_directory',
   'pingone',
   'ping_one',
-  'slack'
+  // 'slack'
 ];
 
 interface Integration {
@@ -62,17 +62,16 @@ interface IntegrationCardProps {
 
 const TargetSystemIntegration: React.FC = () => {
   const navigate = useNavigate();
-  const [integrationsData, setIntegrationsData] = useState<IntegrationsData>({});
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [integrationsData, setIntegrationsData] = React.useState<IntegrationsData>({});
+  const [loading, setLoading] = React.useState<boolean>(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchIntegrations = async (): Promise<void> => {
       try {
         setLoading(true);
         const response: IntegrationsResponse = await api.integrations.list();
 
-        // Map integrations by value for ID lookup
         const integrationsMap: Record<string, Integration> = {};
         if (Array.isArray(response.integrations)) {
           response.integrations.forEach(intg => {
@@ -150,7 +149,6 @@ const TargetSystemIntegration: React.FC = () => {
   };
 
   const handleIntegrationSelect = (id: string, name: string, value: string, authMethods: string[]): void => {
-    // Navigate to form creation page with integration details
     navigate(`/admin/createtarsys`, {
       state: {
         integrationId: id,
@@ -164,23 +162,24 @@ const TargetSystemIntegration: React.FC = () => {
   const IntegrationCard: React.FC<IntegrationCardProps> = ({ item }) => (
     <div
       onClick={() => handleIntegrationSelect(item.id, item.name, item.value, item.auth_methods)}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+      className="bg-white dark:bg-[#1a2234] rounded-xl shadow-sm border border-gray-200 dark:border-[#1e2d45] p-5 lg:p-6 2xl:p-8 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer"
     >
       <div className="flex items-start gap-3 2xl:gap-4 mb-4 2xl:mb-5">
-        <div className="w-12 h-12 2xl:w-16 2xl:h-16 bg-gray-100 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
+        {/* RESPONSIVE: smaller icon on lg, original on 2xl */}
+        <div className="w-10 h-10 lg:w-12 lg:h-12 2xl:w-16 2xl:h-16 bg-gray-100 dark:bg-[#111827] rounded-lg flex items-center justify-center p-2 flex-shrink-0">
           {item.logo ? (
             <img src={item.logo} alt={item.name} className="w-full h-full object-contain" />
           ) : (
-            <FaPlug className="text-gray-400 2xl:text-xl" />
+            <FaPlug className="text-gray-400 dark:text-slate-500 2xl:text-xl" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 text-sm 2xl:text-lg">{item.name}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm 2xl:text-lg">{item.name}</h3>
             <FaCheckCircle className="text-green-500 text-sm 2xl:text-base flex-shrink-0" />
           </div>
-          <p className="text-xs 2xl:text-sm text-gray-500 mt-1">{item.description}</p>
+          <p className="text-xs 2xl:text-sm text-gray-500 dark:text-slate-400 mt-1">{item.description}</p>
         </div>
       </div>
 
@@ -188,7 +187,7 @@ const TargetSystemIntegration: React.FC = () => {
         {item.badges.map((badge, i) => (
           <span
             key={i}
-            className="px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium bg-blue-100 text-blue-700 border border-blue-300"
+            className="px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
           >
             {badge}
           </span>
@@ -198,20 +197,20 @@ const TargetSystemIntegration: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 2xl:px-20 py-6 2xl:py-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] transition-colors duration-300">
+      {/* Header — RESPONSIVE: tighter padding on lg/xl, original on 2xl */}
+      <div className="bg-white dark:bg-[#1a2234] border-b border-gray-200 dark:border-[#1e2d45] px-5 lg:px-8 xl:px-12 2xl:px-20 py-5 lg:py-6 2xl:py-10">
         <button
           onClick={() => navigate('/admin/avatarsys')}
-          className="group text-sm 2xl:text-base text-gray-500 hover:text-gray-900 flex items-center gap-2 transition-colors mb-4 2xl:mb-5"
+          className="group text-sm 2xl:text-base text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 transition-colors mb-4 2xl:mb-5"
         >
           <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
           <span>Back to Target Systems</span>
         </button>
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-2xl 2xl:text-4xl font-semibold text-gray-900">Available Integrations </h1>
+          <h1 className="text-xl lg:text-2xl 2xl:text-4xl font-semibold text-gray-900 dark:text-white">Available Integrations </h1>
         </div>
-        <p className="text-sm 2xl:text-base text-gray-500">
+        <p className="text-sm 2xl:text-base text-gray-500 dark:text-slate-400">
           Choose the type of system you want to connect
         </p>
       </div>
@@ -225,35 +224,37 @@ const TargetSystemIntegration: React.FC = () => {
 
       {/* Error */}
       {error && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 2xl:p-6 text-sm 2xl:text-base text-red-700">
+        <div className="px-5 lg:px-8 xl:px-12 2xl:px-20 py-5 lg:py-6 2xl:py-10">
+          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4 2xl:p-6 text-sm 2xl:text-base text-red-700 dark:text-red-400">
             Failed to load integrations: {error}
           </div>
         </div>
       )}
 
-      {/* Content */}
+      {/* Content — RESPONSIVE: tighter padding/spacing on lg/xl, original on 2xl */}
       {!loading && !error && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10 space-y-8 2xl:space-y-14">
+        <div className="px-5 lg:px-8 xl:px-12 2xl:px-20 py-5 lg:py-6 2xl:py-10 space-y-6 lg:space-y-8 2xl:space-y-14">
           {Object.values(integrationsData).map((category, index) => {
             const Icon = category.icon;
             return (
               <div key={index}>
                 <div className="flex items-center gap-3 2xl:gap-4 mb-4 2xl:mb-6">
-                  <div className="w-10 h-10 2xl:w-14 2xl:h-14 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icon className="text-gray-600 text-base 2xl:text-xl" />
+                  {/* RESPONSIVE: slightly smaller icon on lg */}
+                  <div className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-14 2xl:h-14 bg-gray-100 dark:bg-[#111827] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="text-gray-600 dark:text-slate-400 text-base 2xl:text-xl" />
                   </div>
                   <div>
-                    <h2 className="text-lg 2xl:text-2xl font-semibold text-gray-900">
+                    <h2 className="text-base lg:text-lg 2xl:text-2xl font-semibold text-gray-900 dark:text-white">
                       {category.category}
                     </h2>
-                    <p className="text-xs 2xl:text-sm text-gray-500">
+                    <p className="text-xs 2xl:text-sm text-gray-500 dark:text-slate-400">
                       {category.items.length} integration{category.items.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 2xl:gap-6">
+                {/* RESPONSIVE: 2 cols on lg, 3 on xl, 4 on 2xl */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 2xl:gap-6">
                   {category.items.map(item => (
                     <IntegrationCard key={item.id} item={item} />
                   ))}

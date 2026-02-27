@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { auth } from '../../utils/auth';
 import { api } from '../../utils/api';
+import { useTheme } from '../../state/ThemeContext';
 
 // Type Definitions
 interface UserDetails {
@@ -13,6 +14,7 @@ interface UserDetails {
 }
 
 const Callback: React.FC = () => {
+  const { isDark } = useTheme();
   const { isAuthenticated, getAccessTokenSilently, user, isLoading } = useAuth0();
   const navigate = useNavigate();
 
@@ -78,10 +80,21 @@ const Callback: React.FC = () => {
   }, [isAuthenticated, isLoading, user, getAccessTokenSilently, navigate]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p>Completing login...</p>
+    <div
+      className="flex items-center justify-center min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: isDark ? '#0d1117' : '#f9fafb' }}
+    >
+      <div className="text-center p-4 lg:p-6 xl:p-8">
+        <div
+          className="animate-spin rounded-full h-8 w-8 lg:h-10 lg:w-10 xl:h-12 xl:w-12 border-b-2 border-blue-600 mx-auto mb-4"
+          style={{ borderColor: isDark ? '#3b82f6' : undefined }}
+        ></div>
+        <p
+          className="text-sm lg:text-base xl:text-lg"
+          style={{ color: isDark ? '#94a3b8' : '#374151' }}
+        >
+          Completing login...
+        </p>
       </div>
     </div>
   );

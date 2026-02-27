@@ -73,19 +73,10 @@ interface AdminProtectedRouteProps {
 function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
   const location: Location = useLocation();
   
-  // Check if authenticated and has admin role
   const isValidAdminSession = () => {
     try {
-      // First check if user is authenticated (validates token expiry and user existence)
-      if (!auth.isAuthenticated()) {
-        return false;
-      }
-      
-      // Then check if user is admin
-      if (!auth.isAdmin()) {
-        return false;
-      }
-      
+      if (!auth.isAuthenticated()) return false;
+      if (!auth.isAdmin()) return false;
       return true;
     } catch (error) {
       console.error('❌ Admin session validation failed:', error);
@@ -98,7 +89,6 @@ function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
     return <Navigate to="/system-admin-login" state={{ from: location }} replace />;
   }
 
-  // If user needs to change password, allow access only to the password change page
   if (auth.needsPasswordChange()) {
     if (location.pathname !== '/system-admin/change-password-forced') {
       console.warn('⚠️ Admin needs to change password - redirecting to password change page');
@@ -109,7 +99,6 @@ function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
   return <>{children}</>;
 }
 
-// Forced Password Change Route Component
 interface ForcedPasswordChangeRouteProps {
   children: React.ReactNode;
 }
@@ -117,7 +106,6 @@ interface ForcedPasswordChangeRouteProps {
 function ForcedPasswordChangeRoute({ children }: ForcedPasswordChangeRouteProps) {
   const location: Location = useLocation();
   
-  // Only allow access to this route if user needs to change password
   if (!auth.isAuthenticated()) {
     console.warn('🔒 Not authenticated - redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -153,7 +141,6 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check if user needs to change password
   if (auth.needsPasswordChange()) {
     console.warn('⚠️ User needs to change password - redirecting to password change page');
     return <Navigate to="/forced-password-change" state={{ from: location }} replace />;
@@ -185,7 +172,15 @@ function AppContent() {
         
         <div 
           id="app-scroll-container"
-          className={`flex-1 overflow-y-auto ${!hideLayout ? 'ml-[216px]' : ''}`}
+          className={`flex-1 overflow-y-auto ${
+            !hideLayout
+              // ── THE ONLY CHANGE FROM THE ORIGINAL ──
+              // Was: 'ml-[216px]'  (hardcoded, only correct at lg breakpoint)
+              // Now: responsive ml that matches the sidebar width at every breakpoint
+              // Sidebar: default=w-44(176px) | lg=216px | xl=w-60(240px) | 2xl=w-64(256px)
+              ? 'ml-44 lg:ml-[216px] xl:ml-60 2xl:ml-64'
+              : ''
+          }`}
         >
           <ScrollToTop />
           <Routes>
@@ -199,8 +194,6 @@ function AppContent() {
             <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
             <Route path="/agents/:agentId/chat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
             <Route path="/agents/agentchat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
-            {/* <Route path="/agents/agentchat/execute" element={<ProtectedRoute><TaskExecute /></ProtectedRoute>} /> */}
-            {/* <Route path="/agents/agentchat/aiassist" element={<ProtectedRoute><AiAssist /></ProtectedRoute>} /> */}
             <Route path="/agents/select-target" element={<ProtectedRoute><AvailableIntegration /></ProtectedRoute>} />
             <Route path="/agents/select-type/:integrationType/:targetId" element={<ProtectedRoute><AgentTypeSelection /></ProtectedRoute>} />
             <Route path="/agents/create/:agentTypeId" element={<ProtectedRoute><AgentCreationForm /></ProtectedRoute>} />
@@ -246,7 +239,7 @@ function AppContent() {
             <Route path="/system-admin/users" element={<AdminProtectedRoute><AdminUserManagement /></AdminProtectedRoute>} />
             <Route path="/system-admin/tokens" element={<AdminProtectedRoute><AdminTokenManagement /></AdminProtectedRoute>} />
 
-            {/* Catch all - redirect to login */}
+            {/* Catch all */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>

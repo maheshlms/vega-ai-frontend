@@ -4,299 +4,137 @@ import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { api } from '../../utils/api';
 import { auth } from '../../utils/auth';
+import { useTheme } from '../../state/ThemeContext';
 
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-  html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    overflow-x: hidden;
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE STYLES
+   Breakpoint strategy (desktop-only, mobile blocked):
+   - 768–1023px  : tablet / small laptop
+   - 1024–1279px : laptop
+   - 1280–1535px : standard desktop
+   - 1536–1919px : large desktop / 1440p
+   - 1920px      : reference (no changes)
+   - 2560px+     : 2K / 4K scale-up
+   - 3840px+     : 4K max scale
+══════════════════════════════════════════════════════════ */
+const responsiveStyles = `
+  /* ── Shared card shell ── */
+  .adm-card-shell {
+    width: 420px;
+    transition: width 0.2s ease;
   }
 
-  #root {
-    width: 100% !important;
-    min-height: 100vh !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: none !important;
+  /* Tablet / small laptop (768–1279px) */
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .adm-card-shell { width: 380px; }
+    .adm-logo { height: 6rem !important; }   /* 96px */
+    .adm-heading { font-size: 1.35rem !important; }
+    .adm-sub { font-size: 0.7rem !important; }
+    .adm-px { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+    .adm-footer { font-size: 0.65rem !important; }
+    .adm-toggle { top: 1rem !important; right: 1rem !important; }
+    .adm-corner-tl { top: 10px !important; left: 10px !important; }
+    .adm-corner-tr { top: 10px !important; right: 10px !important; }
+    .adm-corner-bl { bottom: 10px !important; left: 10px !important; }
+    .adm-corner-br { bottom: 10px !important; right: 10px !important; }
   }
 
-  .lp-root {
-    position: fixed !important;
-    top: 0 !important; left: 0 !important;
-    right: 0 !important; bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: linear-gradient(135deg, #f9d6e8 0%, #e8d6f5 35%, #d6e8f9 70%, #c8dff5 100%) !important;
-    overflow: hidden !important;
-    z-index: 9999 !important;
-    font-family: 'DM Sans', sans-serif;
-    box-sizing: border-box;
-    padding: 24px;
+  /* Standard desktop (1280–1535px) */
+  @media (min-width: 1280px) and (max-width: 1535px) {
+    .adm-card-shell { width: 400px; }
+    .adm-logo { height: 7rem !important; }
   }
 
-  .lp-bubbles {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
+  /* Large desktop (1536–1919px) */
+  @media (min-width: 1536px) and (max-width: 1919px) {
+    .adm-card-shell { width: 410px; }
+    .adm-logo { height: 7.5rem !important; }
   }
 
-  .lp-bubble {
-    position: absolute;
-    border-radius: 50%;
-    animation: lpFloat linear infinite;
+  /* 2K / 4K (2560px+) */
+  @media (min-width: 2560px) {
+    .adm-card-shell { width: 520px; }
+    .adm-logo { height: 10rem !important; }
+    .adm-heading { font-size: 2rem !important; }
+    .adm-sub { font-size: 0.9rem !important; }
+    .adm-label {
+      font-size: 0.8rem !important;
+      letter-spacing: 0.12em !important;
+    }
+    .adm-input {
+      padding: 0.75rem 1rem !important;
+      font-size: 0.95rem !important;
+    }
+    .adm-btn {
+      height: 3rem !important;
+      font-size: 0.9rem !important;
+    }
+    .adm-footer { font-size: 0.8rem !important; margin-top: 2rem !important; }
+    .adm-toggle { top: 2rem !important; right: 2rem !important; width: 44px !important; height: 44px !important; }
+    .adm-px { padding-left: 2.5rem !important; padding-right: 2.5rem !important; }
+    .adm-pt { padding-top: 2.5rem !important; }
+    .adm-pb { padding-bottom: 2.5rem !important; }
+    .adm-space { gap: 1.5rem !important; }
+    .adm-mb-card { margin-bottom: 2rem !important; }
+    .adm-corner-size { width: 28px !important; height: 28px !important; }
   }
 
-  @keyframes lpFloat {
-    0%   { transform: translateY(110vh) translateX(0px);  opacity: 0; }
+  /* 4K max (3840px+) */
+  @media (min-width: 3840px) {
+    .adm-card-shell { width: 680px; }
+    .adm-logo { height: 13rem !important; }
+    .adm-heading { font-size: 2.8rem !important; }
+    .adm-sub { font-size: 1.1rem !important; }
+    .adm-input {
+      padding: 1rem 1.25rem !important;
+      font-size: 1.2rem !important;
+    }
+    .adm-btn { height: 3.75rem !important; font-size: 1.1rem !important; }
+    .adm-toggle { width: 56px !important; height: 56px !important; }
+    .adm-corner-size { width: 36px !important; height: 36px !important; }
+    .adm-footer { font-size: 1rem !important; }
+  }
+
+  /* Animation keyframes */
+  @keyframes admScan {
+    0%   { top: -2px; opacity: 0; }
+    5%   { opacity: 1; }
+    95%  { opacity: 0.55; }
+    100% { top: 100%; opacity: 0; }
+  }
+  .adm-scan { animation: admScan 7s ease-in-out infinite; position: absolute; }
+
+  @keyframes admBubble {
+    0%   { transform: translateY(0); opacity: 0; }
     8%   { opacity: 1; }
     92%  { opacity: 0.55; }
-    100% { transform: translateY(-15vh) translateX(25px); opacity: 0; }
+    100% { transform: translateY(calc(-100vh - 200px)) translateX(16px); opacity: 0; }
   }
+  .adm-bubble { animation: admBubble linear infinite; position: absolute; }
 
-  .lp-wrapper {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 420px;
-  }
-
-  .lp-back-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 12px;
-    padding: 12px 16px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    color: #18182b;
-    cursor: pointer;
-    width: fit-content;
-    margin-bottom: 20px;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  .lp-back-btn:hover {
-    background: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.15);
-    transform: translateX(-2px);
-  }
-
-  .lp-back-btn:active {
-    transform: scale(0.98);
-  }
-
-  .lp-back-arrow {
-    font-size: 16px;
-    line-height: 1;
-  }
-
-  .lp-card {
-    background: rgba(255, 255, 255, 0.84);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 24px;
-    padding: 44px 44px 40px;
-    box-shadow:
-      0 8px 40px rgba(124, 58, 237, 0.13),
-      0 2px 8px rgba(0, 0, 0, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
-    animation: lpSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-    box-sizing: border-box;
-    width: 100%;
-  }
-
-  @keyframes lpSlideUp {
-    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  @keyframes admFadeIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
+  .adm-card { animation: admFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
 
-  .lp-logo-area { margin-bottom: 32px; }
-
-  .lp-logo-mark {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #7c3aed, #a855f7);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.38);
-  }
-
-  .lp-logo-mark span {
-    color: #fff;
-    font-family: 'Playfair Display', serif;
-    font-size: 24px;
-    font-weight: 700;
-    line-height: 1;
-  }
-
-  .lp-card h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: #18182b;
-    line-height: 1.2;
-    margin: 0 0 5px;
-  }
-
-  .lp-subtitle {
-    font-size: 14px;
-    color: #6b7280;
-    font-weight: 300;
-    margin: 0;
-  }
-
-  .lp-form { display: flex; flex-direction: column; gap: 16px; }
-
-  .lp-field { display: flex; flex-direction: column; gap: 6px; }
-
-  .lp-field label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #374151;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .lp-field input {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1.5px solid rgba(196, 181, 253, 0.55);
-    border-radius: 12px;
-    padding: 12px 15px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    color: #18182b;
-    outline: none;
-    width: 100%;
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-  }
-
-  .lp-field input::placeholder { color: #9ca3af; }
-
-  .lp-field input:focus {
-    border-color: #7c3aed;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
-  }
-
-  .lp-field input.lp-err { border-color: #ef4444; }
-  .lp-field input.lp-err:focus { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
-
-  .lp-field-error { font-size: 12px; color: #ef4444; }
-
-  .lp-forgot { text-align: right; margin-top: -4px; }
-  .lp-forgot span {
-    font-size: 12.5px;
-    color: #7c3aed;
-    cursor: pointer;
-    font-weight: 500;
-    transition: opacity 0.15s;
-  }
-  .lp-forgot span:hover { opacity: 0.7; }
-
-  .lp-btn {
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 4px;
-    box-shadow: 0 4px 18px rgba(124, 58, 237, 0.38);
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  .lp-btn:hover   { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(124,58,237,0.44); }
-  .lp-btn:active  { transform: scale(0.99); }
-  .lp-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-  .lp-divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: #9ca3af;
-  }
-  .lp-divider::before, .lp-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(196, 181, 253, 0.4);
-  }
-
-  .lp-switch { text-align: center; font-size: 13.5px; color: #6b7280; margin: 0; }
-  .lp-switch button {
-    background: none;
-    border: none;
-    color: #7c3aed;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13.5px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-  .lp-switch button:hover { opacity: 0.75; }
-
-  .lp-global-err {
-    background: rgba(254, 226, 226, 0.8);
-    border: 1px solid rgba(252, 165, 165, 0.6);
-    border-radius: 12px;
-    padding: 11px 15px;
-    font-size: 13px;
-    color: #b91c1c;
-    animation: lpShake 0.35s ease;
-  }
-  @keyframes lpShake {
+  @keyframes admShake {
     0%,100% { transform: translateX(0); }
     20%     { transform: translateX(-6px); }
-    60%     { transform: translateX(6px); }
+    40%     { transform: translateX(6px); }
+    60%     { transform: translateX(-3px); }
+    80%     { transform: translateX(3px); }
   }
+  .adm-shake { animation: admShake 0.38s ease; }
 
-  .lp-spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: lpSpin 0.7s linear infinite;
-    vertical-align: middle;
-    margin-right: 8px;
+  @keyframes admTheme {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
-  @keyframes lpSpin { to { transform: rotate(360deg); } }
+  .adm-theme { animation: admTheme 0.3s ease both; }
+
+  .adm-input::placeholder { opacity: 1; }
 `;
-
-// Bubble data
-interface Bubble {
-  size: number;
-  left: string;
-  delay: number;
-  dur: number;
-  color: string;
-}
 
 /* ══════════════════════════════════════════════════════════
    DARK MODE EFFECTS
@@ -389,10 +227,8 @@ function FloatingDots() {
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {DOTS.map((d, i) => (
         <div key={i} className="absolute rounded-full adm-bubble" style={{
-          width: d.size,
-          height: d.size,
-          left: d.left,
-          bottom: '-20px',
+          width: d.size, height: d.size,
+          left: d.left, bottom: '-20px',
           background: d.color,
           animationDuration: `${d.dur}s`,
           animationDelay: `${d.delay}s`,
@@ -406,17 +242,12 @@ function FloatingDots() {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════ */
 const AdminLoginForm: React.FC = () => {
-  const [dark, setDark] = useState<boolean>(false);
+  const { isDark: dark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  }, [dark]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -429,11 +260,7 @@ const AdminLoginForm: React.FC = () => {
     try {
       const response = await api.nativeLogin({ username: username.trim(), password });
       auth.storeNativeAuthData(response.access_token, response.user);
-
-      // Mark that user logged in from system-admin-login endpoint
       localStorage.setItem('loginSource', 'system-admin-login');
-
-      // Check if force_password_reset flag is set
       if (response.force_password_reset === true) {
         navigate('/system-admin/change-password-forced', { replace: true });
       } else {
@@ -446,9 +273,6 @@ const AdminLoginForm: React.FC = () => {
     }
   };
 
-  /* ─────────────────────────────────────────
-     Theme token objects — dark vs light
-  ───────────────────────────────────────── */
   const D = {
     pageBg:      'linear-gradient(155deg,#020617 0%,#050e1a 50%,#020b14 100%)',
     cardBg:      'rgba(7,13,22,0.88)',
@@ -465,11 +289,9 @@ const AdminLoginForm: React.FC = () => {
     inputFocus:  'rgba(45,212,191,0.5)',
     inputShadow: '0 0 0 3px rgba(45,212,191,0.07)',
     inputColor:  '#e2e8f0',
-    inputPh:     'rgba(71,85,105,0.8)',
     btnBg:       'linear-gradient(135deg,rgba(13,148,136,0.28),rgba(8,145,178,0.18))',
     btnBorder:   '1px solid rgba(45,212,191,0.38)',
     btnColor:    '#2dd4bf',
-    divider:     'rgba(30,41,59,0.8)',
     toggleBg:    'rgba(15,23,42,0.9)',
     toggleBdr:   '1px solid rgba(45,212,191,0.2)',
     toggleClr:   '#fbbf24',
@@ -491,11 +313,9 @@ const AdminLoginForm: React.FC = () => {
     inputFocus:  '#7c3aed',
     inputShadow: '0 0 0 3px rgba(124,58,237,0.1)',
     inputColor:  'var(--text-main, #111)',
-    inputPh:     '#9ca3af',
     btnBg:       'linear-gradient(to right,#3B82F6,#9333EA)',
     btnBorder:   'none',
     btnColor:    '#fff',
-    divider:     '#e5e7eb',
     toggleBg:    '#fff',
     toggleBdr:   'none',
     toggleClr:   '#6b7280',
@@ -503,48 +323,11 @@ const AdminLoginForm: React.FC = () => {
 
   const T = dark ? D : L;
 
+  const corners = ['tl', 'tr', 'bl', 'br'] as const;
+
   return (
     <>
-      <style>{`
-        @keyframes admScan {
-          0%   { top: -2px; opacity: 0; }
-          5%   { opacity: 1; }
-          95%  { opacity: 0.55; }
-          100% { top: 100%; opacity: 0; }
-        }
-        .adm-scan { animation: admScan 7s ease-in-out infinite; position: absolute; }
-
-        @keyframes admBubble {
-          0%   { transform: translateY(0); opacity: 0; }
-          8%   { opacity: 1; }
-          92%  { opacity: 0.55; }
-          100% { transform: translateY(calc(-100vh - 200px)) translateX(16px); opacity: 0; }
-        }
-        .adm-bubble { animation: admBubble linear infinite; position: absolute; }
-
-        @keyframes admFadeIn {
-          from { opacity: 0; transform: translateY(18px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .adm-card { animation: admFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
-
-        @keyframes admShake {
-          0%,100% { transform: translateX(0); }
-          20%     { transform: translateX(-6px); }
-          40%     { transform: translateX(6px); }
-          60%     { transform: translateX(-3px); }
-          80%     { transform: translateX(3px); }
-        }
-        .adm-shake { animation: admShake 0.38s ease; }
-
-        @keyframes admTheme {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .adm-theme { animation: admTheme 0.3s ease both; }
-
-        .adm-input::placeholder { opacity: 1; }
-      `}</style>
+      <style>{responsiveStyles}</style>
 
       {/* MOBILE BLOCKER */}
       <div className="flex md:hidden h-screen w-full items-center justify-center p-6 bg-slate-900">
@@ -560,7 +343,6 @@ const AdminLoginForm: React.FC = () => {
         className="adm-theme hidden md:flex h-screen w-full items-center justify-center relative overflow-hidden p-6"
         style={{ background: T.pageBg }}
       >
-        {/* background layer */}
         {dark ? (
           <>
             <StarField />
@@ -570,22 +352,25 @@ const AdminLoginForm: React.FC = () => {
               width: 'min(600px,90vw)', height: 'min(600px,90vh)',
               background: 'radial-gradient(ellipse,rgba(13,148,136,0.1) 0%,transparent 65%)',
             }} />
-            {(['tl','tr','bl','br'] as const).map(c => (
-              <div key={c} className="absolute pointer-events-none" style={{
-                top:    c[0]==='t' ? 20 : undefined,
-                bottom: c[0]==='b' ? 20 : undefined,
-                left:   c[1]==='l' ? 20 : undefined,
-                right:  c[1]==='r' ? 20 : undefined,
+
+            {/* Corner accents — responsive via CSS classes */}
+            {corners.map(c => (
+              <div key={c} className={`absolute pointer-events-none adm-corner-${c === 'tl' ? 'tl' : c === 'tr' ? 'tr' : c === 'bl' ? 'bl' : 'br'}`} style={{
+                top:    c[0] === 't' ? 20 : undefined,
+                bottom: c[0] === 'b' ? 20 : undefined,
+                left:   c[1] === 'l' ? 20 : undefined,
+                right:  c[1] === 'r' ? 20 : undefined,
               }}>
-                <div style={{
+                <div className="adm-corner-size" style={{
                   width: 22, height: 22,
-                  borderTop:    c[0]==='t' ? '1px solid rgba(45,212,191,0.25)' : undefined,
-                  borderBottom: c[0]==='b' ? '1px solid rgba(45,212,191,0.25)' : undefined,
-                  borderLeft:   c[1]==='l' ? '1px solid rgba(45,212,191,0.25)' : undefined,
-                  borderRight:  c[1]==='r' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderTop:    c[0] === 't' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderBottom: c[0] === 'b' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderLeft:   c[1] === 'l' ? '1px solid rgba(45,212,191,0.25)' : undefined,
+                  borderRight:  c[1] === 'r' ? '1px solid rgba(45,212,191,0.25)' : undefined,
                 }} />
               </div>
             ))}
+
             <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none">
               <span style={{
                 color: 'rgba(45,212,191,0.18)',
@@ -602,23 +387,29 @@ const AdminLoginForm: React.FC = () => {
         )}
 
         {/* THEME TOGGLE */}
-        <div className="absolute top-6 right-6 z-50">
+        <div className="absolute adm-toggle" style={{ top: '24px', right: '24px', zIndex: 50 }}>
           <button
-            onClick={() => setDark(d => !d)}
-            className="p-2 rounded-md shadow cursor-pointer hover:bg-gray-100 transition-all duration-200"
+            onClick={toggleTheme}
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-2 rounded-md cursor-pointer transition-all duration-200 hover:scale-110"
             style={{
-              background: T.toggleBg,
-              border:     T.toggleBdr || undefined,
-              color:      T.toggleClr,
+              background:     T.toggleBg,
+              border:         T.toggleBdr || undefined,
+              color:          T.toggleClr,
+              width:          '36px',
+              height:         '36px',
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(12px)',
             }}
           >
             {dark ? <GoSun size={18} /> : <MdOutlineDarkMode size={18} />}
           </button>
         </div>
 
-        {/* CARD */}
-        <div className="adm-card relative" style={{ width: 420 }}>
-
+        {/* CARD — width managed by .adm-card-shell via media queries */}
+        <div className="adm-card adm-card-shell relative">
           {dark && (
             <div className="absolute -inset-px rounded-md pointer-events-none" style={{
               background: 'linear-gradient(135deg,rgba(45,212,191,0.22),rgba(99,102,241,0.12),rgba(45,212,191,0.06))',
@@ -631,22 +422,22 @@ const AdminLoginForm: React.FC = () => {
             boxShadow:      T.cardShadow,
             backdropFilter: dark ? 'blur(28px)' : undefined,
           }}>
-
             {dark && <div className="h-px w-full" style={{ background: T.topBar }} />}
 
-            <div className="pb-6">
-
-              <div className="flex justify-center pt-6">
+            <div className="adm-pb" style={{ paddingBottom: '1.5rem' }}>
+              <div className="flex justify-center adm-pt" style={{ paddingTop: '1.5rem' }}>
                 <img
                   src={dark ? '/logo-dark.png' : '/logo-light.png'}
                   alt="Vega AI"
-                  className="h-32"
+                  className="adm-logo"
+                  style={{ height: '8rem' }} /* 128px at 1920 reference */
                 />
               </div>
 
               <h1
-                className="text-center text-2xl font-bold mt-4"
+                className="text-center font-bold mt-4 adm-heading"
                 style={{
+                  fontSize:   '1.5rem', /* 24px at reference */
                   color:      T.heading,
                   fontFamily: dark ? "'Courier New',monospace" : undefined,
                 }}
@@ -655,8 +446,9 @@ const AdminLoginForm: React.FC = () => {
               </h1>
 
               <p
-                className="text-center text-xs font-medium mt-1 mb-6"
+                className="text-center font-medium mt-1 mb-6 adm-sub"
                 style={{
+                  fontSize:   '0.75rem',
                   color:      T.sub,
                   fontFamily: dark ? "'Courier New',monospace" : undefined,
                 }}
@@ -664,19 +456,18 @@ const AdminLoginForm: React.FC = () => {
                 {dark ? '// restricted — authenticate to proceed' : 'System administrator portal'}
               </p>
 
-              <div className="px-7">
-                <form onSubmit={handleLogin} className="space-y-4">
-
+              <div className="adm-px" style={{ paddingLeft: '1.75rem', paddingRight: '1.75rem' }}>
+                <form onSubmit={handleLogin} className="adm-space" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {/* USERNAME */}
                   <div>
                     <label
-                      className="text-sm font-medium mb-1 block"
+                      className="adm-label font-medium mb-1 block"
                       style={{
+                        fontSize:      dark ? '0.688rem' : '0.875rem',
                         color:         T.heading,
                         fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                        fontSize:      dark ? 11 : undefined,
                         letterSpacing: dark ? '0.1em' : undefined,
-                        textTransform: dark ? 'uppercase' : undefined,
+                        textTransform: dark ? 'uppercase' as const : undefined,
                       }}
                     >
                       {dark ? '⟩ Username' : 'Username'}
@@ -685,7 +476,7 @@ const AdminLoginForm: React.FC = () => {
                       type="text"
                       value={username}
                       onChange={e => { setUsername(e.target.value); setError(''); }}
-                      placeholder={dark ? 'admin' : 'admin'}
+                      placeholder="admin"
                       disabled={isLoading}
                       className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
                       style={{
@@ -711,13 +502,13 @@ const AdminLoginForm: React.FC = () => {
                   {/* PASSWORD */}
                   <div>
                     <label
-                      className="text-sm font-medium mb-1 block"
+                      className="adm-label font-medium mb-1 block"
                       style={{
+                        fontSize:      dark ? '0.688rem' : '0.875rem',
                         color:         T.heading,
                         fontFamily:    dark ? "'Courier New',monospace" : undefined,
-                        fontSize:      dark ? 11 : undefined,
                         letterSpacing: dark ? '0.1em' : undefined,
-                        textTransform: dark ? 'uppercase' : undefined,
+                        textTransform: dark ? 'uppercase' as const : undefined,
                       }}
                     >
                       {dark ? '⟩ Password' : 'Password'}
@@ -773,8 +564,9 @@ const AdminLoginForm: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="relative w-full h-10 rounded-md overflow-hidden font-semibold text-sm transition-all duration-300 ease-in-out group"
+                    className="adm-btn relative w-full rounded-md overflow-hidden font-semibold transition-all duration-300 ease-in-out group"
                     style={{
+                      height:        '2.5rem',
                       background:    T.btnBg,
                       border:        T.btnBorder || undefined,
                       color:         T.btnColor,
@@ -782,7 +574,8 @@ const AdminLoginForm: React.FC = () => {
                       opacity:       isLoading ? 0.7 : 1,
                       fontFamily:    dark ? "'Courier New',monospace" : undefined,
                       letterSpacing: dark ? '0.1em' : undefined,
-                      textTransform: dark ? 'uppercase' : undefined,
+                      textTransform: dark ? 'uppercase' as const : undefined,
+                      fontSize:      '0.875rem',
                     }}
                   >
                     <div
@@ -799,27 +592,21 @@ const AdminLoginForm: React.FC = () => {
                           {dark ? 'Authenticating...' : 'Signing In...'}
                         </>
                       ) : (
-                        dark ? 'Sign In' : 'Sign In'
+                        'Sign In'
                       )}
                     </span>
                   </button>
                 </form>
 
-                {/* footer */}
                 <p
-                  className="w-full text-center text-xs mt-6"
+                  className="adm-footer w-full text-center mt-6"
                   style={{
+                    fontSize:   '0.75rem',
                     color:      T.muted,
                     fontFamily: dark ? "'Courier New',monospace" : undefined,
                   }}
                 >
-                  {dark ? (
-                    <span className="flex items-center justify-center gap-2">
-                      © 2026 Product of Like Minds Consulting Inc.
-                    </span>
-                  ) : (
-                    '© 2026 Product of Like Minds Consulting Inc.'
-                  )}
+                  © 2026 Product of Like Minds Consulting Inc.
                 </p>
               </div>
             </div>

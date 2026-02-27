@@ -5,6 +5,7 @@ import { CiServer } from 'react-icons/ci';
 import { FaDatabase } from 'react-icons/fa';
 import { BiNetworkChart } from 'react-icons/bi';
 import { IconType } from 'react-icons';
+import { useTheme } from '../state/ThemeContext';
 
 type SystemStatusType = 'healthy' | 'warning' | 'critical';
 type ServiceStatusType = 'healthy' | 'warning' | 'critical';
@@ -12,6 +13,7 @@ type ServiceStatusType = 'healthy' | 'warning' | 'critical';
 interface StatusConfig {
   color: string;
   bgColor: string;
+  bgColorDark: string;
   text: string;
   icon: IconType;
   description: string;
@@ -26,6 +28,7 @@ interface Service {
 }
 
 const SystemStatusIndicator: React.FC = () => {
+  const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatusType>('healthy');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,8 +80,6 @@ const SystemStatusIndicator: React.FC = () => {
   // Simulate fetching system status (replace with real API call)
   useEffect(() => {
     const fetchSystemStatus = (): void => {
-      // TODO: Replace with actual API call
-      // Example: Check if any service has issues
       const hasWarnings = services.some(s => s.status === 'warning');
       const hasCritical = services.some(s => s.status === 'critical');
       
@@ -92,7 +93,6 @@ const SystemStatusIndicator: React.FC = () => {
     };
 
     fetchSystemStatus();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchSystemStatus, 30000);
     return () => clearInterval(interval);
   }, [services]);
@@ -101,6 +101,7 @@ const SystemStatusIndicator: React.FC = () => {
     healthy: {
       color: '#22C55E',
       bgColor: '#DCFCE7',
+      bgColorDark: 'rgba(34,197,94,0.15)',
       text: 'All Systems Operational',
       icon: MdCheckCircle,
       description: 'All services running normally'
@@ -108,6 +109,7 @@ const SystemStatusIndicator: React.FC = () => {
     warning: {
       color: '#F59E0B',
       bgColor: '#FEF3C7',
+      bgColorDark: 'rgba(245,158,11,0.15)',
       text: 'Minor Issues Detected',
       icon: MdWarning,
       description: 'Some services require attention'
@@ -115,6 +117,7 @@ const SystemStatusIndicator: React.FC = () => {
     critical: {
       color: '#EF4444',
       bgColor: '#FEE2E2',
+      bgColorDark: 'rgba(239,68,68,0.15)',
       text: 'Critical Alert',
       icon: MdError,
       description: 'Immediate action required'
@@ -123,89 +126,116 @@ const SystemStatusIndicator: React.FC = () => {
 
   const getServiceStatusColor = (status: ServiceStatusType): string => {
     switch (status) {
-      case 'healthy':
-        return '#22C55E';
-      case 'warning':
-        return '#F59E0B';
-      case 'critical':
-        return '#EF4444';
-      default:
-        return '#6B7280';
+      case 'healthy':  return '#22C55E';
+      case 'warning':  return '#F59E0B';
+      case 'critical': return '#EF4444';
+      default:         return '#6B7280';
     }
   };
 
   const currentStatus: StatusConfig = statusConfig[systemStatus];
   const StatusIcon: IconType = currentStatus.icon;
 
+  // Dark mode tokens
+  const dropdownBg     = isDark ? '#1a2234' : 'white';
+  const dropdownBorder = isDark ? '#1e2d45' : '#e5e7eb';
+  const headerBg       = isDark ? currentStatus.bgColorDark : currentStatus.bgColor;
+  const headerBorder   = isDark ? '#1e2d45' : '#f3f4f6';
+  const titleText      = isDark ? '#f1f5f9' : '#111827';
+  const descText       = isDark ? '#94a3b8' : '#4b5563';
+  const sectionLabel   = isDark ? '#64748b' : '#6b7280';
+  const cardBg         = isDark ? '#0d1117' : 'white';
+  const cardBorder     = isDark ? '#1e2d45' : '#f3f4f6';
+  const cardHoverBg    = isDark ? '#1e2d45' : '#f9fafb';
+  const serviceName    = isDark ? '#e2e8f0' : '#111827';
+  const metricLabel    = isDark ? '#64748b' : '#6b7280';
+  const metricValue    = isDark ? '#cbd5e1' : '#374151';
+  const footerBg       = isDark ? '#111827' : '#f9fafb';
+  const footerBorder   = isDark ? '#1e2d45' : '#f3f4f6';
+  const btnBg          = isDark ? '#1a2234' : 'white';
+  const serviceIconColor = isDark ? '#94a3b8' : '#4b5563';
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-md shadow bg-white hover:bg-gray-50 transition-all duration-200 relative group"
+        className="p-1.5 lg:p-2 rounded-md shadow transition-all duration-200 relative group"
+        style={{
+          backgroundColor: isDark ? '#1a2234' : 'white',
+          border: `1px solid ${isDark ? '#1e2d45' : 'transparent'}`,
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? '#1e2d45' : '#f9fafb'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDark ? '#1a2234' : 'white'}
         aria-label="System Status"
       >
-        <MdOutlineHealthAndSafety 
-          size={20} 
+        <MdOutlineHealthAndSafety
+          size={18}
           style={{ color: currentStatus.color }}
-          className="transition-transform group-hover:scale-110"
+          className="transition-transform group-hover:scale-110 lg:text-xl"
         />
         {/* Pulsing dot indicator */}
-        <div 
-          className="absolute top-1 right-1 w-2 h-2 rounded-full animate-pulse"
+        <div
+          className="absolute top-1 right-1 w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full animate-pulse"
           style={{ backgroundColor: currentStatus.color }}
         />
       </button>
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 animate-slideDown z-50">
+        <div
+          className="absolute right-0 mt-2 w-64 lg:w-80 xl:w-[340px] 2xl:w-[380px] rounded-xl shadow-2xl animate-slideDown z-50"
+          style={{
+            backgroundColor: dropdownBg,
+            border: `1px solid ${dropdownBorder}`,
+            maxHeight: 'calc(100vh - 80px)',
+            overflowY: 'auto',
+          }}
+        >
           {/* Header */}
-          <div 
-            className="p-4 rounded-t-xl border-b border-gray-100"
-            style={{ backgroundColor: currentStatus.bgColor }}
+          <div
+            className="p-3 lg:p-4 rounded-t-xl border-b"
+            style={{ backgroundColor: headerBg, borderColor: headerBorder }}
           >
-            <div className="flex items-center gap-3">
-              <div 
-                className="p-2 rounded-lg bg-white/80 backdrop-blur-sm"
-              >
-                <StatusIcon size={24} style={{ color: currentStatus.color }} />
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="p-1.5 lg:p-2 rounded-lg" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)' }}>
+                <StatusIcon size={20} style={{ color: currentStatus.color }} className="lg:text-2xl" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-900">{currentStatus.text}</h3>
-                <p className="text-xs text-gray-600 mt-0.5">{currentStatus.description}</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-sm lg:text-base truncate" style={{ color: titleText }}>{currentStatus.text}</h3>
+                <p className="text-xs mt-0.5" style={{ color: descText }}>{currentStatus.description}</p>
               </div>
             </div>
           </div>
 
           {/* Services List */}
-          <div className="p-3 max-h-96 overflow-y-auto">
-            <div className="text-xs font-semibold text-gray-500 px-2 mb-2">Service Status</div>
-            
-            <div className="space-y-2">
+          <div className="p-2 lg:p-3 max-h-64 lg:max-h-96 xl:max-h-[420px] overflow-y-auto">
+            <div className="text-xs font-semibold px-2 mb-2" style={{ color: sectionLabel }}>Service Status</div>
+
+            <div className="space-y-1.5 lg:space-y-2">
               {services.map((service, index) => {
                 const ServiceIcon = service.icon;
                 return (
                   <div
                     key={index}
-                    className="p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-100"
+                    className="p-2.5 lg:p-3 rounded-lg transition-colors duration-200"
+                    style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = cardHoverBg}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = cardBg}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <ServiceIcon 
-                          size={18} 
-                          className="text-gray-600"
-                        />
-                        <span className="text-sm font-medium text-gray-900">
+                    <div className="flex items-center justify-between mb-1.5 lg:mb-2">
+                      <div className="flex items-center gap-1.5 lg:gap-2 min-w-0">
+                        <ServiceIcon size={16} style={{ color: serviceIconColor }} className="flex-shrink-0 lg:text-[18px]" />
+                        <span className="text-xs lg:text-sm font-medium truncate" style={{ color: serviceName }}>
                           {service.name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div 
-                          className="w-2 h-2 rounded-full"
+                      <div className="flex items-center gap-1 lg:gap-1.5 flex-shrink-0 ml-2">
+                        <div
+                          className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full"
                           style={{ backgroundColor: getServiceStatusColor(service.status) }}
                         />
-                        <span 
+                        <span
                           className="text-xs font-semibold capitalize"
                           style={{ color: getServiceStatusColor(service.status) }}
                         >
@@ -213,16 +243,16 @@ const SystemStatusIndicator: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     {/* Metrics */}
-                    <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-3 lg:gap-4 mt-1.5 lg:mt-2">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">Uptime:</span>
-                        <span className="text-xs font-semibold text-gray-700">{service.uptime}</span>
+                        <span className="text-xs" style={{ color: metricLabel }}>Uptime:</span>
+                        <span className="text-xs font-semibold" style={{ color: metricValue }}>{service.uptime}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">Latency:</span>
-                        <span className="text-xs font-semibold text-gray-700">{service.latency}</span>
+                        <span className="text-xs" style={{ color: metricLabel }}>Latency:</span>
+                        <span className="text-xs font-semibold" style={{ color: metricValue }}>{service.latency}</span>
                       </div>
                     </div>
                   </div>
@@ -232,30 +262,28 @@ const SystemStatusIndicator: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-            <button className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+          <div
+            className="p-2.5 lg:p-3 border-t rounded-b-xl"
+            style={{ backgroundColor: footerBg, borderColor: footerBorder }}
+          >
+            <button
+              className="w-full py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-lg transition-colors duration-200"
+              style={{ color: '#3b82f6' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
               View Detailed Status →
             </button>
           </div>
         </div>
       )}
 
-      {/* Styles */}
       <style>{`
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-slideDown {
-          animation: slideDown 0.2s ease-out;
-        }
+        .animate-slideDown { animation: slideDown 0.2s ease-out; }
       `}</style>
     </div>
   );

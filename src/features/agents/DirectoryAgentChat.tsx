@@ -40,11 +40,9 @@ interface ChatMessage {
   text?: string;
   html?: string;
   timestamp: Date;
-  // for confirm messages
   confirmContext?: 'create_form_prompt' | 'delete_confirm' | 'reset_confirm';
   confirmPayload?: any;
   confirmAnswered?: boolean;
-  // for inline form
   formFields?: FormField[];
   formSubmitted?: boolean;
 }
@@ -91,7 +89,6 @@ const INITIAL_FORM_FIELDS = (): FormField[] => [
   { name: 'baseDN',          label: 'Container DN',     type: 'text',     placeholder: 'ou=people,dc=example,dc=com', required: true, value: '' },
 ];
 
-/* detect intent from user input */
 const detectIntent = (msg: string): 'create' | 'delete' | 'update' | 'reset' | 'search' | 'list' | 'other' => {
   const m = msg.toLowerCase();
   if (/create|add|new\s+user|make\s+user/.test(m))  return 'create';
@@ -107,9 +104,9 @@ const detectIntent = (msg: string): 'create' | 'delete' | 'update' | 'reset' | '
    STAT CARD
 ═══════════════════════════════════════════════════════════════════════════ */
 const StatCard: React.FC<{ label: string; value: number | string; }> = ({ label, value }) => (
-  <div className="bg-[#f0f0f8] rounded-xl p-4 2xl:p-5 flex flex-col gap-1">
-    <span className="text-xs 2xl:text-sm text-gray-500 font-medium">{label}</span>
-    <span className="text-2xl 2xl:text-3xl font-bold text-gray-800">{value}</span>
+  <div className="bg-[#f0f0f8] dark:bg-[#111827] rounded-xl p-4 2xl:p-5 flex flex-col gap-1">
+    <span className="text-xs 2xl:text-sm text-gray-500 dark:text-slate-400 font-medium">{label}</span>
+    <span className="text-2xl 2xl:text-3xl font-bold text-gray-800 dark:text-white">{value}</span>
   </div>
 );
 
@@ -123,16 +120,13 @@ const DirectoryAgentChat: React.FC = () => {
   const targetId  = state?.integrationId;
   const agentName = state?.agentName || 'Directory Agent';
 
-  /* ── layout ── */
   const [dashboardOpen, setDashboardOpen] = useState(true);
 
-  /* ── chat ── */
   const [messages,    setMessages]    = useState<ChatMessage[]>([]);
   const [inputValue,  setInputValue]  = useState('');
   const [aiTyping,    setAiTyping]    = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  /* ── dashboard ── */
   const [users,          setUsers]          = useState<DirectoryUser[]>([]);
   const [loadingUsers,   setLoadingUsers]   = useState(false);
   const [stats,          setStats]          = useState<Stats>({ totalUsers: 0, totalOU: 0, usersCreated: 0, usersDeleted: 0 });
@@ -144,11 +138,9 @@ const DirectoryAgentChat: React.FC = () => {
   const [showErrorLogs,  setShowErrorLogs]  = useState(false);
   const [errorLogs,      setErrorLogs]      = useState<string[]>([]);
 
-  /* ── edit modal (dashboard) ── */
   const [editUser,  setEditUser]  = useState<DirectoryUser | null>(null);
   const [editForm,  setEditForm]  = useState<Record<string, string>>({});
 
-  /* ── bulk import modal ── */
   const [showImport, setShowImport] = useState(false);
 
   /* ═══ FETCH USERS ═══════════════════════════════════════════════════════ */
@@ -176,7 +168,6 @@ const DirectoryAgentChat: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-    // welcome message
     pushAI(
       `👋 Hi! I'm your **${agentName}**. I can help you manage directory users via chat.\n\nTry saying:\n• "Create a new user"\n• "Delete user jsmith"\n• "Search for john"\n• "Reset password for uid=jdoe"\n• "List all users"`,
       'text'
@@ -198,17 +189,14 @@ const DirectoryAgentChat: React.FC = () => {
     pushMsg({ sender: 'user', type: 'text', text });
   };
 
-  /* mark a confirm message as answered */
   const answerConfirm = (msgId: number) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, confirmAnswered: true } : m));
   };
 
-  /* mark inline form as submitted */
   const markFormSubmitted = (msgId: number) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, formSubmitted: true } : m));
   };
 
-  /* update a field inside an inline form message */
   const updateFormField = (msgId: number, fieldName: string, value: string) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== msgId || !m.formFields) return m;
@@ -340,12 +328,10 @@ const DirectoryAgentChat: React.FC = () => {
 
     const intent = detectIntent(text);
 
-    // tiny delay for realism
     await new Promise(r => setTimeout(r, 600));
     setAiTyping(false);
 
     if (intent === 'create') {
-      /* Ask: do you want to fill a form? */
       pushMsg({
         sender: 'ai',
         type: 'confirm',
@@ -355,7 +341,6 @@ const DirectoryAgentChat: React.FC = () => {
       });
 
     } else if (intent === 'delete') {
-      /* extract uid from message */
       const match = text.match(/(?:delete|remove)\s+(?:user\s+)?([a-z0-9._-]+)/i);
       const uidStr = match ? match[1] : null;
       const found  = uidStr ? users.find(u => (u.uid as string)?.toLowerCase() === uidStr.toLowerCase()) : null;
@@ -410,7 +395,6 @@ const DirectoryAgentChat: React.FC = () => {
       pushAI(`Found **${users.length}** user(s). The dashboard panel on the right has been updated.`, 'result');
 
     } else {
-      /* fall back to LLM */
       try {
         const res = await api.fetchWithAuth('/api/v1/chat', {
           method: 'POST',
@@ -435,7 +419,6 @@ const DirectoryAgentChat: React.FC = () => {
 
     if (msg.confirmContext === 'create_form_prompt') {
       pushUser('Yes, I want to fill in the details.');
-      // inject inline form into chat
       pushMsg({
         sender: 'ai', type: 'form',
         text: '📝 Please fill in the user details below:',
@@ -538,37 +521,50 @@ const DirectoryAgentChat: React.FC = () => {
           flex-direction: column;
           overflow: hidden;
         }
+        .dark .dac-root {
+          background: #0d1117;
+        }
 
         /* ── TOPBAR ── */
         .dac-topbar {
           background: #ffffff;
           border-bottom: 1px solid #e8e8ef;
-          padding: 0 24px;
-          height: 56px;
+          padding: 0 16px;
+          height: 50px;
           display: flex; align-items: center; justify-content: space-between;
           flex-shrink: 0;
           box-shadow: 0 1px 4px rgba(0,0,0,0.05);
           z-index: 30;
         }
-        .dac-topbar-left  { display: flex; align-items: center; gap: 16px; }
-        .dac-topbar-right { display: flex; align-items: center; gap: 10px; }
+        .dark .dac-topbar {
+          background: #1a2234;
+          border-bottom-color: #1e2d45;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        .dac-topbar-left  { display: flex; align-items: center; gap: 12px; }
+        .dac-topbar-right { display: flex; align-items: center; gap: 8px; }
 
         .dac-back {
           display: flex; align-items: center; gap: 7px;
           background: none; border: none; cursor: pointer;
-          color: #9ca3af; font-size: 13px; font-weight: 500;
-          padding: 6px 10px; border-radius: 8px;
+          color: #9ca3af; font-size: 12px; font-weight: 500;
+          padding: 5px 8px; border-radius: 8px;
           transition: all .15s; font-family: inherit;
         }
         .dac-back:hover { color: #374151; background: #f3f4f6; }
+        .dark .dac-back:hover { color: #e2e8f0; background: #1e2d45; }
 
         .dac-agent-pill {
-          display: flex; align-items: center; gap: 10px;
+          display: flex; align-items: center; gap: 8px;
           background: #f0f0fb; border: 1px solid #d8d8f0;
-          border-radius: 10px; padding: 6px 12px;
+          border-radius: 10px; padding: 5px 10px;
+        }
+        .dark .dac-agent-pill {
+          background: #111827;
+          border-color: #1e2d45;
         }
         .dac-agent-dot {
-          width: 8px; height: 8px; border-radius: 50%;
+          width: 7px; height: 7px; border-radius: 50%;
           background: #22c55e;
           box-shadow: 0 0 0 3px rgba(34,197,94,.2);
           animation: dac-pulse 2s infinite;
@@ -577,12 +573,13 @@ const DirectoryAgentChat: React.FC = () => {
           0%,100% { box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
           50%      { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
         }
-        .dac-agent-name { font-size: 13px; font-weight: 600; color: #3730a3; }
+        .dac-agent-name { font-size: 12px; font-weight: 600; color: #3730a3; }
+        .dark .dac-agent-name { color: #818cf8; }
 
         .dac-topbtn {
           display: flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border-radius: 9px;
-          font-size: 13px; font-weight: 500; cursor: pointer;
+          padding: 6px 12px; border-radius: 9px;
+          font-size: 12px; font-weight: 500; cursor: pointer;
           font-family: inherit; transition: all .15s;
           border: 1px solid transparent;
         }
@@ -591,6 +588,11 @@ const DirectoryAgentChat: React.FC = () => {
         }
         .dac-btn-dash:hover { background: #ddd6fe; }
         .dac-btn-dash.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .dark .dac-btn-dash {
+          background: #1e1b4b; border-color: #3730a3; color: #a78bfa;
+        }
+        .dark .dac-btn-dash:hover { background: #2d2a6e; }
+        .dark .dac-btn-dash.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
 
         /* ── BODY SPLIT ── */
         .dac-body {
@@ -604,15 +606,22 @@ const DirectoryAgentChat: React.FC = () => {
           background: #f5f5f8;
           transition: all .3s ease;
         }
+        .dark .dac-chat {
+          background: #0d1117;
+        }
 
         .dac-msgs {
           flex: 1; overflow-y: auto;
-          padding: 24px 28px;
-          display: flex; flex-direction: column; gap: 14px;
+          padding: 16px 20px;
+          display: flex; flex-direction: column; gap: 12px;
           scrollbar-width: thin; scrollbar-color: #e5e7eb transparent;
+        }
+        .dark .dac-msgs {
+          scrollbar-color: #1e2d45 transparent;
         }
         .dac-msgs::-webkit-scrollbar { width: 4px; }
         .dac-msgs::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+        .dark .dac-msgs::-webkit-scrollbar-thumb { background: #1e2d45; }
 
         /* ── MSG ROWS ── */
         .dac-row { display: flex; align-items: flex-end; gap: 10px; animation: dac-in .2s ease; }
@@ -625,16 +634,16 @@ const DirectoryAgentChat: React.FC = () => {
         }
 
         .dac-avatar {
-          width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+          width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
           background: linear-gradient(135deg, #6d28d9, #4f46e5);
           display: flex; align-items: center; justify-content: center;
-          font-size: 14px; color: #fff; font-weight: 700;
+          font-size: 12px; color: #fff; font-weight: 700;
         }
 
         /* ── BUBBLES ── */
         .dac-bubble {
-          max-width: 70%; padding: 11px 15px; border-radius: 18px;
-          font-size: 14px; line-height: 1.6; word-break: break-word;
+          max-width: 70%; padding: 10px 14px; border-radius: 18px;
+          font-size: 13px; line-height: 1.6; word-break: break-word;
         }
         .dac-bubble.user {
           background: linear-gradient(135deg, #4f46e5, #6d28d9);
@@ -647,70 +656,103 @@ const DirectoryAgentChat: React.FC = () => {
           box-shadow: 0 2px 8px rgba(0,0,0,.05);
           white-space: pre-line;
         }
+        .dark .dac-bubble.ai {
+          background: #1a2234;
+          color: #e2e8f0;
+          border-color: #1e2d45;
+          box-shadow: 0 2px 8px rgba(0,0,0,.2);
+        }
         .dac-bubble.error {
           background: #fff5f5; border-color: #fecaca; color: #b91c1c;
+        }
+        .dark .dac-bubble.error {
+          background: #3b0a0a; border-color: #7f1d1d; color: #fca5a5;
         }
         .dac-bubble.result {
           background: #f0fdf4; border-color: #bbf7d0; color: #166534;
           white-space: pre-line;
         }
+        .dark .dac-bubble.result {
+          background: #052e16; border-color: #166534; color: #86efac;
+        }
 
         /* ── CONFIRM CARD ── */
         .dac-confirm {
           background: #fff; border: 1.5px solid #e0e7ff;
-          border-radius: 16px; padding: 16px 18px;
+          border-radius: 16px; padding: 14px 16px;
           max-width: 70%;
           box-shadow: 0 2px 12px rgba(79,70,229,.08);
         }
-        .dac-confirm-text {
-          font-size: 14px; color: #374151; line-height: 1.6;
-          white-space: pre-line; margin-bottom: 14px;
+        .dark .dac-confirm {
+          background: #1a2234;
+          border-color: #1e2d45;
+          box-shadow: 0 2px 12px rgba(0,0,0,.3);
         }
+        .dac-confirm-text {
+          font-size: 13px; color: #374151; line-height: 1.6;
+          white-space: pre-line; margin-bottom: 12px;
+        }
+        .dark .dac-confirm-text { color: #e2e8f0; }
         .dac-confirm-btns { display: flex; gap: 8px; }
         .dac-yes {
           display: flex; align-items: center; gap: 6px;
-          padding: 8px 18px; border-radius: 9px;
+          padding: 7px 16px; border-radius: 9px;
           background: #4f46e5; color: #fff;
-          font-size: 13px; font-weight: 600; cursor: pointer;
+          font-size: 12px; font-weight: 600; cursor: pointer;
           border: none; font-family: inherit; transition: .15s;
         }
         .dac-yes:hover { background: #4338ca; }
         .dac-no {
           display: flex; align-items: center; gap: 6px;
-          padding: 8px 18px; border-radius: 9px;
+          padding: 7px 16px; border-radius: 9px;
           background: #fff; color: #6b7280;
-          font-size: 13px; font-weight: 600; cursor: pointer;
+          font-size: 12px; font-weight: 600; cursor: pointer;
           border: 1.5px solid #e5e7eb; font-family: inherit; transition: .15s;
         }
         .dac-no:hover { border-color: #d1d5db; color: #374151; }
+        .dark .dac-no {
+          background: #111827; color: #9ca3af; border-color: #1e2d45;
+        }
+        .dark .dac-no:hover { border-color: #374151; color: #e2e8f0; }
         .dac-answered { opacity: .45; pointer-events: none; }
 
         /* ── INLINE FORM ── */
         .dac-form-card {
           background: #fff; border: 1.5px solid #d8d8f0;
-          border-radius: 16px; padding: 18px;
+          border-radius: 16px; padding: 16px;
           max-width: 80%;
           box-shadow: 0 2px 14px rgba(79,70,229,.08);
         }
-        .dac-form-title {
-          font-size: 13px; font-weight: 700; color: #3730a3;
-          margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+        .dark .dac-form-card {
+          background: #1a2234;
+          border-color: #1e2d45;
+          box-shadow: 0 2px 14px rgba(0,0,0,.3);
         }
-        .dac-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .dac-form-title {
+          font-size: 12px; font-weight: 700; color: #3730a3;
+          margin-bottom: 12px; display: flex; align-items: center; gap: 7px;
+        }
+        .dark .dac-form-title { color: #818cf8; }
+        .dac-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
         .dac-form-grid .full { grid-column: 1 / -1; }
-        .dac-form-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+        .dac-form-label { font-size: 10px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+        .dark .dac-form-label { color: #94a3b8; }
         .dac-form-input {
-          width: 100%; padding: 8px 11px; font-size: 13px;
+          width: 100%; padding: 7px 10px; font-size: 12px;
           border: 1.5px solid #e5e7eb; border-radius: 9px;
           background: #fafafa; font-family: inherit;
           transition: border-color .15s; outline: none; box-sizing: border-box;
         }
         .dac-form-input:focus { border-color: #6d28d9; background: #fff; }
+        .dark .dac-form-input {
+          background: #111827; border-color: #1e2d45; color: #e2e8f0;
+        }
+        .dark .dac-form-input:focus { border-color: #7c3aed; background: #0d1117; }
         .dac-form-submit {
-          margin-top: 14px; width: 100%;
-          padding: 10px; border-radius: 10px;
+          margin-top: 12px; width: 100%;
+          padding: 9px; border-radius: 10px;
           background: linear-gradient(135deg, #4f46e5, #6d28d9);
-          color: #fff; font-size: 13px; font-weight: 700;
+          color: #fff; font-size: 12px; font-weight: 700;
           border: none; cursor: pointer; font-family: inherit;
           transition: opacity .15s;
         }
@@ -721,11 +763,16 @@ const DirectoryAgentChat: React.FC = () => {
         .dac-typing {
           background: #fff; border: 1px solid #e8e8ef;
           border-radius: 18px; border-bottom-left-radius: 5px;
-          padding: 14px 16px; display: flex; gap: 5px; align-items: center;
+          padding: 12px 14px; display: flex; gap: 5px; align-items: center;
           box-shadow: 0 2px 8px rgba(0,0,0,.05);
         }
+        .dark .dac-typing {
+          background: #1a2234;
+          border-color: #1e2d45;
+          box-shadow: 0 2px 8px rgba(0,0,0,.2);
+        }
         .dac-dot {
-          width: 7px; height: 7px; border-radius: 50%; background: #c4b5fd;
+          width: 6px; height: 6px; border-radius: 50%; background: #c4b5fd;
           animation: dac-bounce 1.2s ease-in-out infinite;
         }
         .dac-dot:nth-child(2) { animation-delay: .18s; background: #a78bfa; }
@@ -736,20 +783,26 @@ const DirectoryAgentChat: React.FC = () => {
         }
 
         /* ── TIMESTAMP ── */
-        .dac-ts { font-size: 11px; color: #d1d5db; margin-top: 2px; }
+        .dac-ts { font-size: 10px; color: #d1d5db; margin-top: 2px; }
+        .dark .dac-ts { color: #4b5563; }
         .dac-ts.user   { text-align: right; }
-        .dac-ts.ai, .dac-ts.system { padding-left: 42px; }
+        .dac-ts.ai, .dac-ts.system { padding-left: 38px; }
 
         /* ── INPUT ZONE ── */
         .dac-inputzone {
           background: #fff; border-top: 1px solid #e8e8ef;
-          padding: 12px 20px 16px;
+          padding: 10px 16px 14px;
           box-shadow: 0 -2px 10px rgba(0,0,0,.04);
         }
+        .dark .dac-inputzone {
+          background: #1a2234;
+          border-top-color: #1e2d45;
+          box-shadow: 0 -2px 10px rgba(0,0,0,.2);
+        }
         .dac-inputrow {
-          display: flex; align-items: center; gap: 10px;
+          display: flex; align-items: center; gap: 8px;
           background: #f8f8fb; border: 1.5px solid #e5e7eb;
-          border-radius: 14px; padding: 8px 12px;
+          border-radius: 14px; padding: 7px 10px;
           transition: border-color .2s, box-shadow .2s;
         }
         .dac-inputrow:focus-within {
@@ -757,24 +810,38 @@ const DirectoryAgentChat: React.FC = () => {
           box-shadow: 0 0 0 3px rgba(109,40,217,.08);
           background: #fff;
         }
+        .dark .dac-inputrow {
+          background: #111827;
+          border-color: #1e2d45;
+        }
+        .dark .dac-inputrow:focus-within {
+          border-color: #7c3aed;
+          box-shadow: 0 0 0 3px rgba(124,58,237,.15);
+          background: #0d1117;
+        }
         .dac-icon-btn {
           background: none; border: none; color: #d1d5db;
-          cursor: pointer; padding: 5px; border-radius: 7px;
-          font-size: 18px; display: flex; align-items: center;
+          cursor: pointer; padding: 4px; border-radius: 7px;
+          font-size: 17px; display: flex; align-items: center;
           transition: color .15s, background .15s;
         }
         .dac-icon-btn:hover { color: #9ca3af; background: #f3f4f6; }
+        .dark .dac-icon-btn { color: #4b5563; }
+        .dark .dac-icon-btn:hover { color: #9ca3af; background: #1e2d45; }
         .dac-textinput {
           flex: 1; background: none; border: none; outline: none;
-          color: #111827; font-size: 14px; font-family: inherit; padding: 4px 0;
+          color: #111827; font-size: 13px; font-family: inherit; padding: 4px 0;
         }
         .dac-textinput::placeholder { color: #d1d5db; }
-        .dac-divider { width: 1px; height: 20px; background: #e5e7eb; }
+        .dark .dac-textinput { color: #e2e8f0; }
+        .dark .dac-textinput::placeholder { color: #4b5563; }
+        .dac-divider { width: 1px; height: 18px; background: #e5e7eb; }
+        .dark .dac-divider { background: #1e2d45; }
         .dac-send {
-          display: flex; align-items: center; gap: 7px;
-          padding: 9px 20px; border-radius: 10px;
+          display: flex; align-items: center; gap: 6px;
+          padding: 8px 16px; border-radius: 10px;
           background: linear-gradient(135deg, #4f46e5, #6d28d9);
-          border: none; color: #fff; font-size: 13px; font-weight: 600;
+          border: none; color: #fff; font-size: 12px; font-weight: 600;
           cursor: pointer; font-family: inherit;
           box-shadow: 0 4px 12px rgba(79,70,229,.3);
           transition: all .18s;
@@ -784,7 +851,8 @@ const DirectoryAgentChat: React.FC = () => {
 
         /* ── DASHBOARD PANEL ── */
         .dac-dash {
-          width: 480px; 2xl:width: 560px;
+          /* Responsive width: smaller on <1920, base at 1920, larger above */
+          width: clamp(320px, 28vw, 560px);
           background: #fff;
           border-left: 1px solid #e8e8ef;
           display: flex; flex-direction: column;
@@ -792,92 +860,135 @@ const DirectoryAgentChat: React.FC = () => {
           transition: width .3s ease, opacity .3s ease;
           flex-shrink: 0;
         }
+        .dark .dac-dash {
+          background: #1a2234;
+          border-left-color: #1e2d45;
+        }
         .dac-dash.closed { width: 0; opacity: 0; overflow: hidden; }
 
         .dac-dash-header {
-          padding: 14px 18px;
+          padding: 12px 14px;
           border-bottom: 1px solid #f0f0f8;
           background: #fafafe;
           flex-shrink: 0;
         }
+        .dark .dac-dash-header {
+          border-bottom-color: #1e2d45;
+          background: #111827;
+        }
         .dac-dash-title {
-          font-size: 17px; font-weight: 700; color: #1e1b4b; margin-bottom: 14px;
+          font-size: 15px; font-weight: 700; color: #1e1b4b; margin-bottom: 12px;
           display: flex; align-items: center; justify-content: space-between;
         }
-        .dac-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .dark .dac-dash-title { color: #e2e8f0; }
+        .dac-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
 
         /* Filter section */
         .dac-filter-section {
           background: #f8f8fc; border: 1px solid #ebebf5;
-          border-radius: 12px; padding: 12px 14px; margin-bottom: 0;
+          border-radius: 12px; padding: 10px 12px; margin-bottom: 0;
         }
-        .dac-filter-title { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
-        .dac-filter-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .dac-filter-label { font-size: 12px; color: #6b7280; white-space: nowrap; min-width: 72px; }
+        .dark .dac-filter-section {
+          background: #0d1117;
+          border-color: #1e2d45;
+        }
+        .dac-filter-title { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+        .dark .dac-filter-title { color: #94a3b8; }
+        .dac-filter-row   { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+        .dac-filter-label { font-size: 11px; color: #6b7280; white-space: nowrap; min-width: 66px; }
+        .dark .dac-filter-label { color: #94a3b8; }
         .dac-filter-select, .dac-filter-input {
-          flex: 1; padding: 6px 10px; font-size: 12px;
+          flex: 1; padding: 5px 8px; font-size: 11px;
           border: 1.5px solid #e0e0f0; border-radius: 8px;
           background: #fff; font-family: inherit; outline: none;
           transition: border-color .15s;
         }
         .dac-filter-select:focus, .dac-filter-input:focus { border-color: #7c3aed; }
+        .dark .dac-filter-select, .dark .dac-filter-input {
+          background: #1a2234;
+          border-color: #1e2d45;
+          color: #e2e8f0;
+        }
+        .dark .dac-filter-select:focus, .dark .dac-filter-input:focus { border-color: #7c3aed; }
         .dac-search-btn {
-          padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
+          padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 600;
           background: #7c3aed; color: #fff; border: none; cursor: pointer;
           font-family: inherit; transition: .15s;
         }
         .dac-search-btn:hover { background: #6d28d9; }
 
         /* Results table */
-        .dac-results { flex: 1; overflow-y: auto; padding: 14px 18px; }
+        .dac-results { flex: 1; overflow-y: auto; padding: 12px 14px; }
         .dac-results-header {
           display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
-        .dac-results-title { font-size: 14px; font-weight: 700; color: #1e1b4b; }
+        .dac-results-title { font-size: 13px; font-weight: 700; color: #1e1b4b; }
+        .dark .dac-results-title { color: #e2e8f0; }
         .dac-errlogs-btn {
-          padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600;
+          padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 600;
           background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
           cursor: pointer; font-family: inherit; transition: .15s;
         }
         .dac-errlogs-btn:hover { background: #fde68a; }
+        .dark .dac-errlogs-btn {
+          background: #1c1200; color: #fbbf24; border-color: #92400e;
+        }
+        .dark .dac-errlogs-btn:hover { background: #291a00; }
 
-        .dac-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .dac-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .dac-table th {
-          text-align: left; padding: 8px 10px;
-          font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em;
+          text-align: left; padding: 7px 8px;
+          font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em;
           border-bottom: 1px solid #f0f0f8;
         }
+        .dark .dac-table th {
+          color: #6b7280;
+          border-bottom-color: #1e2d45;
+        }
         .dac-table td {
-          padding: 10px 10px; border-bottom: 1px solid #f8f8fc;
+          padding: 8px 8px; border-bottom: 1px solid #f8f8fc;
           vertical-align: middle;
         }
+        .dark .dac-table td {
+          border-bottom-color: #1e2d45;
+          color: #e2e8f0;
+        }
         .dac-table tr:hover td { background: #fafafe; }
+        .dark .dac-table tr:hover td { background: #111827; }
         .dac-table tr:last-child td { border-bottom: none; }
 
         .dac-tbl-btn {
-          padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 600;
+          padding: 3px 8px; border-radius: 7px; font-size: 10px; font-weight: 600;
           border: 1.5px solid; cursor: pointer; font-family: inherit; transition: .15s;
         }
         .dac-tbl-btn.update { border-color: #c7d2fe; color: #4f46e5; background: #eef2ff; }
         .dac-tbl-btn.update:hover { background: #e0e7ff; }
+        .dark .dac-tbl-btn.update { border-color: #3730a3; color: #818cf8; background: #1e1b4b; }
+        .dark .dac-tbl-btn.update:hover { background: #2d2a6e; }
         .dac-tbl-btn.reset  { border-color: #fde68a; color: #92400e; background: #fffbeb; }
         .dac-tbl-btn.reset:hover  { background: #fef3c7; }
+        .dark .dac-tbl-btn.reset { border-color: #92400e; color: #fbbf24; background: #1c1200; }
+        .dark .dac-tbl-btn.reset:hover { background: #291a00; }
         .dac-tbl-btn.del    { border-color: #fecaca; color: #b91c1c; background: #fff5f5; }
         .dac-tbl-btn.del:hover { background: #fee2e2; }
+        .dark .dac-tbl-btn.del { border-color: #7f1d1d; color: #f87171; background: #3b0a0a; }
+        .dark .dac-tbl-btn.del:hover { background: #4c1414; }
 
         .dac-bulk-btn {
-          display: flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 600;
+          display: flex; align-items: center; gap: 5px;
+          padding: 5px 11px; border-radius: 9px; font-size: 11px; font-weight: 600;
           cursor: pointer; font-family: inherit; transition: .15s; border: 1.5px solid;
         }
         .dac-bulk-import { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
         .dac-bulk-import:hover { background: #e0e7ff; }
+        .dark .dac-bulk-import { background: #1e1b4b; border-color: #3730a3; color: #818cf8; }
+        .dark .dac-bulk-import:hover { background: #2d2a6e; }
         .dac-create-btn { background: #7c3aed; border-color: #7c3aed; color: #fff; }
         .dac-create-btn:hover { background: #6d28d9; }
 
         /* ── MONO ── */
-        .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 
         /* ── EDIT MODAL ── */
         .dac-modal-overlay {
@@ -885,62 +996,148 @@ const DirectoryAgentChat: React.FC = () => {
           background: rgba(0,0,0,.4); backdrop-filter: blur(4px);
           z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px;
         }
+        .dark .dac-modal-overlay { background: rgba(0,0,0,.7); }
         .dac-modal {
           background: #fff; border-radius: 20px;
           box-shadow: 0 20px 60px rgba(0,0,0,.15);
-          width: 100%; max-width: 480px;
+          width: 100%; max-width: 460px;
           animation: dac-scale .2s ease;
+        }
+        .dark .dac-modal {
+          background: #1a2234;
+          box-shadow: 0 20px 60px rgba(0,0,0,.5);
         }
         @keyframes dac-scale {
           from { opacity:0; transform: scale(.95); }
           to   { opacity:1; transform: scale(1); }
         }
         .dac-modal-header {
-          padding: 18px 20px 14px;
+          padding: 16px 18px 12px;
           border-bottom: 1px solid #f0f0f8;
           display: flex; align-items: center; justify-content: space-between;
         }
-        .dac-modal-title { font-size: 16px; font-weight: 700; color: #1e1b4b; }
-        .dac-modal-body  { padding: 18px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .dark .dac-modal-header { border-bottom-color: #1e2d45; }
+        .dac-modal-title { font-size: 15px; font-weight: 700; color: #1e1b4b; }
+        .dark .dac-modal-title { color: #e2e8f0; }
+        .dac-modal-body  { padding: 16px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .dac-modal-full  { grid-column: 1 / -1; }
-        .dac-modal-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 5px; text-transform: uppercase; }
+        .dac-modal-label { font-size: 10px; font-weight: 600; color: #6b7280; margin-bottom: 5px; text-transform: uppercase; }
+        .dark .dac-modal-label { color: #94a3b8; }
         .dac-modal-input {
-          width: 100%; padding: 9px 12px; font-size: 13px;
+          width: 100%; padding: 8px 11px; font-size: 12px;
           border: 1.5px solid #e5e7eb; border-radius: 10px;
           background: #fafafa; font-family: inherit; outline: none; box-sizing: border-box;
         }
         .dac-modal-input:focus { border-color: #7c3aed; background: #fff; }
+        .dark .dac-modal-input {
+          background: #111827; border-color: #1e2d45; color: #e2e8f0;
+        }
+        .dark .dac-modal-input:focus { border-color: #7c3aed; background: #0d1117; }
         .dac-modal-footer {
-          padding: 14px 20px; border-top: 1px solid #f0f0f8;
+          padding: 12px 18px; border-top: 1px solid #f0f0f8;
           display: flex; gap: 10px;
         }
+        .dark .dac-modal-footer { border-top-color: #1e2d45; }
         .dac-modal-cancel {
-          flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600;
+          flex: 1; padding: 9px; border-radius: 10px; font-size: 12px; font-weight: 600;
           background: #f3f4f6; color: #6b7280; border: none; cursor: pointer; font-family: inherit;
         }
+        .dark .dac-modal-cancel { background: #111827; color: #94a3b8; }
         .dac-modal-save {
-          flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600;
+          flex: 1; padding: 9px; border-radius: 10px; font-size: 12px; font-weight: 600;
           background: linear-gradient(135deg,#4f46e5,#6d28d9); color:#fff; border:none; cursor:pointer; font-family:inherit;
         }
 
         /* ── ERROR LOG PANEL ── */
         .dac-errlog {
-          background: #1e1b4b; border-radius: 12px; padding: 14px;
-          margin: 12px 18px 0; max-height: 160px; overflow-y: auto;
-          font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #fbbf24;
+          background: #1e1b4b; border-radius: 12px; padding: 12px;
+          margin: 10px 14px 0; max-height: 140px; overflow-y: auto;
+          font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #fbbf24;
         }
+        .dark .dac-errlog { background: #0d1117; border: 1px solid #1e2d45; }
         .dac-errlog-entry { margin-bottom: 4px; opacity: .85; }
 
         /* ── IMPORT MODAL ── */
         .dac-import-drop {
           border: 2px dashed #c4b5fd; border-radius: 14px;
-          padding: 40px 20px; text-align: center; cursor: pointer;
+          padding: 36px 20px; text-align: center; cursor: pointer;
           background: #fafafe; transition: .2s;
         }
         .dac-import-drop:hover { border-color: #7c3aed; background: #f5f3ff; }
+        .dark .dac-import-drop { background: #111827; border-color: #3730a3; }
+        .dark .dac-import-drop:hover { border-color: #7c3aed; background: #1e1b4b; }
 
-        @media (max-width: 1200px) {
-          .dac-dash { width: 400px; }
+        /* ── RESPONSIVE: above 1920px ── */
+        @media (min-width: 1921px) {
+          .dac-topbar { height: 64px; padding: 0 32px; }
+          .dac-topbar-left { gap: 20px; }
+          .dac-back { font-size: 14px; padding: 7px 12px; }
+          .dac-agent-pill { padding: 7px 14px; gap: 10px; }
+          .dac-agent-dot { width: 9px; height: 9px; }
+          .dac-agent-name { font-size: 14px; }
+          .dac-topbtn { font-size: 14px; padding: 8px 16px; }
+          .dac-msgs { padding: 28px 36px; gap: 16px; }
+          .dac-avatar { width: 36px; height: 36px; font-size: 16px; }
+          .dac-bubble { font-size: 15px; padding: 13px 17px; }
+          .dac-confirm { padding: 18px 20px; }
+          .dac-confirm-text { font-size: 15px; }
+          .dac-yes, .dac-no { font-size: 14px; padding: 9px 20px; }
+          .dac-form-card { padding: 20px; }
+          .dac-form-title { font-size: 14px; }
+          .dac-form-input { font-size: 13px; padding: 9px 12px; }
+          .dac-form-label { font-size: 11px; }
+          .dac-ts { font-size: 12px; }
+          .dac-ts.ai, .dac-ts.system { padding-left: 46px; }
+          .dac-inputzone { padding: 14px 24px 20px; }
+          .dac-inputrow { padding: 9px 14px; gap: 12px; }
+          .dac-textinput { font-size: 15px; }
+          .dac-send { font-size: 14px; padding: 10px 22px; }
+          .dac-icon-btn { font-size: 20px; }
+          .dac-dash { width: clamp(440px, 30vw, 680px); }
+          .dac-dash-header { padding: 16px 20px; }
+          .dac-dash-title { font-size: 18px; margin-bottom: 16px; }
+          .dac-stats { gap: 10px; margin-bottom: 16px; }
+          .dac-filter-section { padding: 14px 16px; }
+          .dac-filter-title { font-size: 12px; }
+          .dac-filter-label { font-size: 12px; min-width: 76px; }
+          .dac-filter-select, .dac-filter-input { font-size: 12px; padding: 7px 10px; }
+          .dac-search-btn { font-size: 12px; padding: 7px 16px; }
+          .dac-results { padding: 16px 20px; }
+          .dac-results-title { font-size: 15px; }
+          .dac-table { font-size: 13px; }
+          .dac-table th { font-size: 11px; padding: 9px 10px; }
+          .dac-table td { padding: 11px 10px; }
+          .dac-tbl-btn { font-size: 11px; padding: 4px 10px; }
+          .dac-bulk-btn { font-size: 12px; padding: 6px 14px; }
+          .dac-modal { max-width: 560px; }
+          .dac-modal-title { font-size: 17px; }
+          .dac-modal-input { font-size: 13px; padding: 10px 13px; }
+          .dac-modal-cancel, .dac-modal-save { font-size: 13px; padding: 11px; }
+        }
+
+        /* ── RESPONSIVE: above 2560px (QHD/4K) ── */
+        @media (min-width: 2560px) {
+          .dac-topbar { height: 72px; padding: 0 48px; }
+          .dac-back { font-size: 15px; }
+          .dac-agent-name { font-size: 16px; }
+          .dac-topbtn { font-size: 15px; padding: 10px 20px; }
+          .dac-msgs { padding: 36px 48px; gap: 20px; }
+          .dac-avatar { width: 42px; height: 42px; font-size: 18px; }
+          .dac-bubble { font-size: 16px; padding: 15px 20px; }
+          .dac-confirm-text { font-size: 16px; }
+          .dac-yes, .dac-no { font-size: 15px; padding: 10px 24px; }
+          .dac-form-input { font-size: 14px; }
+          .dac-ts { font-size: 13px; }
+          .dac-ts.ai, .dac-ts.system { padding-left: 52px; }
+          .dac-inputzone { padding: 18px 32px 24px; }
+          .dac-textinput { font-size: 16px; }
+          .dac-send { font-size: 15px; padding: 12px 26px; }
+          .dac-dash { width: clamp(520px, 32vw, 800px); }
+          .dac-dash-title { font-size: 20px; }
+          .dac-table { font-size: 14px; }
+          .dac-table th { font-size: 12px; }
+          .dac-tbl-btn { font-size: 12px; padding: 5px 12px; }
+          .dac-bulk-btn { font-size: 13px; padding: 8px 16px; }
         }
       `}</style>
 
@@ -1087,7 +1284,7 @@ const DirectoryAgentChat: React.FC = () => {
               {/* Title row */}
               <div className="dac-dash-title">
                 <span>User Management</span>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 7 }}>
                   <button className="dac-bulk-btn dac-bulk-import" onClick={() => setShowImport(true)}>
                     <FaFileImport size={11} /> Bulk Import
                   </button>
@@ -1126,7 +1323,7 @@ const DirectoryAgentChat: React.FC = () => {
                     <option>Ou=ServiceAccounts, dc=Company, dc=com</option>
                   </select>
                   <span className="dac-filter-label" style={{ minWidth: 'auto' }}>Search By :</span>
-                  <select className="dac-filter-select" style={{ maxWidth: 90 }} value={searchBy} onChange={e => setSearchBy(e.target.value)}>
+                  <select className="dac-filter-select" style={{ maxWidth: 80 }} value={searchBy} onChange={e => setSearchBy(e.target.value)}>
                     <option>UID</option>
                     <option>Name</option>
                     <option>Email</option>
@@ -1167,21 +1364,21 @@ const DirectoryAgentChat: React.FC = () => {
               )}
 
               {loadingUsers ? (
-                <div style={{ textAlign:'center', padding:'40px 0', color:'#9ca3af', fontSize:14 }}>
-                  <div style={{ fontSize:28, marginBottom:10 }}>⟳</div>
+                <div style={{ textAlign:'center', padding:'40px 0', color:'#9ca3af', fontSize:13 }}>
+                  <div style={{ fontSize:26, marginBottom:10 }}>⟳</div>
                   Querying directory…
                 </div>
               ) : users.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#9ca3af' }}>
-                  <div style={{ fontSize:36, marginBottom:8 }}>🗄️</div>
-                  <div style={{ fontSize:14, fontWeight:600 }}>No users found</div>
-                  <div style={{ fontSize:12, marginTop:4 }}>Try a different filter or create a user via chat</div>
+                  <div style={{ fontSize:32, marginBottom:8 }}>🗄️</div>
+                  <div style={{ fontSize:13, fontWeight:600 }}>No users found</div>
+                  <div style={{ fontSize:11, marginTop:4 }}>Try a different filter or create a user via chat</div>
                 </div>
               ) : (
                 <table className="dac-table">
                   <thead>
                     <tr>
-                      <th style={{ width:28 }}>
+                      <th style={{ width:26 }}>
                         <input type="checkbox"
                           onChange={e => setSelectedRows(e.target.checked ? new Set(users.map(u => u.dn)) : new Set())}
                           checked={selectedRows.size === users.length && users.length > 0}
@@ -1190,8 +1387,8 @@ const DirectoryAgentChat: React.FC = () => {
                       <th>Name</th>
                       <th>UID</th>
                       <th>Actions</th>
-                      <th style={{ width:32 }}>
-                        <FaTrash size={12} style={{ color: selectedRows.size > 0 ? '#ef4444' : '#d1d5db', cursor: selectedRows.size > 0 ? 'pointer' : 'default' }}
+                      <th style={{ width:28 }}>
+                        <FaTrash size={11} style={{ color: selectedRows.size > 0 ? '#ef4444' : '#d1d5db', cursor: selectedRows.size > 0 ? 'pointer' : 'default' }}
                           onClick={async () => {
                             if (selectedRows.size === 0) return;
                             if (!window.confirm(`Delete ${selectedRows.size} selected user(s)?`)) return;
@@ -1215,8 +1412,8 @@ const DirectoryAgentChat: React.FC = () => {
                           />
                         </td>
                         <td>
-                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <div style={{ width:26, height:26, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#6d28d9', flexShrink:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                            <div style={{ width:24, height:24, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#6d28d9', flexShrink:0 }}>
                               {displayName(user).charAt(0).toUpperCase()}
                             </div>
                             <span style={{ fontWeight:500, color:'#111827' }}>{displayName(user)}</span>
@@ -1224,7 +1421,7 @@ const DirectoryAgentChat: React.FC = () => {
                         </td>
                         <td><span className="mono">{(user.uid as string) || '—'}</span></td>
                         <td>
-                          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                             <button className="dac-tbl-btn update" onClick={() => openEditModal(user)}>Update</button>
                             <button className="dac-tbl-btn reset" onClick={() => handleDashboardPassReset(user)}>Pass reset</button>
                             <button className="dac-tbl-btn del" onClick={() => handleDashboardDelete(user)}>Delete</button>
@@ -1265,7 +1462,7 @@ const DirectoryAgentChat: React.FC = () => {
                   <input type="password" className="dac-modal-input" placeholder="••••••••" onChange={e => setEditForm(p => ({ ...p, userPassword: e.target.value }))} />
                 </div>
                 <div className="dac-modal-full">
-                  <div className="dac-modal-label mono" style={{ fontFamily:'JetBrains Mono', fontSize:11, color:'#9ca3af' }}>{editUser.dn}</div>
+                  <div className="dac-modal-label mono" style={{ fontFamily:'JetBrains Mono', fontSize:10, color:'#9ca3af' }}>{editUser.dn}</div>
                 </div>
               </div>
               <div className="dac-modal-footer">
@@ -1284,18 +1481,18 @@ const DirectoryAgentChat: React.FC = () => {
                 <span className="dac-modal-title">📥 Bulk Import Users</span>
                 <button onClick={() => setShowImport(false)} style={{ background:'none',border:'none',cursor:'pointer',color:'#9ca3af',fontSize:18 }}><FaTimes /></button>
               </div>
-              <div style={{ padding:'20px' }}>
+              <div style={{ padding:'18px' }}>
                 <div className="dac-import-drop" onClick={() => document.getElementById('dac-import-file')?.click()}>
-                  <div style={{ fontSize:36, marginBottom:10 }}>📄</div>
-                  <div style={{ fontWeight:600, color:'#3730a3', marginBottom:6 }}>Drop a CSV or LDIF file here</div>
+                  <div style={{ fontSize:32, marginBottom:10 }}>📄</div>
+                  <div style={{ fontWeight:600, color:'#3730a3', marginBottom:6, fontSize:14 }}>Drop a CSV or LDIF file here</div>
                   <div style={{ fontSize:12, color:'#9ca3af' }}>or click to browse</div>
                   <input id="dac-import-file" type="file" accept=".csv,.ldif" style={{ display:'none' }} />
                 </div>
-                <div style={{ marginTop:14, fontSize:12, color:'#9ca3af', lineHeight:1.6 }}>
+                <div style={{ marginTop:12, fontSize:11, color:'#9ca3af', lineHeight:1.6 }}>
                   <strong style={{ color:'#6b7280' }}>CSV columns:</strong> uid, givenName, sn, mail, telephoneNumber, userPassword, baseDN<br/>
                   <strong style={{ color:'#6b7280' }}>LDIF:</strong> standard RFC 2849 format
                 </div>
-                <div style={{ display:'flex', gap:10, marginTop:16 }}>
+                <div style={{ display:'flex', gap:10, marginTop:14 }}>
                   <button className="dac-modal-cancel" onClick={() => setShowImport(false)}>Cancel</button>
                   <button className="dac-modal-save" onClick={() => { setShowImport(false); pushAI('📥 Bulk import initiated. Processing file…'); }}>
                     Import

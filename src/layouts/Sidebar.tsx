@@ -9,6 +9,7 @@ import { FaLink } from "react-icons/fa";
 import { RiAdminLine } from "react-icons/ri";
 import { IconType } from "react-icons";
 import { auth } from "../utils/auth.js";
+import { useTheme } from '../state/ThemeContext';
 
 interface MenuItem {
   icon: IconType;
@@ -18,6 +19,7 @@ interface MenuItem {
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { isDark } = useTheme();
 
   // Check if user has admin role
   const isAdmin: boolean = auth.isAdmin();
@@ -42,12 +44,29 @@ const Sidebar: React.FC = () => {
   // Construct final menu items
   const menuItems: MenuItem[] = [
     ...baseMenuItems,
-    ...(isAdmin ? [adminMenuItem] : []), // Only add Admin if user is admin
+    ...(isAdmin ? [adminMenuItem] : []),
     ...bottomMenuItems
   ];
 
+  // Dark mode style tokens
+  const sidebarBg = isDark ? '#0f1623' : undefined;
+  const sidebarBorder = isDark ? '#1e2d45' : undefined;
+  const activeBg = isDark ? 'rgba(59, 130, 246, 0.15)' : undefined;
+  const activeText = isDark ? '#60a5fa' : undefined;
+  const inactiveText = isDark ? '#64748b' : undefined;
+  const inactiveIconColor = isDark ? '#475569' : undefined;
+
   return (
-    <div className="h-screen w-54 fixed left-0 top-18 border-r border-sidebar bg-sidebar overflow-y-auto flex-shrink-0 z-10">
+    <div
+      className={`h-screen w-44 lg:w-54 xl:w-60 2xl:w-64 fixed left-0 top-14 lg:top-18 xl:top-20 2xl:top-22 border-r overflow-y-auto flex-shrink-0 z-10 transition-colors duration-300 ${
+        isDark ? '' : 'border-sidebar bg-sidebar'
+      }`}
+      style={
+        isDark
+          ? { backgroundColor: sidebarBg, borderColor: sidebarBorder }
+          : undefined
+      }
+    >
       {menuItems.map((item, index) => {
         const isActive: boolean = location.pathname.startsWith(item.path);
         const Icon: IconType = item.icon;
@@ -56,24 +75,49 @@ const Sidebar: React.FC = () => {
           <Link
             key={index}
             to={item.path}
-            className={`block px-6 py-5 cursor-pointer transition-all duration-200 
-              ${isActive ? "bg-sidebar-active rounded-md" : ""}
-            `}
+            className={`block px-3 py-3.5 lg:px-6 lg:py-5 xl:px-7 xl:py-5 2xl:px-8 cursor-pointer transition-all duration-200 ${
+              !isDark && isActive ? 'bg-sidebar-active rounded-md' : ''
+            }`}
+            style={
+              isDark && isActive
+                ? { backgroundColor: activeBg, borderRadius: '6px' }
+                : undefined
+            }
           >
-            <div className="flex items-center ">
+            <div className="flex items-center">
               {/* ICON COLUMN */}
-              <span className="w-8 flex justify-center">
+              <span className="w-6 lg:w-8 flex justify-center">
                 <Icon
-                  size={22}
-                  className={isActive ? "text-sidebar-active" : "text-sidebar-icon"}
+                  size={19}
+                  style={
+                    isDark
+                      ? { color: isActive ? activeText : inactiveIconColor }
+                      : undefined
+                  }
+                  className={
+                    !isDark
+                      ? isActive
+                        ? 'text-sidebar-active'
+                        : 'text-sidebar-icon'
+                      : ''
+                  }
                 />
               </span>
 
               {/* LABEL */}
               <span
-                className={`ml-4 text-sm font-medium whitespace-nowrap ${
-                  isActive ? "text-sidebar-active" : "text-sidebar"
+                className={`ml-2 lg:ml-4 text-xs lg:text-sm xl:text-sm font-medium whitespace-nowrap ${
+                  !isDark
+                    ? isActive
+                      ? 'text-sidebar-active'
+                      : 'text-sidebar'
+                    : ''
                 }`}
+                style={
+                  isDark
+                    ? { color: isActive ? activeText : inactiveText }
+                    : undefined
+                }
               >
                 {item.value}
               </span>

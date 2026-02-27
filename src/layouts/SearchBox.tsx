@@ -11,7 +11,7 @@ interface SearchBoxProps {
 interface QuickAction {
   icon: IconType;
   label: string;
-  shortcut: string;
+  // shortcut: string;
   action: () => void;
 }
 
@@ -43,29 +43,29 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
   const navigate = useNavigate();
 
   const [recentSearches] = useState<string[]>([
-    'Astra - Ping Federate Agent',
-    'Dashboard Analytics',
-    'SSL Certificate Renewal',
-    'Integration Settings'
+    // 'Astra - Ping Federate Agent',
+    'Dashboard',
+    // 'SSL Certificate Renewal',
+    // 'Integration Settings'
   ]);
 
   const quickActions: QuickAction[] = [
     {
       icon: FaRobot,
       label: 'Create New Agent',
-      shortcut: 'Ctrl + N',
+      // shortcut: 'Ctrl + N',
       action: () => navigate('/agents/createagent')
     },
     {
       icon: FaChartBar,
       label: 'View Dashboard',
-      shortcut: 'Ctrl + D',
+      // shortcut: 'Ctrl + D',
       action: () => navigate('/agent_dashboard')
     },
     {
       icon: FaBolt,
       label: 'View All Agents',
-      shortcut: 'Ctrl + A',
+      // shortcut: 'Ctrl + A',
       action: () => navigate('/agents')
     }
   ];
@@ -161,7 +161,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
   };
 
   return (
-    <div className="relative w-[420px] max-w-full" ref={dropdownRef}>
+    <div className="relative w-[280px] lg:w-[420px] xl:w-[480px] 2xl:w-[520px] max-w-full" ref={dropdownRef}>
       <input
         ref={inputRef}
         type="text"
@@ -173,13 +173,13 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
           setIsOpen(true);
         }}
         onBlur={() => setIsFocused(false)}
-        className="w-full h-10 pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
-          focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 text-slate-900"
+        className="w-full h-9 lg:h-10 xl:h-11 pl-9 lg:pl-10 pr-3 rounded-md bg-white border border-[#CBD5E1]
+          focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 text-slate-900 text-sm lg:text-base"
       />
 
       {Icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
-          <Icon size={18} />
+        <span className="absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 text-[#64748B]">
+          <Icon size={16} className="lg:text-[18px]" />
         </span>
       )}
 
@@ -191,33 +191,33 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
         >
-          <IoIosClose className="text-lg" />
+          <IoIosClose className="text-base lg:text-lg" />
         </button>
       )}
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown max-h-96 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown max-h-72 lg:max-h-96 xl:max-h-[420px] overflow-y-auto">
           {inputValue ? (
             <div className="py-2">
               {filteredResults.length > 0 ? (
                 <>
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                  <div className="px-3 lg:px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
                     Results ({filteredResults.length})
                   </div>
                   {filteredResults.map((result, index) => (
                     <button
                       key={index}
                       onClick={() => handleResultClick(result.action)}
-                      className="w-full px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 text-left"
+                      className="w-full px-3 lg:px-4 py-2.5 lg:py-3 hover:bg-gray-50 transition-colors flex items-center gap-2 lg:gap-3 text-left"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-gray-100 flex items-center justify-center text-lg lg:text-xl flex-shrink-0">
                         {result.icon}
                       </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs lg:text-sm font-semibold text-gray-900 truncate">
                           {result.name}
                         </h4>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 truncate">
                           {result.description}
                         </p>
                       </div>
@@ -225,8 +225,8 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
                   ))}
                 </>
               ) : (
-                <div className="px-4 py-8 text-center">
-                  <div className="text-3xl mb-2">🔍</div>
+                <div className="px-4 py-6 lg:py-8 text-center">
+                  <div className="text-2xl lg:text-3xl mb-2">🔍</div>
                   <p className="text-sm text-gray-500">No results found</p>
                   <p className="text-xs text-gray-400 mt-1">
                     Try searching for agents, tasks, or settings
@@ -237,7 +237,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
           ) : (
             <>
               <div className="py-2 border-b border-gray-200">
-                <div className="px-4 py-2 flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
+                <div className="px-3 lg:px-4 py-2 flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
                   <FaClock />
                   <span>Recent Searches</span>
                 </div>
@@ -245,16 +245,16 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
                   <button
                     key={index}
                     onClick={() => setInputValue(search)}
-                    className="w-full px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-left text-sm text-gray-700"
+                    className="w-full px-3 lg:px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-left text-xs lg:text-sm text-gray-700"
                   >
-                    <IoIosSearch className="text-gray-400" />
+                    <IoIosSearch className="text-gray-400 flex-shrink-0" />
                     <span>{search}</span>
                   </button>
                 ))}
               </div>
 
               <div className="py-2">
-                <div className="px-4 py-2 flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
+                <div className="px-3 lg:px-4 py-2 flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
                   <FaBolt />
                   <span>Quick Actions</span>
                 </div>
@@ -264,17 +264,17 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
                     <button
                       key={index}
                       onClick={() => handleResultClick(action.action)}
-                      className="w-full px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 text-left"
+                      className="w-full px-3 lg:px-4 py-2.5 lg:py-3 hover:bg-gray-50 transition-colors flex items-center gap-2 lg:gap-3 text-left"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
                         <ActionIcon />
                       </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs lg:text-sm font-semibold text-gray-900 truncate">
                           {action.label}
                         </h4>
                       </div>
-                      <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                      <div className="text-xs text-gray-400 bg-gray-100 px-1.5 lg:px-2 py-1 rounded flex-shrink-0">
                         {action.shortcut}
                       </div>
                     </button>
