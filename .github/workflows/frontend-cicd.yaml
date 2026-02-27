@@ -21,8 +21,6 @@ jobs:
         run: |
           echo "Copying .env files to repo"
           sudo cp /run/secrets/vega-secrets/vega-frontend/.env ./.env
-          sudo cp /run/secrets/vega-secrets/vega-frontend/.env ./Frontend/.env
-          sudo cp /run/secrets/vega-secrets/vega-backend/.env ./Backend/.env
           echo "PR #${{ github.event.pull_request.number }}"
           echo "Branch: ${{ github.head_ref }}"
           echo "Commit: ${{ github.event.pull_request.head.sha || github.sha }}"
