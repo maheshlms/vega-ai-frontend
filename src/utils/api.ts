@@ -337,6 +337,8 @@ export const api = {
       if (filters.start_date) cleanFilters.start_date = filters.start_date;
       if (filters.end_date) cleanFilters.end_date = filters.end_date;
       
+      console.log('[API] countLogs - sending filters to backend:', cleanFilters);
+      
       const response = await fetchWithAuthToService(AUDIT_SERVICE, '/api/v1/audit-logs/count', {
         method: 'POST',
         body: JSON.stringify(cleanFilters)
@@ -362,6 +364,8 @@ export const api = {
       if (filters.limit) cleanFilters.limit = filters.limit;
       if (filters.skip) cleanFilters.skip = filters.skip;
       if (filters.sort_order) cleanFilters.sort_order = filters.sort_order;
+      
+      console.log('[API] queryLogs - sending filters to backend:', cleanFilters);
       
       const response = await fetchWithAuthToService(AUDIT_SERVICE, '/api/v1/audit-logs/query', {
         method: 'POST',

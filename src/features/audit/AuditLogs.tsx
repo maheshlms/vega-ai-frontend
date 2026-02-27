@@ -69,6 +69,7 @@ const AuditLogs: React.FC = () => {
   const [exportScope, setExportScope] = useState<ExportScope>('current');
   const [hasAuditReadPermission, setHasAuditReadPermission] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('AuditLogs component mounted');
@@ -105,7 +106,8 @@ const AuditLogs: React.FC = () => {
       setHasAuditReadPermission(false);
     }
     
-    fetchData();
+    // Mark initialization as complete
+    setIsInitialized(true);
     fetchEventTypes();
   }, []);
 
@@ -115,9 +117,14 @@ const AuditLogs: React.FC = () => {
   }, [filters.event_type, filters.severity, filters.user_email, filters.limit, sortOrder]);
 
   useEffect(() => {
+    // Only fetch data after initialization is complete
+    if (!isInitialized) {
+      console.log('Skipping fetchData - not yet initialized');
+      return;
+    }
     console.log('Page changed, fetching data for page:', currentPage);
     fetchData();
-  }, [currentPage, sortOrder, filters.event_type, filters.severity, filters.user_email, filters.limit]);
+  }, [isInitialized, currentPage, sortOrder, filters.event_type, filters.severity, filters.user_email, filters.limit]);
 
   const fetchData = async (): Promise<void> => {
     setLoading(true);
@@ -133,34 +140,40 @@ const AuditLogs: React.FC = () => {
       if (filters.severity) apiFilters.severity = filters.severity;
       if (filters.user_email) apiFilters.user_email = filters.user_email;
 
-      // First, fetch count of matching logs
-      try {
-        const countData = await api.audit.countLogs(apiFilters);
-        setTotalLogs(countData.total_count || 0);
-        console.log('Log count loaded:', countData.total_count);
-      } catch (countErr) {
-        console.error('Error fetching log count:', countErr);
-        setTotalLogs(0);
-      }
+      console.log('Fetching with filters:', apiFilters);
 
-      // Then fetch the specific page of logs
+      // Fetch logs and count in a single query
+      // The query endpoint returns both logs and total_count, ensuring they always match
       try {
+        console.log('Calling queryLogs with:', apiFilters);
         const logsData = await api.audit.queryLogs(apiFilters);
+        
         if (logsData && typeof logsData === 'object') {
+          // Set the total count from the query response
+          if (logsData.total_count !== undefined) {
+            setTotalLogs(logsData.total_count);
+            console.log('Total count from query:', logsData.total_count);
+          } else {
+            setTotalLogs(0);
+          }
+          
+          // Set the logs
           if (logsData.logs) {
             // New response format with paginated logs
             setLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
+            console.log('Logs loaded:', logsData.logs.length, 'records');
           } else if (Array.isArray(logsData)) {
             // Old response format (backwards compatibility)
             setLogs(logsData);
+            setTotalLogs(logsData.length);
           } else {
             setLogs([]);
           }
         }
-        console.log('Logs loaded:', logsData);
       } catch (logErr) {
         console.error('Error fetching logs:', logErr);
         setLogs([]);
+        setTotalLogs(0);
         setError('Unable to load audit logs');
       }
 
