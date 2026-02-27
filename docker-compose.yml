@@ -1,0 +1,54 @@
+# Frontend-only compose file.
+# Run from the Frontend directory:
+#   docker compose up --build -d
+#
+# Reads VITE_* variables from Frontend/.env at build time.
+# The browser calls the API at localhost:8000, so the backend
+# just needs to be running separately on the host.
+
+services:
+
+  # ── Production ──────────────────────────────────────────────
+  frontend:
+    container_name: vegaai-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL:        ${VITE_BACKEND_URL:-http://localhost:8000}
+        VITE_AUDIT_SERVICE_URL:  ${VITE_AUDIT_SERVICE_URL:-http://localhost:8002}
+        VITE_TARGET_SYSTEMS_URL: ${VITE_TARGET_SYSTEMS_URL:-http://localhost:8000}
+        VITE_LLM_RUNTIME_URL:    ${VITE_LLM_RUNTIME_URL:-http://localhost:8000}
+        VITE_AUTH0_DOMAIN:       ${VITE_AUTH0_DOMAIN}
+        VITE_AUTH0_CLIENT_ID:    ${VITE_AUTH0_CLIENT_ID}
+        VITE_AUTH0_AUDIENCE:     ${VITE_AUTH0_AUDIENCE}
+        VITE_HEYGEN_API_KEY:     ${VITE_HEYGEN_API_KEY:-}
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Development (hot-reload) ─────────────────────────────────
+  # Start with: docker compose --profile dev up frontend-dev
+  frontend-dev:
+    container_name: vegaai-frontend-dev
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+    command: sh -c "npm ci && npm run dev"
+    profiles:
+      - dev
+    restart: unless-stopped
