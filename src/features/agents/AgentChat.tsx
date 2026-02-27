@@ -1177,7 +1177,7 @@ const AgentChat: React.FC = () => {
           flex-shrink: 0;
           background: #fff; border-top: 1px solid #eaecf0;
           padding: 10px 16px 12px;
-          height: 76px;
+          min-height: 76px;
           box-sizing: border-box;
         }
         .agc-file-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
