@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // Ensure HMR works reliably on Windows
-    hmr: { host: 'localhost' },
+    hmr: { host: '20.124.183.142' },
     proxy: {
       // Forwards /heygen-api/* → https://api.heygen.com/* server-side
       // This bypasses CORS completely — no third-party proxy needed
