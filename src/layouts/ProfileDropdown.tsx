@@ -32,7 +32,7 @@ const ProfileDropdown: React.FC = () => {
     const currentUser = auth.getCurrentUser();
     if (currentUser) {
       setUserData({
-        name: currentUser.username || 'User',
+        name: currentUser.name || currentUser.username || 'User',
         email: currentUser.email || 'user@example.com',
         role: (currentUser.role || 'user').charAt(0).toUpperCase() + (currentUser.role || 'user').slice(1),
         plan: 'Pro Plan',
@@ -120,7 +120,7 @@ const ProfileDropdown: React.FC = () => {
               />
             </div>
             <span className="text-sm font-semibold text-navbar-profile">
-              {userData.name}
+              {userData.name.split(' ')[0]}
             </span>
           </button>
 

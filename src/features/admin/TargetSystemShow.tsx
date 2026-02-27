@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaPlus, FaSync, FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaClock, FaLock, FaArrowLeft } from 'react-icons/fa';
+import { FaPlus, FaSync, FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaClock, FaLock } from 'react-icons/fa';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { auth } from '../../utils/auth';
@@ -380,23 +380,7 @@ const TargetSystemShow: React.FC = () => {
         <div className="max-w-[1400px] mx-auto pt-10 pb-8">
           <div className="flex items-start justify-between gap-6 max-md:flex-col">
             <div>
-              {integrationId ? (
-                <button
-                  onClick={() => navigate('/systems/targetsys')}
-                  className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
-                >
-                  <FaArrowLeft size={12} />
-                  <span>Back to Integrations</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/systems')}
-                  className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 mb-3 transition-colors"
-                >
-                  <span>←</span>
-                  <span>Back</span>
-                </button>
-              )}
+
               <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl mb-2">
                 {integrationName ? `${integrationName} Systems` : 'Target Systems'}
               </h1>

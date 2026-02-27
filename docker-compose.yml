@@ -22,9 +22,7 @@ services:
         VITE_AUTH0_DOMAIN:       ${VITE_AUTH0_DOMAIN}
         VITE_AUTH0_CLIENT_ID:    ${VITE_AUTH0_CLIENT_ID}
         VITE_AUTH0_AUDIENCE:     ${VITE_AUTH0_AUDIENCE}
-        VITE_LIVEAVATAR_API_KEY: ${VITE_LIVEAVATAR_API_KEY:-}
         VITE_HEYGEN_API_KEY:     ${VITE_HEYGEN_API_KEY:-}
-        VITE_ANTHROPIC_API_KEY:  ${VITE_ANTHROPIC_API_KEY:-}
     ports:
       - "3000:80"
     restart: unless-stopped
