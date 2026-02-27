@@ -25,7 +25,7 @@ export default defineConfig({
       },
       // Proxy API requests to backend
       '/api/v1': {
-        target: 'http://localhost:8000',
+        target: 'http://20.124.183.142:8000',
         changeOrigin: true,
         rewrite: (path) => path
       }
