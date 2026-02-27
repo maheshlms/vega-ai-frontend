@@ -6,7 +6,7 @@ import FloatingDots from '../../effects/FloatingDots';
 import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { IoSettingsSharp } from "react-icons/io5";
-import { useAuth0 } from '@auth0/auth0-react';
+// import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { auth } from '../../utils/auth';
@@ -16,7 +16,7 @@ const LoginPage: React.FC = () => {
   const [dark, setDark] = useState<boolean>(false);
   const [showAdminMenu, setShowAdminMenu] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { loginWithRedirect, isLoading: auth0Loading } = useAuth0();
+  // const { loginWithRedirect, isLoading: auth0Loading } = useAuth0();
   const navigate = useNavigate();
   
   // Native login state
@@ -42,9 +42,9 @@ const LoginPage: React.FC = () => {
     }
   }, [showAdminMenu]);
 
-  const handleAuth0Login = (): void => {
-    loginWithRedirect();
-  };
+  // const handleAuth0Login = (): void => {
+  //   loginWithRedirect();
+  // };
 
   const handleNativeLogin = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -234,14 +234,14 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* AUTH0 LOGIN BUTTON */}
-            <Btn
+            {/* AUTH0 LOGIN BUTTON - disabled while Auth0 is commented out */}
+            {/* <Btn
               onClick={handleAuth0Login}
               value={auth0Loading ? "Connecting..." : "Sign In with Auth0"}
               className="bg-gray-100 hover:bg-gray-200 w-full h-10 rounded-md transition-all duration-300 ease-in-out border border-gray-300"
               style={{ color: '#000000' }}
               disabled={auth0Loading || isLoading}
-            />
+            /> */}
 
             {/* PINGFEDERATE LOGIN BUTTON */}
             <Btn
