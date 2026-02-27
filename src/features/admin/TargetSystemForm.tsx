@@ -1571,18 +1571,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       );
     }
 
-    if (isPingFederate(t) && formData.auth_method === 'BearerToken') {
-      return (
-        <Field label="Engine Port" hint={hint('engine_port')}>
-          <input
-            type="number" name="engine_port" value={formData.engine_port} onChange={handleChange}
-            placeholder="9031" min="1" max="65535"
-            className={inputCls}
-          />
-        </Field>
-      );
-    }
-
     if (isPingOne(t)) {
       return (
         <>
