@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+// import { useAuth0 } from '@auth0/auth0-react';
 import { auth } from '../../utils/auth';
 import { api } from '../../utils/api';
 
 const Logout: React.FC = () => {
   const navigate = useNavigate();
-  const { logout: auth0Logout, isAuthenticated: isAuth0 } = useAuth0();
+  // const { logout: auth0Logout, isAuthenticated: isAuth0 } = useAuth0();
 
   useEffect(() => {
     const performLogout = async (): Promise<void> => {
@@ -29,23 +29,18 @@ const Logout: React.FC = () => {
       // Clear local storage
       auth.logout();
 
-      // If user was authenticated via Auth0, logout from Auth0
-      if (isAuth0) {
-        auth0Logout({ 
-          logoutParams: { 
-            returnTo: window.location.origin + '/login'
-          } 
-        });
-      } else {
-        // For local admin, just redirect to login
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
-      }
+      // Auth0 logout disabled - always redirect to login
+      // if (isAuth0) {
+      //   auth0Logout({ logoutParams: { returnTo: window.location.origin + '/login' } });
+      // } else {
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      // }
     };
 
     performLogout();
-  }, [auth0Logout, isAuth0, navigate]);
+  }, [navigate]);
 
   return (
     <div className="bg-gray-50 min-h-screen p-6 flex items-center justify-center">
