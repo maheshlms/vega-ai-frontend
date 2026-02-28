@@ -32,6 +32,7 @@ interface Filters {
   event_type: string;
   severity: string;
   user_email: string;
+  date_range: string;
   limit: number;
   skip: number;
 }
@@ -40,6 +41,8 @@ interface ApiFilters {
   event_type?: string;
   severity?: string;
   user_email?: string;
+  start_date?: string;
+  end_date?: string;
   limit: number;
   skip: number;
   sort_order: string;
@@ -59,9 +62,13 @@ const AuditLogs: React.FC = () => {
     event_type: '',
     severity: '',
     user_email: '',
+    date_range: 'all',
     limit: 50,
     skip: 0
   });
+
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   const [sortOrder, setSortOrder] = useState<SortOrder>('descending');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -114,7 +121,7 @@ const AuditLogs: React.FC = () => {
   useEffect(() => {
     console.log('Filters or sort order changed, resetting to page 1');
     setCurrentPage(1);
-  }, [filters.event_type, filters.severity, filters.user_email, filters.limit, sortOrder]);
+  }, [filters.event_type, filters.severity, filters.user_email, filters.date_range, filters.limit, sortOrder, customStartDate, customEndDate]);
 
   useEffect(() => {
     // Only fetch data after initialization is complete
@@ -124,7 +131,7 @@ const AuditLogs: React.FC = () => {
     }
     console.log('Page changed, fetching data for page:', currentPage);
     fetchData();
-  }, [isInitialized, currentPage, sortOrder, filters.event_type, filters.severity, filters.user_email, filters.limit]);
+  }, [isInitialized, currentPage, sortOrder, filters.event_type, filters.severity, filters.user_email, filters.date_range, filters.limit, customStartDate, customEndDate]);
 
   const fetchData = async (): Promise<void> => {
     setLoading(true);
@@ -139,6 +146,52 @@ const AuditLogs: React.FC = () => {
       if (filters.event_type) apiFilters.event_type = filters.event_type;
       if (filters.severity) apiFilters.severity = filters.severity;
       if (filters.user_email) apiFilters.user_email = filters.user_email;
+      
+      // Calculate date range based on preset (using UTC to match MongoDB storage)
+      if (filters.date_range !== 'all') {
+        const now = new Date();
+        let start_date: Date | null = null;
+        let end_date: Date | null = null;
+        
+        if (filters.date_range === 'today') {
+          start_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+          end_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+        } else if (filters.date_range === 'last7days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 7);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'last30days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 30);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'last90days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 90);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'custom') {
+          if (customStartDate) {
+            const parts = customStartDate.split('-');
+            start_date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 0, 0, 0, 0));
+          }
+          if (customEndDate) {
+            const parts = customEndDate.split('-');
+            end_date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59, 999));
+          } else if (start_date) {
+            end_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          }
+        }
+        
+        if (start_date && end_date) {
+          apiFilters.start_date = start_date.toISOString();
+          apiFilters.end_date = end_date.toISOString();
+        }
+      }
 
       console.log('Fetching with filters:', apiFilters);
 
@@ -239,6 +292,52 @@ const AuditLogs: React.FC = () => {
       if (filters.event_type) apiFilters.event_type = filters.event_type;
       if (filters.severity) apiFilters.severity = filters.severity;
       if (filters.user_email) apiFilters.user_email = filters.user_email;
+      
+      // Apply date range filter to export (using UTC to match MongoDB storage)
+      if (filters.date_range !== 'all') {
+        const now = new Date();
+        let start_date: Date | null = null;
+        let end_date: Date | null = null;
+        
+        if (filters.date_range === 'today') {
+          start_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+          end_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+        } else if (filters.date_range === 'last7days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 7);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'last30days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 30);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'last90days') {
+          const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          start_date = new Date(utcNow);
+          start_date.setUTCDate(start_date.getUTCDate() - 90);
+          start_date.setUTCHours(0, 0, 0, 0);
+          end_date = utcNow;
+        } else if (filters.date_range === 'custom') {
+          if (customStartDate) {
+            const parts = customStartDate.split('-');
+            start_date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 0, 0, 0, 0));
+          }
+          if (customEndDate) {
+            const parts = customEndDate.split('-');
+            end_date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59, 999));
+          } else if (start_date) {
+            end_date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+          }
+        }
+        
+        if (start_date && end_date) {
+          apiFilters.start_date = start_date.toISOString();
+          apiFilters.end_date = end_date.toISOString();
+        }
+      }
 
       if (scope === 'current') {
         // Export only current page
@@ -295,7 +394,7 @@ const AuditLogs: React.FC = () => {
   const severityBadge = (log: AuditLog) => {
     const val = log.status || log.severity || '';
     const isSuccess = val === 'success' || val === 'info';
-    const isError   = val === 'error';
+    const isError   = val === 'error' || val === 'failed';
     const isWarn    = val === 'warning';
     const cls = isSuccess
       ? 'bg-green-50 text-green-700 border border-green-100'
@@ -401,6 +500,37 @@ const AuditLogs: React.FC = () => {
                 <option value="error">Error</option>
               </select>
             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">Date Range</label>
+              <select value={filters.date_range}
+                onChange={(e) => setFilters({ ...filters, date_range: e.target.value })}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-[13px] bg-white text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-gray-300 min-w-[150px]">
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="last90days">Last 90 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            {filters.date_range === 'custom' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">Start Date</label>
+                  <input type="text" value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-[13px] bg-white text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-gray-300 min-w-[140px]" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">End Date</label>
+                  <input type="text" value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-[13px] bg-white text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-gray-300 min-w-[140px]" />
+                </div>
+              </>
+            )}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">User Email</label>
               <input type="text" value={filters.user_email}

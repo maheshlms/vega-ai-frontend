@@ -324,7 +324,7 @@ const AdminAgentControll: React.FC = () => {
           return;
         }
 
-        const response = await api.fetchWithAuth('/api/v1/telemetry/dashboard?days=7');
+        const response = await api.fetchWithAuth('/api/v1/telemetry/dashboard?days=8');
 
         if (response.ok) {
           const data: DashboardMetricsResponse = await response.json();
@@ -382,42 +382,51 @@ const AdminAgentControll: React.FC = () => {
   }, {} as TypeStats);
 
   // activity timeline (last 7 days) - only from telemetry data, no fallback to mock
-  const activityData: ActivityDataPoint[] = telemetryData?.daily_metrics_past_7_days?.length 
-    ? (() => {
-        // Group by date and aggregate metrics across all agents
-        const dateMap = new Map<string, { total_tasks: number; successful_tasks: number; failed_tasks: number; date: string }>();
-        
-        telemetryData.daily_metrics_past_7_days.forEach(metric => {
-          if (!dateMap.has(metric.date)) {
-            dateMap.set(metric.date, {
-              date: metric.date,
-              total_tasks: 0,
-              successful_tasks: 0,
-              failed_tasks: 0
-            });
-          }
-          const entry = dateMap.get(metric.date)!;
-          entry.total_tasks += metric.total_tasks;
-          entry.successful_tasks += metric.successful_tasks;
-          entry.failed_tasks += metric.failed_tasks;
-        });
-        
-        // Convert map to sorted array of ActivityDataPoint
-        return Array.from(dateMap.values())
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-          .map(aggregated => {
-            const date = new Date(aggregated.date);
-            return {
-              day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-              fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              tasksCompleted: aggregated.successful_tasks,
-              tasksGiven: aggregated.total_tasks,
-              tasksInProcess: 0, // Not available in telemetry data
-              tasksFailed: aggregated.failed_tasks
-            };
+  const activityData: ActivityDataPoint[] = React.useMemo(() => {
+    // Generate last 7 days (including today)
+    const last7Days: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      last7Days.push(dateStr);
+    }
+
+    // Group telemetry data by date and aggregate metrics across all agents
+    const dateMap = new Map<string, { total_tasks: number; successful_tasks: number; failed_tasks: number }>();
+    
+    if (telemetryData?.daily_metrics_past_7_days?.length) {
+      telemetryData.daily_metrics_past_7_days.forEach(metric => {
+        if (!dateMap.has(metric.date)) {
+          dateMap.set(metric.date, {
+            total_tasks: 0,
+            successful_tasks: 0,
+            failed_tasks: 0
           });
-      })()
-    : [];
+        }
+        const entry = dateMap.get(metric.date)!;
+        entry.total_tasks += metric.total_tasks;
+        entry.successful_tasks += metric.successful_tasks;
+        entry.failed_tasks += metric.failed_tasks;
+      });
+    }
+    
+    // Build complete 7-day dataset with zeros for missing days
+    return last7Days.map(dateStr => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // Parse as local date to avoid timezone issues
+      const metrics = dateMap.get(dateStr) || { total_tasks: 0, successful_tasks: 0, failed_tasks: 0 };
+      
+      return {
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        tasksCompleted: metrics.successful_tasks,
+        tasksGiven: metrics.total_tasks,
+        tasksInProcess: 0, // Not available in telemetry data
+        tasksFailed: metrics.failed_tasks
+      };
+    });
+  }, [telemetryData]);
 
   // ─── Details panel helpers ───
   const getFilteredDetailAgents = (): Agent[] => {
@@ -702,12 +711,12 @@ const AdminAgentControll: React.FC = () => {
               </div>
             </div>
             
-            {telemetryError || activityData.length === 0 ? (
+            {telemetryError ? (
               <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg">
                 <div className="text-center">
                   <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-3" />
                   <p className="text-red-700 font-medium">Telemetry Data Unavailable</p>
-                  <p className="text-red-600 text-sm mt-1">{telemetryError || 'No telemetry data available'}</p>
+                  <p className="text-red-600 text-sm mt-1">{telemetryError}</p>
                 </div>
               </div>
             ) : (
