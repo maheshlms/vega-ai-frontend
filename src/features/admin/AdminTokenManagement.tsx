@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../utils/auth';
+import api from '../../utils/api';
 
 interface TokenConfig {
   endpointUrl: string;
@@ -419,17 +420,7 @@ const AdminTokenManagement: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const token = auth.getToken();
-        if (!token) {
-          console.warn("No access token found - user may not be authenticated");
-          return;
-        }
-        const response = await fetch("/api/v1/token-provider-config", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
+        const response = await api.fetchWithAuth("/api/v1/token-provider-config");
 
         if (response.ok) {
           const result = await response.json();
@@ -445,14 +436,7 @@ const AdminTokenManagement: React.FC = () => {
 
     const fetchKeypairStatus = async () => {
       try {
-        const token = auth.getToken();
-        if (!token) return;
-        const response = await fetch("/api/v1/keys/status", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
+        const response = await api.fetchWithAuth("/api/v1/keys/status");
         if (response.ok) {
           const result = await response.json();
           setKeypairStatus(result);
@@ -494,17 +478,10 @@ const AdminTokenManagement: React.FC = () => {
     setShowSaveConfirmation(false);
     setLoading(true);
     try {
-      const token = auth.getToken();
-      if (!token) {
-        showToast("Not authenticated. Please login first.", "🔐");
-        return;
-      }
-
       const formData = { ...form, groups: form.groups || ["Vega_Admins"] };
-      const response = await fetch("/api/v1/token-provider-config", {
+      const response = await api.fetchWithAuth("/api/v1/token-provider-config", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(formData)
@@ -537,12 +514,6 @@ const AdminTokenManagement: React.FC = () => {
   };
 
   const handleTest = async () => {
-    const token = auth.getToken();
-    if (!token) {
-      showToast("Not authenticated. Please login first.", "🔐");
-      return;
-    }
-
     if (!form.endpointUrl || !form.clientId || !form.clientSecret || !form.scope || !form.introspectionUrl || !form.introspectionClientId || !form.introspectionClientSecret) {
       showToast("All required fields must be filled before testing.", "⚠️");
       return;
@@ -550,10 +521,9 @@ const AdminTokenManagement: React.FC = () => {
 
     setTestLoading(true);
     try {
-      const response = await fetch("/api/v1/token-provider-config/test", {
+      const response = await api.fetchWithAuth("/api/v1/token-provider-config/test", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({})
@@ -581,20 +551,9 @@ const AdminTokenManagement: React.FC = () => {
   };
 
   const handleGenerateKeypair = async () => {
-    const token = auth.getToken();
-    if (!token) {
-      showToast("Not authenticated. Please login first.", "🔐");
-      return;
-    }
-
     // Check current keypair status first
     try {
-      const statusResponse = await fetch("/api/v1/keys/status", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const statusResponse = await api.fetchWithAuth("/api/v1/keys/status");
 
       if (statusResponse.ok) {
         const statusResult = await statusResponse.json();
@@ -610,17 +569,16 @@ const AdminTokenManagement: React.FC = () => {
     }
 
     // Keys don't exist, proceed with generation
-    await proceedWithKeypairGeneration(token, false);
+    await proceedWithKeypairGeneration(false);
   };
 
-  const proceedWithKeypairGeneration = async (token: string, overwrite: boolean) => {
+  const proceedWithKeypairGeneration = async (overwrite: boolean) => {
     setLoadingKeypair(true);
     try {
       const method = overwrite ? "PUT" : "POST";
-      const response = await fetch("/api/v1/keys/generate", {
+      const response = await api.fetchWithAuth("/api/v1/keys/generate", {
         method,
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       });
@@ -646,18 +604,11 @@ const AdminTokenManagement: React.FC = () => {
   };
 
   const handleGenerateJwks = async () => {
-    const token = auth.getToken();
-    if (!token) {
-      showToast("Not authenticated. Please login first.", "🔐");
-      return;
-    }
-
     setGeneratingJwks(true);
     try {
-      const response = await fetch("/api/v1/keys/jwks", {
+      const response = await api.fetchWithAuth("/api/v1/keys/jwks", {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       });
@@ -970,7 +921,7 @@ const AdminTokenManagement: React.FC = () => {
               <button 
                 type="button" 
                 className="tm-confirmation-confirm" 
-                onClick={() => proceedWithKeypairGeneration(auth.getToken() || "", true)}
+                onClick={() => proceedWithKeypairGeneration(true)}
                 disabled={loadingKeypair}
               >
                 {loadingKeypair ? "🔄 Generating…" : "Yes, Overwrite Keypair"}
