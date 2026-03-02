@@ -28,6 +28,8 @@ services:
     ports:
       - "3000:80"
     restart: unless-stopped
+    networks:
+      - vega-net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:80"]
       interval: 30s
@@ -54,3 +56,8 @@ services:
     profiles:
       - dev
     restart: unless-stopped
+
+networks:
+  vega-net:
+    external: true
+    name: native-backend_default
