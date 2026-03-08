@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Location } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+// import { useAuth0 } from '@auth0/auth0-react';
 import { UserProvider } from './utils/UserContext';
 
 // Auth
@@ -133,20 +133,20 @@ function ForcedPasswordChangeRoute({ children }: ForcedPasswordChangeRouteProps)
 }
 
 function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth0();
+  // const { isAuthenticated, isLoading } = useAuth0();
   const location: Location = useLocation();
   
   const isLocalAuthenticated: boolean = auth.isAuthenticated();
-  const isAuth: boolean = isAuthenticated || isLocalAuthenticated;
+  const isAuth: boolean = isLocalAuthenticated;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="ml-3 text-gray-600">Verifying authentication...</p>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  //       <p className="ml-3 text-gray-600">Verifying authentication...</p>
+  //     </div>
+  //   );
+  // }
 
   if (!isAuth) {
     console.warn('🔒 Access denied - redirecting to login');

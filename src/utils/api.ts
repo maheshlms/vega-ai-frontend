@@ -1,9 +1,14 @@
 import { auth } from './auth';
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
-const AUDIT_SERVICE = import.meta.env.VITE_AUDIT_SERVICE_URL || "http://localhost:8002";
-const TARGET_SYSTEMS_SERVICE = import.meta.env.VITE_TARGET_SYSTEMS_URL || "http://localhost:8000";
-const LLM_RUNTIME_SERVICE = import.meta.env.VITE_LLM_RUNTIME_URL || "http://localhost:8000";
+// In Docker: requests to /api/* and /audit/* are proxied by nginx to the
+// backend services on the internal Docker network — no host/port needed.
+// VITE_BACKEND_URL should be left empty ("") in Docker deployments so that
+// API calls are relative (same origin → nginx proxy picks them up).
+// For local dev outside Docker, set VITE_BACKEND_URL=http://localhost:8000.
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
+const AUDIT_SERVICE = import.meta.env.VITE_AUDIT_SERVICE_URL || "";
+const TARGET_SYSTEMS_SERVICE = import.meta.env.VITE_TARGET_SYSTEMS_URL || "";
+const LLM_RUNTIME_SERVICE = import.meta.env.VITE_LLM_RUNTIME_URL || "";
 
 interface FetchOptions extends RequestInit {
   body?: any;

@@ -15,10 +15,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_BACKEND_URL:        ${VITE_BACKEND_URL:-http://localhost:8000}
-        VITE_AUDIT_SERVICE_URL:  ${VITE_AUDIT_SERVICE_URL:-http://localhost:8002}
-        VITE_TARGET_SYSTEMS_URL: ${VITE_TARGET_SYSTEMS_URL:-http://localhost:8000}
-        VITE_LLM_RUNTIME_URL:    ${VITE_LLM_RUNTIME_URL:-http://localhost:8000}
+        # Leave these empty in Docker — nginx proxies /api/* and /audit/* internally.
+        # Only set them for local dev outside Docker (e.g. VITE_BACKEND_URL=http://localhost:8000).
+        VITE_BACKEND_URL:        ${VITE_BACKEND_URL:-}
+        VITE_AUDIT_SERVICE_URL:  ${VITE_AUDIT_SERVICE_URL:-}
+        VITE_TARGET_SYSTEMS_URL: ${VITE_TARGET_SYSTEMS_URL:-}
+        VITE_LLM_RUNTIME_URL:    ${VITE_LLM_RUNTIME_URL:-}
         VITE_AUTH0_DOMAIN:       ${VITE_AUTH0_DOMAIN}
         VITE_AUTH0_CLIENT_ID:    ${VITE_AUTH0_CLIENT_ID}
         VITE_AUTH0_AUDIENCE:     ${VITE_AUTH0_AUDIENCE}
@@ -26,6 +28,8 @@ services:
     ports:
       - "3000:80"
     restart: unless-stopped
+    networks:
+      - vega-net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:80"]
       interval: 30s
@@ -52,3 +56,8 @@ services:
     profiles:
       - dev
     restart: unless-stopped
+
+networks:
+  vega-net:
+    external: true
+    name: native-backend_default
