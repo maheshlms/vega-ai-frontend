@@ -113,6 +113,357 @@ const KNOWN_STREAMING_AVATARS: Record<string, string[]> = {
 
 const DEFAULT_STREAMING_AVATAR = 'Marianne_ProfessionalLook_public';
 
+// ─── Guided Actions — fully dynamic per agent ────────────────────────────────
+
+interface GuidedAction {
+  icon: string;
+  label: string;
+  prompt: string;
+  color: string;
+}
+
+/**
+ * Derives contextual quick-actions purely from the agent's name, type, and
+ * integrationType. No hardcoded category buckets — we match keywords in the
+ * combined identity string so every agent gets actions that match what it does.
+ */
+function getActionsForAgent(agent: Agent | null): GuidedAction[] {
+  // Build a single lowercase search string from all identity fields
+  const identity = [
+    agent?.name ?? '',
+    agent?.type ?? '',
+    agent?.config?.integrationType ?? '',
+    agent?.config?.targetSystemName ?? '',
+    agent?.description ?? '',
+    agent?.role ?? '',
+  ].join(' ').toLowerCase().replace(/[-\s]+/g, '_');
+
+  // ── Certificate / SSL agent ───────────────────────────────────────────────
+  if (
+    identity.includes('cert') ||
+    identity.includes('ssl') ||
+    identity.includes('tls') ||
+    identity.includes('pki')
+  ) {
+    return [
+      { icon: '🔍', label: 'Certificate status',   prompt: 'What is the current status of all certificates?',         color: '#6366f1' },
+      { icon: '⚠️', label: 'Expiring certs',        prompt: 'Which certificates are expiring in the next 30 days?',    color: '#f59e0b' },
+      { icon: '📋', label: 'List certificates',     prompt: 'List all certificates with their expiry dates.',          color: '#10b981' },
+      { icon: '🔄', label: 'Update certificate',    prompt: 'I want to update or renew a certificate.',               color: '#3b82f6' },
+      { icon: '📥', label: 'Install certificate',   prompt: 'How do I install a new SSL/TLS certificate?',            color: '#8b5cf6' },
+      { icon: '📊', label: 'Certificate report',    prompt: 'Generate a full report of all certificate activity.',    color: '#ec4899' },
+    ];
+  }
+
+  // ── License agent ─────────────────────────────────────────────────────────
+  if (identity.includes('licen')) {
+    return [
+      { icon: '🔍', label: 'License status',        prompt: 'What is the current status of my licenses?',             color: '#6366f1' },
+      { icon: '⚠️', label: 'Expiring licenses',     prompt: 'Which licenses are expiring in the next 30 days?',       color: '#f59e0b' },
+      { icon: '📋', label: 'List all licenses',      prompt: 'Show me all active licenses and their details.',         color: '#10b981' },
+      { icon: '🔄', label: 'Update license',         prompt: 'Update license',                 color: '#3b82f6' },
+      { icon: '📥', label: 'Install a license',      prompt: 'I want to install a new license file.',                 color: '#8b5cf6' },
+      { icon: '📊', label: 'License report',         prompt: 'Generate a summary report of all license activity.',    color: '#ec4899' },
+    ];
+  }
+
+  // ── PingFederate / SSO / Federation agent ────────────────────────────────
+  if (
+    identity.includes('ping_federate') ||
+    identity.includes('pingfederate') ||
+    identity.includes('federation') ||
+    identity.includes('sso')
+  ) {
+    return [
+      { icon: '🔐', label: 'SSO status',            prompt: 'What is the current SSO federation status?',             color: '#e9472a' },
+      { icon: '📜', label: 'Certificate check',     prompt: 'Check all SSL/TLS certificates for expiry.',             color: '#f59e0b' },
+      { icon: '👥', label: 'Active sessions',       prompt: 'How many active SSO sessions are there right now?',      color: '#10b981' },
+      { icon: '⚙️', label: 'Config review',         prompt: 'Review current PingFederate configuration settings.',   color: '#6366f1' },
+      { icon: '🔄', label: 'Sync adapters',         prompt: 'Check the status of all authentication adapters.',      color: '#8b5cf6' },
+      { icon: '📊', label: 'Audit log',             prompt: 'Show recent authentication audit log entries.',          color: '#ec4899' },
+    ];
+  }
+
+  // ── PingDirectory / LDAP / Directory agent ────────────────────────────────
+  if (
+    identity.includes('ping_directory') ||
+    identity.includes('pingdirectory') ||
+    identity.includes('directory') ||
+    identity.includes('ldap')
+  ) {
+    return [
+      { icon: '📁', label: 'Directory status',      prompt: 'What is the current directory health status?',           color: '#0a85c2' },
+      { icon: '🔍', label: 'Search users',          prompt: 'Help me search for a user in the directory.',            color: '#6366f1' },
+      { icon: '🔄', label: 'Replication status',    prompt: 'Check the directory replication status.',               color: '#10b981' },
+      { icon: '📊', label: 'Schema details',        prompt: 'Show me the directory schema details.',                  color: '#f59e0b' },
+      { icon: '🔐', label: 'Access controls',       prompt: 'Review current access control settings.',               color: '#8b5cf6' },
+      { icon: '⚠️', label: 'Error logs',            prompt: 'Show recent error log entries from the directory.',      color: '#ef4444' },
+    ];
+  }
+
+  // ── PingOne / Cloud Identity agent ────────────────────────────────────────
+  if (identity.includes('ping_one') || identity.includes('pingone') || identity.includes('cloud_identity')) {
+    return [
+      { icon: '☁️', label: 'Cloud status',          prompt: 'What is the current PingOne cloud status?',             color: '#7c3aed' },
+      { icon: '👤', label: 'User management',       prompt: 'How do I manage users in PingOne?',                     color: '#6366f1' },
+      { icon: '🔐', label: 'MFA status',            prompt: 'Check the multi-factor authentication status.',          color: '#10b981' },
+      { icon: '📊', label: 'Sign-on report',        prompt: 'Show recent sign-on activity and statistics.',           color: '#f59e0b' },
+      { icon: '⚙️', label: 'App connections',       prompt: 'List all connected applications and their status.',     color: '#8b5cf6' },
+      { icon: '🔄', label: 'Sync status',           prompt: 'Check the identity sync status across systems.',        color: '#ec4899' },
+    ];
+  }
+
+  // ── Connection / Connectivity agent ───────────────────────────────────────
+  if (identity.includes('connect')) {
+    return [
+      { icon: '🔗', label: 'Test connection',       prompt: 'Can you test the current system connection?',           color: '#6366f1' },
+      { icon: '📡', label: 'Connection status',     prompt: 'What is the current connection status?',               color: '#10b981' },
+      { icon: '🛠️', label: 'Troubleshoot',          prompt: 'Help me troubleshoot connection issues.',               color: '#f59e0b' },
+      { icon: '🔐', label: 'SSL certificate',       prompt: 'Check the SSL certificate status and expiry.',          color: '#3b82f6' },
+      { icon: '📋', label: 'View config',           prompt: 'Show me the current system configuration.',             color: '#8b5cf6' },
+      { icon: '🔄', label: 'Restart service',       prompt: 'How do I restart the connected service?',              color: '#ec4899' },
+    ];
+  }
+
+  // ── Fallback: generic agent ───────────────────────────────────────────────
+  const agentLabel = agent?.name || 'this agent';
+  return [
+    { icon: '🚀', label: 'What can you do?',        prompt: `What tasks can ${agentLabel} perform?`,                 color: '#6366f1' },
+    { icon: '📊', label: 'System status',           prompt: 'Give me an overview of the current system status.',     color: '#10b981' },
+    { icon: '🔍', label: 'Run diagnostics',         prompt: 'Run a full system diagnostic check.',                   color: '#3b82f6' },
+    { icon: '📁', label: 'Recent activity',         prompt: 'Show me the recent activity and changes.',              color: '#f59e0b' },
+    { icon: '⚙️', label: 'Configuration',           prompt: 'Review the current configuration settings.',            color: '#8b5cf6' },
+    { icon: '❓', label: 'How to get started',      prompt: `How do I get started using ${agentLabel}?`,            color: '#ec4899' },
+  ];
+}
+
+// ─── Guided Actions Panel ─────────────────────────────────────────────────────
+
+interface GuidedActionsPanelProps {
+  agent: Agent | null;
+  visible: boolean;
+  onDismiss: () => void;
+  onActionClick: (prompt: string) => void;
+}
+
+const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible, onDismiss, onActionClick }) => {
+  const actions = getActionsForAgent(agent);
+  const agentName = agent?.name || 'your agent';
+
+  return (
+    <div className={`agc-guided-panel ${visible ? 'agc-guided-visible' : 'agc-guided-hidden'}`}>
+      <div className="agc-guided-inner">
+        {/* Header */}
+        <div className="agc-guided-header">
+          <div className="agc-guided-header-left">
+            <div className="agc-guided-pulse-dot" />
+            <div>
+              <div className="agc-guided-title">Quick Actions</div>
+              <div className="agc-guided-subtitle">Click any action to get started with {agentName}</div>
+            </div>
+          </div>
+          <button className="agc-guided-dismiss" onClick={onDismiss} title="Dismiss">
+            <IoClose size={14} />
+          </button>
+        </div>
+
+        {/* Action grid */}
+        <div className="agc-guided-grid">
+          {actions.map((action, i) => (
+            <button
+              key={i}
+              className="agc-guided-action"
+              style={{ '--action-color': action.color, animationDelay: `${i * 0.06 + 0.1}s` } as React.CSSProperties}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => onActionClick(action.prompt)}
+            >
+              {/* <span className="agc-guided-action-icon">{action.icon}</span> */}
+              <span className="agc-guided-action-label">{action.label}</span>
+              <span className="agc-guided-action-arrow">→</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Footer hint */}
+        <div className="agc-guided-footer">
+          <span>💡</span>
+          <span>Or type your own message below to ask anything</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Onboarding Tour ─────────────────────────────────────────────────────────
+
+interface TourStep {
+  id: string;
+  title: string;
+  description: string;
+  position: 'top' | 'bottom' | 'left' | 'right';
+}
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: 'tour-start-btn',
+    title: '🎬 Avatar Session',
+    description: 'Click Start to activate your AI avatar. It will speak responses aloud and respond to your voice in real time.',
+    position: 'right',
+  },
+  {
+    id: 'tour-attach-btn',
+    title: '📎 Attach Files',
+    description: 'Upload license files, certificates, or documents directly. Supported: .lic, .pem, .crt, .key, .txt',
+    position: 'top',
+  },
+  {
+    id: 'tour-voice-btn',
+    title: '🎙️ Voice Input',
+    description: 'Click the microphone to speak your question instead of typing. The agent will transcribe and respond.',
+    position: 'top',
+  },
+  {
+    id: 'tour-send-btn',
+    title: '✈️ Send Message',
+    description: 'Type your question and hit Send — or press Enter. The agent will process and reply instantly.',
+    position: 'top',
+  },
+  {
+    id: 'tour-quick-actions',
+    title: '⚡ Quick Actions',
+    description: 'Click the text box anytime to see suggested actions tailored for this agent. Great for getting started fast.',
+    position: 'top',
+  },
+  {
+    id: 'tour-clear-chat',
+    title: '🗑️ Clear Chat',
+    description: 'Resets the conversation to start fresh. Useful when switching between tasks.',
+    position: 'bottom',
+  },
+];
+
+interface TourTooltipProps {
+  step: TourStep;
+  stepIndex: number;
+  totalSteps: number;
+  targetRect: DOMRect | null;
+  onNext: () => void;
+  onSkip: () => void;
+}
+
+const TourTooltip: React.FC<TourTooltipProps> = ({ step, stepIndex, totalSteps, targetRect, onNext, onSkip }) => {
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!targetRect || !tooltipRef.current) return;
+    const tt = tooltipRef.current.getBoundingClientRect();
+    const gap = 14;
+    let top = 0, left = 0;
+
+    if (step.position === 'bottom') {
+      top = targetRect.bottom + gap;
+      left = targetRect.left + targetRect.width / 2 - tt.width / 2;
+    } else if (step.position === 'top') {
+      top = targetRect.top - tt.height - gap;
+      left = targetRect.left + targetRect.width / 2 - tt.width / 2;
+    } else if (step.position === 'right') {
+      top = targetRect.top + targetRect.height / 2 - tt.height / 2;
+      left = targetRect.right + gap;
+    } else {
+      top = targetRect.top + targetRect.height / 2 - tt.height / 2;
+      left = targetRect.left - tt.width - gap;
+    }
+
+    // Keep within viewport
+    const vw = window.innerWidth, vh = window.innerHeight;
+    left = Math.max(12, Math.min(left, vw - tt.width - 12));
+    top  = Math.max(12, Math.min(top,  vh - tt.height - 12));
+    setPos({ top, left });
+  }, [targetRect, step]);
+
+  const arrowStyle = (pos: string): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      position: 'absolute', width: 10, height: 10,
+      background: '#fff', border: '1px solid #e5e7eb',
+      transform: 'rotate(45deg)',
+    };
+    if (pos === 'bottom') return { ...base, top: -6, left: '50%', marginLeft: -5, borderRight: 'none', borderBottom: 'none' };
+    if (pos === 'top')    return { ...base, bottom: -6, left: '50%', marginLeft: -5, borderLeft: 'none', borderTop: 'none' };
+    if (pos === 'right')  return { ...base, top: '50%', marginTop: -5, left: -6, borderRight: 'none', borderTop: 'none' };
+    return                       { ...base, top: '50%', marginTop: -5, right: -6, borderLeft: 'none', borderBottom: 'none' };
+  };
+
+  return (
+    <div
+      ref={tooltipRef}
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        left: pos.left,
+        zIndex: 10000,
+        width: 260,
+        background: '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 14,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(99,102,241,0.10)',
+        padding: '14px 16px 12px',
+        animation: 'tour-pop 0.22s cubic-bezier(0.16,1,0.3,1)',
+      }}
+    >
+      <style>{`
+        @keyframes tour-pop {
+          from { opacity: 0; transform: scale(0.92) translateY(6px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .tour-next-btn {
+          display: flex; align-items: center; gap: 5px;
+          padding: 7px 14px; border-radius: 8px;
+          background: linear-gradient(135deg,#4f46e5,#6366f1);
+          border: none; color: #fff; font-size: 12px; font-weight: 600;
+          cursor: pointer; transition: opacity 0.15s;
+        }
+        .tour-next-btn:hover { opacity: 0.88; }
+        .tour-skip-btn {
+          background: none; border: none; color: #9ca3af;
+          font-size: 11.5px; cursor: pointer; padding: 7px 8px;
+          border-radius: 7px; transition: color 0.15s;
+        }
+        .tour-skip-btn:hover { color: #6b7280; }
+      `}</style>
+
+      {/* Arrow */}
+      <div style={arrowStyle(step.position)} />
+
+      {/* Step counter */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div key={i} style={{
+              width: i === stepIndex ? 16 : 6, height: 6, borderRadius: 3,
+              background: i === stepIndex ? '#6366f1' : '#e5e7eb',
+              transition: 'all 0.2s',
+            }} />
+          ))}
+        </div>
+        <span style={{ fontSize: 10.5, color: '#9ca3af' }}>{stepIndex + 1} / {totalSteps}</span>
+      </div>
+
+      {/* Content */}
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111827', marginBottom: 5 }}>{step.title}</div>
+      <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.55, marginBottom: 12 }}>{step.description}</div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button className="tour-skip-btn" onClick={onSkip}>Skip tour</button>
+        <button className="tour-next-btn" onClick={onNext}>
+          {stepIndex === totalSteps - 1 ? '🎉 Done' : 'Next →'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Avatar Image with fallback ───────────────────────────────────────────────
 interface AvatarImgProps {
   src?: string;
@@ -154,7 +505,6 @@ const AgentChat: React.FC = () => {
   const { isDark } = useTheme();
 
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
-  // const [agentError, setAgentError] = useState<string>('');
   const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
   const [targetSystem, setTargetSystem] = useState<any>(null);
 
@@ -168,6 +518,16 @@ const AgentChat: React.FC = () => {
   const [approvalProcessing, setApprovalProcessing] = useState<boolean>(false);
   const [approvalClickedAction, setApprovalClickedAction] = useState<'approve' | 'reject' | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
+
+  // ── Guided actions state ──────────────────────────────────────────────────
+  const [showGuidedActions, setShowGuidedActions] = useState<boolean>(false);
+  const [guidedDismissed, setGuidedDismissed] = useState<boolean>(false);
+  const guidedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Onboarding tour state ─────────────────────────────────────────────────
+  const [tourActive, setTourActive] = useState<boolean>(false);
+  const [tourStep, setTourStep] = useState<number>(0);
+  const [tourTargetRect, setTourTargetRect] = useState<DOMRect | null>(null);
 
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [isAvatarActive, setIsAvatarActive] = useState(false);
@@ -210,37 +570,103 @@ const AgentChat: React.FC = () => {
   }, []);
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
+  // ── Show guided actions after 5 seconds on initial load ──────────────────
+  useEffect(() => {
+    guidedTimerRef.current = setTimeout(() => {
+      if (!isTyping) setShowGuidedActions(true);
+    }, 5000);
+    return () => {
+      if (guidedTimerRef.current) clearTimeout(guidedTimerRef.current);
+    };
+  }, []); // eslint-disable-line
+
+  const handleGuidedActionClick = useCallback((prompt: string) => {
+    setInputValue(prompt);
+    setShowGuidedActions(false);
+    // Re-focus input so user can immediately hit Enter or edit
+    requestAnimationFrame(() => {
+      const inputEl = document.querySelector('.agc-text-input') as HTMLInputElement;
+      if (inputEl) { inputEl.focus(); inputEl.setSelectionRange(prompt.length, prompt.length); }
+    });
+  }, []);
+
+  const handleDismissGuided = useCallback(() => {
+    // Only hide panel temporarily — user can reopen by clicking the input again
+    setShowGuidedActions(false);
+  }, []);
+
+  // ── Tour logic ────────────────────────────────────────────────────────────
+  const getTourStorageKey = useCallback(() => `agentTourSeen_${agentId || 'default'}`, [agentId]);
+
+  const measureTourTarget = useCallback((stepId: string) => {
+    const el = document.getElementById(stepId);
+    if (el) {
+      setTourTargetRect(el.getBoundingClientRect());
+    } else {
+      setTourTargetRect(null);
+    }
+  }, []);
+
+  // Start tour only if this agent was JUST created (isNewAgent flag in route state)
+  // and hasn't been toured before (localStorage guard prevents repeat on refresh)
+  useEffect(() => {
+    if (loadingAgent || !agentId) return;
+    const isNewAgent = (location.state as any)?.isNewAgent === true;
+    if (!isNewAgent) return;
+    const key = getTourStorageKey();
+    const alreadySeen = localStorage.getItem(key);
+    if (!alreadySeen) {
+      const t = setTimeout(() => {
+        setTourActive(true);
+        setTourStep(0);
+        measureTourTarget(TOUR_STEPS[0].id);
+      }, 800);
+      return () => clearTimeout(t);
+    }
+  }, [loadingAgent, agentId]); // eslint-disable-line
+
+  // Re-measure target whenever step changes
+  useEffect(() => {
+    if (!tourActive) return;
+    measureTourTarget(TOUR_STEPS[tourStep].id);
+  }, [tourStep, tourActive]); // eslint-disable-line
+
+  const handleTourNext = useCallback(() => {
+    if (tourStep < TOUR_STEPS.length - 1) {
+      setTourStep(s => s + 1);
+    } else {
+      // Tour complete
+      setTourActive(false);
+      localStorage.setItem(getTourStorageKey(), '1');
+    }
+  }, [tourStep, getTourStorageKey]);
+
+  const handleTourSkip = useCallback(() => {
+    setTourActive(false);
+    localStorage.setItem(getTourStorageKey(), '1');
+  }, [getTourStorageKey]);
+
   useEffect(() => {
     const fetchAgent = async () => {
       if (!agentId || agentId.startsWith('default-')) { setLoadingAgent(false); return; }
       try {
         const data = await api.llmRuntime.getAgent(agentId);
-        console.log('[AgentChat] Fetched agent data:', data);
-        console.log('[AgentChat] Agent config:', data?.config);
-        console.log('[AgentChat] Agent target_system:', data?.target_system);
         setAgent(data);
       } catch (err) {
         console.error('Failed to load agent details', err);
-        // setAgentError('Unable to load agent details');
         if (preloadedAgent) setAgent(preloadedAgent);
       } finally { setLoadingAgent(false); }
     };
     fetchAgent();
   }, [agentId]); // eslint-disable-line
 
-  // Fetch target system details when agent has a targetId
   useEffect(() => {
     const fetchTargetSystem = async () => {
       const targetId = agent?.config?.targetId;
-      if (!targetId) {
-        setTargetSystem(null);
-        return;
-      }
+      if (!targetId) { setTargetSystem(null); return; }
       try {
         const data = await api.targetSystems.get(targetId);
-        console.log('[AgentChat] Fetched target system:', data);
         setTargetSystem(data);
-        // Update agent with target system data
         setAgent(prevAgent => prevAgent ? { ...prevAgent, target_system: data } : null);
       } catch (err) {
         console.error('Failed to load target system details', err);
@@ -275,9 +701,7 @@ const AgentChat: React.FC = () => {
   const handleMuteToggle = useCallback(() => {
     const newMuted = !muted;
     setMuted(newMuted);
-    if (audioElRef.current) {
-      audioElRef.current.volume = newMuted ? 0 : volumeRef.current;
-    }
+    if (audioElRef.current) audioElRef.current.volume = newMuted ? 0 : volumeRef.current;
   }, [muted]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
@@ -285,19 +709,15 @@ const AgentChat: React.FC = () => {
     setVolume(newVolume);
     if (newVolume > 0 && muted) setMuted(false);
     if (newVolume === 0) setMuted(true);
-    if (audioElRef.current) {
-      audioElRef.current.volume = newVolume;
-    }
+    if (audioElRef.current) audioElRef.current.volume = newVolume;
   }, [muted]);
 
   const fetchSessionToken = async (): Promise<string> => {
     const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
     if (!apiKey) throw new Error('NO_API_KEY');
-
     const headers = { 'x-api-key': apiKey, 'Content-Type': 'application/json' };
     const parseToken = (data: any): string | null =>
       data?.data?.token ?? data?.token ?? data?.data?.access_token ?? data?.access_token ?? null;
-
     for (const endpoint of ['/heygen-api/v1/streaming.create_token', '/heygen-api/v1/realtime.token']) {
       try {
         log(`Fetching token from ${endpoint}…`);
@@ -320,48 +740,30 @@ const AgentChat: React.FC = () => {
 
   const resolveStreamingAvatarId = async (): Promise<string> => {
     const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
-
     const currentAvatarId = avatarIdRef.current;
     if (currentAvatarId && currentAvatarId.trim()) {
       log('✅ Using stored avatar ID: ' + currentAvatarId);
       setResolvedAvatarId(currentAvatarId);
       return currentAvatarId.trim();
     }
-
     log('⚠️ No stored avatar ID — searching by name: ' + avatarName);
     let streamingAvatars: Array<{ id: string; name: string }> = [];
     try {
-      const r = await fetch('/heygen-api/v1/streaming/avatar.list', {
-        headers: { 'x-api-key': apiKey },
-      });
+      const r = await fetch('/heygen-api/v1/streaming/avatar.list', { headers: { 'x-api-key': apiKey } });
       if (r.ok) {
         const data = await r.json();
         const raw: any[] =
           Array.isArray(data?.data) ? data.data :
           Array.isArray(data?.data?.avatars) ? data.data.avatars :
           Array.isArray(data?.avatars) ? data.avatars : [];
-        streamingAvatars = raw.map((a: any) => ({
-          id: a.avatar_id ?? a.id ?? '',
-          name: (a.avatar_name ?? a.name ?? '').toLowerCase(),
-        })).filter(a => a.id);
-        log(`📋 ${streamingAvatars.length} streaming avatars available`);
-        streamingAvatars.forEach(a => log('   • ' + a.id));
+        streamingAvatars = raw.map((a: any) => ({ id: a.avatar_id ?? a.id ?? '', name: (a.avatar_name ?? a.name ?? '').toLowerCase() })).filter(a => a.id);
       }
     } catch (e: any) { log('⚠️ Could not fetch avatar list: ' + e.message); }
-
     if (avatarName && streamingAvatars.length > 0) {
       const firstWord = avatarName.trim().split(/\s+/)[0].toLowerCase();
-      const match = streamingAvatars.find(a =>
-        a.id.toLowerCase().startsWith(firstWord + '_') || a.id.toLowerCase() === firstWord
-      );
-      if (match) {
-        log('✅ First-word match: "' + firstWord + '" → ' + match.id);
-        setResolvedAvatarId(match.id);
-        return match.id;
-      }
-      log('ℹ️ No match for first word "' + firstWord + '"');
+      const match = streamingAvatars.find(a => a.id.toLowerCase().startsWith(firstWord + '_') || a.id.toLowerCase() === firstWord);
+      if (match) { log('✅ First-word match: "' + firstWord + '" → ' + match.id); setResolvedAvatarId(match.id); return match.id; }
     }
-
     const searchStr = (avatarName + ' ' + currentAvatarId).toLowerCase();
     for (const [keyword, ids] of Object.entries(KNOWN_STREAMING_AVATARS)) {
       if (searchStr.includes(keyword)) {
@@ -374,7 +776,6 @@ const AgentChat: React.FC = () => {
         }
       }
     }
-
     log('⚠️ Hard fallback: ' + DEFAULT_STREAMING_AVATAR);
     setResolvedAvatarId(DEFAULT_STREAMING_AVATAR);
     return DEFAULT_STREAMING_AVATAR;
@@ -397,19 +798,15 @@ const AgentChat: React.FC = () => {
     setIsLoadingSession(true);
     audioTracksRef.current = [];
     hasSpokenInit.current = false;
-
     try {
       const sessionToken = await fetchSessionToken();
       const resolvedId = await resolveStreamingAvatarId();
       setResolvedAvatarId(resolvedId);
-
       log(`Initialising SDK with avatar: ${resolvedId}`);
       avatarRef.current = new StreamingAvatar({ token: sessionToken });
-
       avatarRef.current.on(StreamingEvents.STREAM_READY, (event: any) => {
         const stream: MediaStream = event.detail;
         log(`STREAM_READY — ${stream.getTracks().map((t: MediaStreamTrack) => t.kind).join(', ')}`);
-
         const videoTracks = stream.getVideoTracks();
         if (videoTracks.length && videoRef.current) {
           videoRef.current.srcObject = new MediaStream(videoTracks);
@@ -417,44 +814,24 @@ const AgentChat: React.FC = () => {
           setHasVideo(true);
           log('✅ Video live');
         }
-
         stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
           audioTracksRef.current.push(track);
-          track.addEventListener('ended', () => {
-            audioTracksRef.current = audioTracksRef.current.filter(t => t.id !== track.id);
-            rebuildAudio();
-          });
+          track.addEventListener('ended', () => { audioTracksRef.current = audioTracksRef.current.filter(t => t.id !== track.id); rebuildAudio(); });
         });
         if (stream.getAudioTracks().length) rebuildAudio();
       });
-
-      avatarRef.current.on(StreamingEvents.AVATAR_START_TALKING, () => {
-        setIsPlaying(true); log('Speaking…');
-      });
-      avatarRef.current.on(StreamingEvents.AVATAR_STOP_TALKING, () => {
-        setIsPlaying(false); log('Ready');
-      });
-      avatarRef.current.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-        setHasVideo(false); setIsAvatarActive(false); log('Disconnected');
-      });
-
+      avatarRef.current.on(StreamingEvents.AVATAR_START_TALKING, () => { setIsPlaying(true); log('Speaking…'); });
+      avatarRef.current.on(StreamingEvents.AVATAR_STOP_TALKING, () => { setIsPlaying(false); log('Ready'); });
+      avatarRef.current.on(StreamingEvents.STREAM_DISCONNECTED, () => { setHasVideo(false); setIsAvatarActive(false); log('Disconnected'); });
       log(`Starting avatar session…`);
-      const sessionData = await avatarRef.current.createStartAvatar({
-        quality: AvatarQuality.High,
-        avatarName: resolvedId,
-        language: 'en',
-      });
+      const sessionData = await avatarRef.current.createStartAvatar({ quality: AvatarQuality.High, avatarName: resolvedId, language: 'en' });
       log(`✅ Session: ${sessionData?.session_id} | Avatar: ${resolvedId}`);
       setIsAvatarActive(true);
-
       setTimeout(() => {
         if (avatarRef.current) {
-          const greeting = `Hello! . How can I help you ?`;
-          avatarRef.current.speak({ text: greeting, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC })
-            .catch((_: Error) => {});
+          avatarRef.current.speak({ text: `Hello! How can I help you?`, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC }).catch((_: Error) => {});
         }
       }, 1000);
-
     } catch (err: any) {
       log(`❌ Error: ${err.message}`);
       const msgs: Record<string, string> = {
@@ -463,23 +840,14 @@ const AgentChat: React.FC = () => {
         ALL_TOKEN_ENDPOINTS_FAILED: '❌ Could not reach HeyGen. Check Vite proxy config.',
       };
       alert(msgs[err.message] ?? `❌ ${err.message}`);
-    } finally {
-      setIsLoadingSession(false);
-    }
+    } finally { setIsLoadingSession(false); }
   }, [isLoadingSession, isAvatarActive, avatarName, rebuildAudio, log]); // eslint-disable-line
 
   const speakMessage = useCallback(async (text: string) => {
     if (!avatarRef.current || !isAvatarActive || !text.trim()) return;
-    const clean = text
-      .replace(/[#*`_~\[\]]/g, '')
-      .replace(/\n+/g, ' ')
-      .trim()
-      .substring(0, 900);
-    try {
-      await avatarRef.current.speak({ text: clean, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC });
-    } catch (e: any) {
-      log(`Speak error: ${e.message}`);
-    }
+    const clean = text.replace(/[#*`_~\[\]]/g, '').replace(/\n+/g, ' ').trim().substring(0, 900);
+    try { await avatarRef.current.speak({ text: clean, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC }); }
+    catch (e: any) { log(`Speak error: ${e.message}`); }
   }, [isAvatarActive, log]);
 
   const handleInterrupt = useCallback(async () => {
@@ -489,27 +857,17 @@ const AgentChat: React.FC = () => {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (!hasVideo) {
-      if (chromaRafRef.current) cancelAnimationFrame(chromaRafRef.current);
-      return;
-    }
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
+    if (!hasVideo) { if (chromaRafRef.current) cancelAnimationFrame(chromaRafRef.current); return; }
+    const video = videoRef.current; const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
-
     const processFrame = () => {
       if (video.readyState < 2) { chromaRafRef.current = requestAnimationFrame(processFrame); return; }
-      const vw = video.videoWidth || 640;
-      const vh = video.videoHeight || 480;
-      if (canvas.width !== vw || canvas.height !== vh) {
-        canvas.width = vw;
-        canvas.height = vh;
-      }
+      const vw = video.videoWidth || 640; const vh = video.videoHeight || 480;
+      if (canvas.width !== vw || canvas.height !== vh) { canvas.width = vw; canvas.height = vh; }
       ctx.drawImage(video, 0, 0, vw, vh);
-      const frame = ctx.getImageData(0, 0, vw, vh);
-      const d = frame.data;
+      const frame = ctx.getImageData(0, 0, vw, vh); const d = frame.data;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
         if (g > 80 && g > r * 1.3 && g > b * 1.3) d[i + 3] = 0;
@@ -517,18 +875,13 @@ const AgentChat: React.FC = () => {
       ctx.putImageData(frame, 0, 0);
       chromaRafRef.current = requestAnimationFrame(processFrame);
     };
-
     chromaRafRef.current = requestAnimationFrame(processFrame);
     return () => { if (chromaRafRef.current) cancelAnimationFrame(chromaRafRef.current); };
   }, [hasVideo]);
 
   useEffect(() => {
-    if (isAvatarActive) {
-      timerRef.current = setInterval(() => setSessionDuration(s => s + 1), 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setSessionDuration(0);
-    }
+    if (isAvatarActive) { timerRef.current = setInterval(() => setSessionDuration(s => s + 1), 1000); }
+    else { if (timerRef.current) clearInterval(timerRef.current); setSessionDuration(0); }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isAvatarActive]);
 
@@ -537,6 +890,7 @@ const AgentChat: React.FC = () => {
       endSession();
       if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current.srcObject = null; }
       if (recognitionRef.current) recognitionRef.current.abort();
+      if (guidedTimerRef.current) clearTimeout(guidedTimerRef.current);
     };
   }, []); // eslint-disable-line
 
@@ -550,10 +904,7 @@ const AgentChat: React.FC = () => {
     recognitionRef.current.onresult = (e: SpeechRecognitionEvent) => {
       const transcript = e.results[0][0].transcript.trim();
       setIsListening(false);
-      if (transcript) {
-        setInputValue(transcript);
-        setAutoSendVoice(true);
-      }
+      if (transcript) { setInputValue(transcript); setAutoSendVoice(true); }
     };
     recognitionRef.current.onerror = () => setIsListening(false);
     recognitionRef.current.onend = () => setIsListening(false);
@@ -572,23 +923,17 @@ const AgentChat: React.FC = () => {
     if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
     if (e.target) e.target.value = '';
   };
-  const handleRemoveFile = (index: number) =>
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveFile = (index: number) => setAttachedFiles(prev => prev.filter((_, i) => i !== index));
 
   const handleDownloadFromMetadata = useCallback((content: string, filename: string, mimeType: string = 'application/octet-stream') => {
     try {
       const blob = new Blob([content], { type: mimeType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      alert('Failed to download file. Please try again.');
-    }
+      link.href = url; link.download = filename;
+      document.body.appendChild(link); link.click();
+      document.body.removeChild(link); window.URL.revokeObjectURL(url);
+    } catch (error) { alert('Failed to download file. Please try again.'); }
   }, []);
 
   const handleDownloadFile = async (message: Message): Promise<void> => {
@@ -598,154 +943,79 @@ const AgentChat: React.FC = () => {
       const token = auth.getToken();
       if (!token) throw new Error('No authentication token found');
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-      const response = await fetch(`${backendUrl}${message.file_path}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(`${backendUrl}${message.file_path}`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = message.filename || 'download.txt';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error: any) {
-      alert(`Failed to download file: ${error.message}`);
-    } finally {
-      setDownloadingFileId(null);
-    }
+      a.href = url; a.download = message.filename || 'download.txt';
+      document.body.appendChild(a); a.click();
+      window.URL.revokeObjectURL(url); document.body.removeChild(a);
+    } catch (error: any) { alert(`Failed to download file: ${error.message}`); }
+    finally { setDownloadingFileId(null); }
   };
 
-  // ── Approval ──────────────────────────────────────────────────────────────
   const handleApprovalButtonClick = async (action: string) => {
     if (!pendingApproval) return;
     setApprovalClickedAction(action as 'approve' | 'reject');
     setApprovalProcessing(true);
     try {
-      const endpoint = action === 'approve'
-        ? '/api/v1/approvals/button-approve'
-        : '/api/v1/approvals/button-reject';
-      const response = await api.fetchWithAuth(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ approval_id: pendingApproval.approval_id }),
-      });
+      const endpoint = action === 'approve' ? '/api/v1/approvals/button-approve' : '/api/v1/approvals/button-reject';
+      const response = await api.fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify({ approval_id: pendingApproval.approval_id }) });
       if (!response.ok) throw new Error(`Approval request failed: ${response.statusText}`);
       await response.json();
-
       const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
-      const approveText = isSSL
-        ? '✓ SSL certificate update approved. Proceeding with activation...'
-        : '✓ License approval confirmed. Proceeding with installation...';
-      const rejectText = isSSL
-        ? '✗ SSL certificate update rejected. Process aborted.'
-        : '✗ License approval rejected. Process aborted.';
-      const successText = isSSL
-        ? '✓ SSL certificate imported and activated successfully!'
-        : '✓ License installation completed!';
-      const failText = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
-
-      const stripHtmlForSpeech = (html: string) =>
-        html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        text: action === 'approve' ? approveText : rejectText,
-        sender: 'ai',
-        timestamp: new Date(),
-      }]);
-      // Await speak so avatar finishes before the result message appears
+      const approveText = isSSL ? '✓ SSL certificate update approved. Proceeding with activation...' : '✓ License approval confirmed. Proceeding with installation...';
+      const rejectText  = isSSL ? '✗ SSL certificate update rejected. Process aborted.' : '✗ License approval rejected. Process aborted.';
+      const successText = isSSL ? '✓ SSL certificate imported and activated successfully!' : '✓ License installation completed!';
+      const failText    = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
+      const stripHtmlForSpeech = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
       if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
-
       if (action === 'approve') {
         try {
-          const executeResponse = await api.fetchWithAuth(`/api/v1/approvals/${pendingApproval.approval_id}`, {
-            method: 'POST',
-            body: JSON.stringify({ session_id: pendingApproval.session_id }),
-          });
+          const executeResponse = await api.fetchWithAuth(`/api/v1/approvals/${pendingApproval.approval_id}`, { method: 'POST', body: JSON.stringify({ session_id: pendingApproval.session_id }) });
           if (executeResponse.ok) {
             const executeData = await executeResponse.json();
             const resultText = executeData.message || successText;
-            setMessages(prev => [...prev, {
-              id: Date.now() + 1,
-              text: resultText,
-              sender: 'ai',
-              timestamp: new Date(),
-              isSuccess: executeData.success,
-            }]);
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success }]);
             if (isAvatarActive) await speakMessage(stripHtmlForSpeech(resultText));
           } else {
             const errorData = await executeResponse.json();
             const errText = errorData.message || failText;
-            setMessages(prev => [...prev, {
-              id: Date.now() + 1,
-              text: errText,
-              sender: 'ai',
-              timestamp: new Date(),
-              isError: true,
-            }]);
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: errText, sender: 'ai', timestamp: new Date(), isError: true }]);
             if (isAvatarActive) await speakMessage(stripHtmlForSpeech(errText));
           }
         } catch (executeError: any) {
-          setMessages(prev => [...prev, {
-            id: Date.now() + 1,
-            text: `Error during update: ${executeError.message}`,
-            sender: 'ai',
-            timestamp: new Date(),
-            isError: true,
-          }]);
+          setMessages(prev => [...prev, { id: Date.now() + 1, text: `Error during update: ${executeError.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
           if (isAvatarActive) await speakMessage(`Error during update: ${executeError.message}`);
         }
       }
       setPendingApproval(null);
-      // Reset session so the next upload starts a fresh agent session.
-      // The old session is left in approval/rejected state and would cause
-      // immediate errors if reused.
       sessionIdRef.current = null;
     } catch (error: any) {
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        text: `Error processing approval: ${error.message}`,
-        sender: 'ai',
-        isError: true,
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setApprovalProcessing(false);
-      setApprovalClickedAction(null);
-    }
+      setMessages(prev => [...prev, { id: Date.now(), text: `Error processing approval: ${error.message}`, sender: 'ai', isError: true, timestamp: new Date() }]);
+    } finally { setApprovalProcessing(false); setApprovalClickedAction(null); }
   };
 
-  // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (!inputValue.trim()) return;
-
     setPendingApproval(null);
     setShowWelcomeMessage(false);
+    setShowGuidedActions(false);
     const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
     const userKey = `User${userMessageIndex}`;
-
-    const userMessage: Message = {
-      id: Date.now(),
-      text: inputValue,
-      sender: 'user',
-      timestamp: new Date(),
-      files: attachedFiles.length > 0 ? attachedFiles.map(f => f.name) : undefined,
-    };
+    const userMessage: Message = { id: Date.now(), text: inputValue, sender: 'user', timestamp: new Date(), files: attachedFiles.length > 0 ? attachedFiles.map(f => f.name) : undefined };
+    setShowGuidedActions(false);
     setMessages(prev => [...prev, userMessage]);
-
     const updatedHistory: ChatHistory = { ...chatHistory, [userKey]: inputValue };
     setChatHistory(updatedHistory);
-
     const currentInput = inputValue;
     const filesToSend = [...attachedFiles];
     setInputValue('');
     setAttachedFiles([]);
     setIsTyping(true);
-
     if (isPlaying) handleInterrupt();
-
     try {
       const filesData: FileData[] = [];
       for (const file of filesToSend) {
@@ -757,56 +1027,32 @@ const AgentChat: React.FC = () => {
         });
         filesData.push({ name: file.name, type: file.type, data: base64 });
       }
-
       const currentSessionId = sessionIdRef.current || Date.now().toString();
       const response = await api.fetchWithAuth('/api/v1/chat', {
         method: 'POST',
         body: JSON.stringify({
-          user_id: 'current-user',
-          session_id: currentSessionId,
-          user_session_id: auth.getSessionId(),
-          agent_id: agent?.id,
-          agent_type: agent?.type || 'license',
-          message: currentInput,
+          user_id: 'current-user', session_id: currentSessionId,
+          user_session_id: auth.getSessionId(), agent_id: agent?.id,
+          agent_type: agent?.type || 'license', message: currentInput,
           files: filesData.length > 0 ? filesData : null,
           access_token: auth.getToken() || '',
         }),
       });
-
       if (!response.ok) throw new Error(`API error: ${response.statusText}`);
       const data = await response.json();
       const aiResponseText = data.message || 'I could not generate a response. Please try again.';
-
       if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
-
       if (data.approval_metadata?.approval_id && data.approval_metadata?.approval_method === 'button') {
-        setPendingApproval({
-          approval_id: data.approval_metadata.approval_id,
-          filename: data.approval_metadata.filename || 'file',
-          expires_at: data.approval_metadata.expires_at,
-          session_id: data.session_id,
-          action_type: data.approval_metadata.action_type,
-        });
+        setPendingApproval({ approval_id: data.approval_metadata.approval_id, filename: data.approval_metadata.filename || 'file', expires_at: data.approval_metadata.expires_at, session_id: data.session_id, action_type: data.approval_metadata.action_type });
       }
-
       setIsTyping(false);
-
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
       const agentKey = `Agent${agentMessageIndex}`;
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        text: aiResponseText,
-        sender: 'ai',
-        timestamp: new Date(),
-        file_path: data.file_path,
-        filename: data.filename,
-        metadata: data.metadata
-      };
+      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date(), file_path: data.file_path, filename: data.filename, metadata: data.metadata };
       setMessages(prev => [...prev, aiMessage]);
       setChatHistory({ ...updatedHistory, [agentKey]: aiResponseText });
       latestAIResponseRef.current = aiResponseText;
       await speakMessage(data.speech_text ?? '');
-
     } catch (error: any) {
       setIsTyping(false);
       const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Something went wrong. Please try again.');
@@ -816,10 +1062,7 @@ const AgentChat: React.FC = () => {
   }, [inputValue, chatHistory, agent, attachedFiles, isPlaying, speakMessage, handleInterrupt]);
 
   useEffect(() => {
-    if (autoSendVoice && inputValue.trim()) {
-      handleSend();
-      setAutoSendVoice(false);
-    }
+    if (autoSendVoice && inputValue.trim()) { handleSend(); setAutoSendVoice(false); }
   }, [autoSendVoice, inputValue, handleSend]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -830,6 +1073,8 @@ const AgentChat: React.FC = () => {
     if (isPlaying) { try { await avatarRef.current?.interrupt(); } catch (_) {} }
     setMessages([]); setInputValue(''); setChatHistory({}); sessionIdRef.current = null;
     setShowWelcomeMessage(true);
+    setShowGuidedActions(false);
+    setGuidedDismissed(false);
   }, [isPlaying]);
 
   const handleBack = useCallback(() => { endSession(); navigate('/agents'); }, [navigate, endSession]);
@@ -840,31 +1085,22 @@ const AgentChat: React.FC = () => {
     <>
       <style>{`
         .agc-root {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          width: 100%;
-          background: #F9FAFB;
-          overflow: hidden;
-          min-height: 0;
+          display: flex; flex-direction: column;
+          height: 100%; width: 100%;
+          background: #F9FAFB; overflow: hidden; min-height: 0;
         }
         .agc-header {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 8px 20px;
-          background: #fff;
+          padding: 8px 20px; background: #fff;
           box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-          flex-shrink: 0;
-          z-index: 20;
-          height: 50px;
-          box-sizing: border-box;
+          flex-shrink: 0; z-index: 20; height: 50px; box-sizing: border-box;
         }
         .agc-header-left { display: flex; align-items: center; gap: 16px; }
         .agc-back-btn {
           display: flex; align-items: center; gap: 6px;
           background: #111; border: none; cursor: pointer;
           color: #fff; font-size: 13px; font-weight: 500;
-          padding: 0 16px; height: 32px; border-radius: 8px;
-          transition: background 0.2s;
+          padding: 0 16px; height: 32px; border-radius: 8px; transition: background 0.2s;
         }
         .agc-back-btn:hover { background: #333; }
         .agc-identity { display: flex; align-items: center; gap: 10px; }
@@ -872,30 +1108,11 @@ const AgentChat: React.FC = () => {
         .agc-avatar-ring {
           position: absolute; inset: -2px; border-radius: 50%;
           background: linear-gradient(135deg, #6366f1, #10b981, #6366f1);
-          background-size: 300% 300%;
-          animation: agc-ring 4s linear infinite;
+          background-size: 300% 300%; animation: agc-ring 4s linear infinite;
         }
-        @keyframes agc-ring {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .agc-online-dot {
-          position: absolute; bottom: 0; right: 0;
-          width: 10px; height: 10px;
-          background: #10b981; border-radius: 50%;
-          border: 2px solid #fff; z-index: 2;
-          animation: agc-pulse 2s ease infinite;
-        }
-        @keyframes agc-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
-          50% { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
-        }
+        @keyframes agc-ring { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
         .agc-agent-name { font-size: 18px; font-weight: 700; color: #111827; }
-        .agc-agent-status {
-          font-size: 13px; color: #10b981; font-weight: 500;
-          display: flex; align-items: center; gap: 4px;
-        }
+        .agc-agent-status { font-size: 13px; color: #10b981; font-weight: 500; display: flex; align-items: center; gap: 4px; }
         .agc-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
         .agc-header-actions { display: flex; align-items: center; gap: 8px; }
         .agc-hbtn {
@@ -908,67 +1125,35 @@ const AgentChat: React.FC = () => {
         .agc-hbtn-neutral:hover { background: #f9fafb; color: #374151; }
         .agc-hbtn-red { background: #fff5f5; border-color: #fecaca; color: #ef4444; }
         .agc-hbtn-red:hover { background: #fee2e2; }
-        .agc-body {
-          display: flex;
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
-        }
+        .agc-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
         .agc-avatar-panel {
-          width: clamp(220px, 28vw, 350px);
-          flex-shrink: 0; flex-grow: 0;
-          border-right: 1px solid #eaecf0;
-          background: #fff;
-          display: flex; flex-direction: column;
-          overflow: hidden; position: relative;
+          width: clamp(220px, 28vw, 350px); flex-shrink: 0; flex-grow: 0;
+          border-right: 1px solid #eaecf0; background: #fff;
+          display: flex; flex-direction: column; overflow: hidden; position: relative;
         }
-        @media (max-width: 1100px) {
-          .agc-avatar-panel { width: clamp(200px, 26vw, 300px); }
-        }
-        @media (max-width: 800px) {
-          .agc-avatar-panel { width: clamp(160px, 38vw, 240px); }
-        }
+        @media (max-width: 1100px) { .agc-avatar-panel { width: clamp(200px, 26vw, 300px); } }
+        @media (max-width: 800px) { .agc-avatar-panel { width: clamp(160px, 38vw, 240px); } }
         @media (max-width: 560px) {
           .agc-body { flex-direction: column; }
           .agc-avatar-panel { width: 100%; height: 220px; min-height: 220px; border-right: none; border-bottom: 1px solid #eaecf0; }
         }
-        .agc-avatar-stage {
-          flex: 1; min-height: 0;
-          position: relative; overflow: hidden;
-          background: #f1f5f9;
-        }
-        .agc-speaking-ring {
-          position: absolute; inset: 0; pointer-events: none; z-index: 5;
-          border: 3px solid transparent; transition: border-color 0.3s;
-        }
-        .agc-speaking-ring.active {
-          border-color: #10b981;
-          animation: agc-speak-glow 1.2s ease-in-out infinite;
-        }
-        @keyframes agc-speak-glow {
-          0%, 100% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.3); }
-          50% { box-shadow: inset 0 0 0 3px rgba(16,185,129,0.7); }
-        }
+        .agc-avatar-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #f1f5f9; }
+        .agc-speaking-ring { position: absolute; inset: 0; pointer-events: none; z-index: 5; border: 3px solid transparent; transition: border-color 0.3s; }
+        .agc-speaking-ring.active { border-color: #10b981; animation: agc-speak-glow 1.2s ease-in-out infinite; }
+        @keyframes agc-speak-glow { 0%,100%{box-shadow:inset 0 0 0 3px rgba(16,185,129,0.3)} 50%{box-shadow:inset 0 0 0 3px rgba(16,185,129,0.7)} }
         .agc-avatar-top-bar {
-          position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-          padding: 0 8px;
-          background: rgba(255,255,255,0.9);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 0 8px;
+          background: rgba(255,255,255,0.9); backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(0,0,0,0.06);
           display: flex; align-items: center; justify-content: space-between; gap: 4px;
-          height: 56px; box-sizing: border-box;
-          overflow: hidden;
+          height: 56px; box-sizing: border-box; overflow: hidden;
         }
         .agc-avatar-top-bar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .agc-overlay-btn {
           display: flex; align-items: center; gap: 4px;
-          height: 26px; box-sizing: border-box;
-          padding: 0 8px; border-radius: 7px;
-          font-size: 11px; font-weight: 600; cursor: pointer;
-          border: 1px solid transparent;
-          white-space: nowrap; flex-shrink: 0;
-          transition: background 0.15s;
+          height: 26px; box-sizing: border-box; padding: 0 8px; border-radius: 7px;
+          font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid transparent;
+          white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
         }
         .agc-overlay-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .agc-overlay-btn-green  { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
@@ -985,111 +1170,46 @@ const AgentChat: React.FC = () => {
           padding: 4px 8px; border-radius: 20px;
           font-size: 11px; font-weight: 600; color: #374151;
           width: 82px; min-width: 82px; max-width: 82px;
-          overflow: hidden; white-space: nowrap;
-          box-sizing: border-box; flex-shrink: 0;
+          overflow: hidden; white-space: nowrap; box-sizing: border-box; flex-shrink: 0;
         }
-        .agc-avatar-idle {
-          position: absolute; inset: 0; z-index: 2;
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: flex-end;
-        }
-        .agc-avatar-idle-img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          object-position: bottom center;
-          display: block;
-        }
+        .agc-avatar-idle { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+        .agc-avatar-idle-img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center; display: block; }
         .agc-avatar-idle-placeholder {
-          width: 220px; height: 280px; margin-top: 20px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-          border: 2px solid #c7d2fe;
+          width: 220px; height: 280px; margin-top: 20px; border-radius: 20px;
+          background: linear-gradient(135deg, #eef2ff, #e0e7ff); border: 2px solid #c7d2fe;
           display: flex; align-items: center; justify-content: center;
           font-size: 72px; font-weight: 700; color: #6366f1;
         }
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-          padding: 10px 16px 12px;
-          background: rgba(255,255,255,0.92);
-          backdrop-filter: blur(12px);
-          border-top: 1px solid rgba(0,0,0,0.06);
-          display: flex; flex-direction: column;
-          justify-content: center;
-          gap: 8px;
-          min-height: 76px;
-          box-sizing: border-box;
+          padding: 10px 16px 12px; background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.06);
+          display: flex; flex-direction: column; justify-content: center; gap: 8px;
+          min-height: 76px; box-sizing: border-box;
         }
-        .agc-info-bar-row {
-          display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-        }
-        .agc-timer {
-          font-size: 11px; color: #9ca3af;
-          background: #f3f4f6; padding: 3px 10px; border-radius: 20px;
-          font-variant-numeric: tabular-nums;
-        }
+        .agc-info-bar-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .agc-timer { font-size: 11px; color: #9ca3af; background: #f3f4f6; padding: 3px 10px; border-radius: 20px; font-variant-numeric: tabular-nums; }
         .agc-vol-icon-btn {
-          width: 28px; height: 28px;
-          display: flex; align-items: center; justify-content: center;
-          border: none; background: none; cursor: pointer;
-          color: #6b7280; border-radius: 6px;
-          flex-shrink: 0;
+          width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+          border: none; background: none; cursor: pointer; color: #6b7280; border-radius: 6px; flex-shrink: 0;
           transition: color 0.15s, background 0.15s;
         }
         .agc-vol-icon-btn:hover { color: #374151; background: #f3f4f6; }
         .agc-volume-slider {
-          flex: 1;
-          -webkit-appearance: none;
-          appearance: none;
-          height: 4px;
-          border-radius: 2px;
-          outline: none;
-          cursor: pointer;
+          flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; outline: none; cursor: pointer;
           background: linear-gradient(to right, #6366f1 0%, #6366f1 var(--vol-pct, 80%), #e5e7eb var(--vol-pct, 80%), #e5e7eb 100%);
         }
-        .agc-volume-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 14px; height: 14px;
-          border-radius: 50%;
-          background: #6366f1;
-          cursor: pointer;
-          border: 2px solid #fff;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.18);
-        }
-        .agc-volume-slider::-moz-range-thumb {
-          width: 14px; height: 14px;
-          border-radius: 50%;
-          background: #6366f1;
-          cursor: pointer;
-          border: 2px solid #fff;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.18);
-        }
-        .agc-vol-pct {
-          font-size: 10px; color: #9ca3af;
-          min-width: 30px; text-align: right;
-          font-variant-numeric: tabular-nums;
-        }
-        .agc-chat-panel {
-          flex: 1;
-          min-width: 0;
-          min-height: 0;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: #F9FAFB;
-        }
+        .agc-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+        .agc-volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+        .agc-vol-pct { font-size: 10px; color: #9ca3af; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+        .agc-chat-panel { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #F9FAFB; }
         .agc-chat-header {
-          height: 56px; flex-shrink: 0;
-          padding: 0 16px; box-sizing: border-box;
-          border-bottom: 1px solid #eaecf0;
-          background: #fff;
+          height: 56px; flex-shrink: 0; padding: 0 16px; box-sizing: border-box;
+          border-bottom: 1px solid #eaecf0; background: #fff;
           display: flex; align-items: center; justify-content: space-between;
         }
         .agc-messages {
-          flex: 1;
-          min-height: 0;
-          overflow-y: auto;
-          padding: 16px;
+          flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
           display: flex; flex-direction: column; gap: 4px;
           scrollbar-width: thin; scrollbar-color: #e5e7eb transparent;
         }
@@ -1102,19 +1222,12 @@ const AgentChat: React.FC = () => {
           animation: agc-fadeup 0.5s ease;
         }
         @keyframes agc-fadeup { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-        .agc-welcome-orb {
-          width: 72px; height: 72px; border-radius: 50%;
-          overflow: hidden; border: 3px solid #c7d2fe;
-          margin: 0 auto 16px;
-          animation: agc-float 4s ease-in-out infinite;
-        }
+        .agc-welcome-orb { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 3px solid #c7d2fe; margin: 0 auto 16px; animation: agc-float 4s ease-in-out infinite; }
         .agc-welcome-orb-icon {
           width: 72px; height: 72px; border-radius: 50%;
-          background: linear-gradient(135deg, #eef2ff, #ede9fe);
-          border: 1.5px solid #c7d2fe;
+          background: linear-gradient(135deg, #eef2ff, #ede9fe); border: 1.5px solid #c7d2fe;
           display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 16px;
-          animation: agc-float 4s ease-in-out infinite;
+          margin: 0 auto 16px; animation: agc-float 4s ease-in-out infinite;
         }
         @keyframes agc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         .agc-welcome-title { font-size: 36px; font-weight: 700; line-height: 1.25; letter-spacing: -0.025em; color: #0A0A0A; margin-bottom: 8px; }
@@ -1137,51 +1250,21 @@ const AgentChat: React.FC = () => {
         .agc-dot:nth-child(2) { animation-delay:.18s; background:#a5b4fc; }
         .agc-dot:nth-child(3) { animation-delay:.36s; background:#818cf8; }
         @keyframes agc-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-        .agc-approval {
-          background: #fff; border: 1.5px solid #d1fae5;
-          border-radius: 14px; padding: 14px 16px;
-          max-width: 68%; box-shadow: 0 2px 10px rgba(16,185,129,0.08);
-        }
+        .agc-approval { background: #fff; border: 1.5px solid #d1fae5; border-radius: 14px; padding: 14px 16px; max-width: 68%; box-shadow: 0 2px 10px rgba(16,185,129,0.08); }
         .agc-approval-title { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 10px; }
         .agc-approval-actions { display: flex; gap: 8px; }
-        .agc-approve {
-          display: flex; align-items: center; gap: 5px;
-          padding: 7px 14px; border-radius: 8px;
-          background: #ecfdf5; border: 1px solid #6ee7b7;
-          color: #065f46; font-size: 12px; font-weight: 500; cursor: pointer;
-          transition: background 0.15s;
-        }
+        .agc-approve { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 8px; background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
         .agc-approve:hover { background: #d1fae5; }
         .agc-approve:disabled { opacity: 0.5; cursor: not-allowed; }
         .agc-approve.agc-btn-active { box-shadow: 0 0 0 2px #6ee7b7; opacity: 1 !important; }
-        .agc-reject {
-          display: flex; align-items: center; gap: 5px;
-          padding: 7px 14px; border-radius: 8px;
-          background: #fff5f5; border: 1px solid #fca5a5;
-          color: #b91c1c; font-size: 12px; font-weight: 500; cursor: pointer;
-          transition: background 0.15s;
-        }
+        .agc-reject { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 8px; background: #fff5f5; border: 1px solid #fca5a5; color: #b91c1c; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
         .agc-reject:hover { background: #fee2e2; }
         .agc-reject:disabled { opacity: 0.5; cursor: not-allowed; }
         .agc-reject.agc-btn-active { box-shadow: 0 0 0 2px #fca5a5; opacity: 1 !important; }
-        .agc-approval-processing {
-          display: flex; align-items: center; gap: 7px;
-          margin-top: 10px; font-size: 11.5px; color: #6b7280;
-        }
-        .agc-approval-processing .agc-spinner {
-          width: 13px; height: 13px;
-          border: 2px solid #d1d5db; border-top-color: #6366f1;
-          border-radius: 50%; animation: agc-spin 0.7s linear infinite;
-          flex-shrink: 0;
-        }
+        .agc-approval-processing { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 11.5px; color: #6b7280; }
+        .agc-approval-processing .agc-spinner { width: 13px; height: 13px; border: 2px solid #d1d5db; border-top-color: #6366f1; border-radius: 50%; animation: agc-spin 0.7s linear infinite; flex-shrink: 0; }
         @keyframes agc-spin { to { transform: rotate(360deg); } }
-        .agc-input-zone {
-          flex-shrink: 0;
-          background: #fff; border-top: 1px solid #eaecf0;
-          padding: 10px 16px 12px;
-          min-height: 76px;
-          box-sizing: border-box;
-        }
+        .agc-input-zone { flex-shrink: 0; background: #fff; border-top: 1px solid #eaecf0; padding: 10px 16px 12px; min-height: 76px; box-sizing: border-box; }
         .agc-file-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
         .agc-chip { display:flex; align-items:center; gap:5px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:3px 8px; font-size:11.5px; color:#4f46e5; }
         .agc-chip-x { background:none; border:none; color:#a5b4fc; cursor:pointer; font-size:13px; padding:0; }
@@ -1199,6 +1282,153 @@ const AgentChat: React.FC = () => {
         .agc-send-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(99,102,241,.38); }
         .agc-send-btn:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
         .agc-spinner { width:11px; height:11px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:agc-spin .65s linear infinite; }
+
+        /* ── Guided backdrop ────────────────────────────────────────── */
+        .agc-guided-backdrop {
+          position: absolute;
+          inset: 0;
+          z-index: 29;
+          background: rgba(249, 250, 251, 0.55);
+          backdrop-filter: blur(3px);
+          -webkit-backdrop-filter: blur(3px);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.35s ease;
+        }
+        .agc-guided-backdrop-visible {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        /* ── Guided Actions Panel ───────────────────────────────────── */
+        .agc-guided-panel {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          z-index: 30;
+          padding: 0 16px 12px;
+          pointer-events: none;
+          transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .agc-guided-visible {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+        .agc-guided-hidden {
+          opacity: 0;
+          transform: translateY(20px);
+          pointer-events: none;
+        }
+        .agc-guided-inner {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 18px;
+          box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.02),
+                      0 20px 40px -8px rgba(99,102,241,0.12),
+                      0 8px 24px rgba(0,0,0,0.06);
+          overflow: hidden;
+        }
+        .agc-guided-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 12px 16px 0;
+          gap: 10px;
+        }
+        .agc-guided-header-left {
+          display: flex; align-items: center; gap: 10px;
+        }
+        .agc-guided-pulse-dot {
+          width: 8px; height: 8px; border-radius: 50%;
+          background: #6366f1; flex-shrink: 0;
+          animation: agc-guided-pulse 2s ease-in-out infinite;
+          box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
+        }
+        @keyframes agc-guided-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+          70%  { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
+          100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+        }
+        .agc-guided-title {
+          font-size: 12.5px; font-weight: 700;
+          color: #111827; letter-spacing: -0.01em;
+        }
+        .agc-guided-subtitle {
+          font-size: 11px; color: #9ca3af; margin-top: 1px;
+        }
+        .agc-guided-dismiss {
+          width: 24px; height: 24px; border-radius: 6px;
+          display: flex; align-items: center; justify-content: center;
+          background: none; border: none; color: #d1d5db;
+          cursor: pointer; flex-shrink: 0;
+          transition: background 0.15s, color 0.15s;
+        }
+        .agc-guided-dismiss:hover { background: #f3f4f6; color: #6b7280; }
+        .agc-guided-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 6px;
+          padding: 10px 16px 12px;
+        }
+        @media (max-width: 600px) {
+          .agc-guided-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .agc-guided-action {
+          display: flex; align-items: center; gap: 7px;
+          padding: 8px 10px; border-radius: 11px;
+          background: #fafafa; border: 1px solid #f0f0f0;
+          cursor: pointer; text-align: left;
+          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: agc-action-in 0.35s ease both;
+          overflow: hidden;
+        }
+        @keyframes agc-action-in {
+          from { opacity: 0; transform: translateY(8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .agc-guided-action:hover {
+          background: color-mix(in srgb, var(--action-color) 6%, white);
+          border-color: color-mix(in srgb, var(--action-color) 30%, white);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px color-mix(in srgb, var(--action-color) 15%, transparent);
+        }
+        .agc-guided-action:active { transform: translateY(0); }
+        .agc-guided-action-icon {
+          font-size: 15px; flex-shrink: 0;
+          width: 24px; height: 24px;
+          display: flex; align-items: center; justify-content: center;
+          background: color-mix(in srgb, var(--action-color) 10%, white);
+          border-radius: 7px;
+        }
+        .agc-guided-action-label {
+          font-size: 11.5px; font-weight: 500; color: #374151;
+          flex: 1; line-height: 1.3; min-width: 0;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .agc-guided-action:hover .agc-guided-action-label {
+          color: var(--action-color);
+        }
+        .agc-guided-action-arrow {
+          font-size: 11px; color: #d1d5db; flex-shrink: 0;
+          transition: transform 0.18s, color 0.18s;
+        }
+        .agc-guided-action:hover .agc-guided-action-arrow {
+          color: var(--action-color);
+          transform: translateX(2px);
+        }
+        .agc-guided-footer {
+          display: flex; align-items: center; gap: 6px;
+          padding: 0 16px 10px;
+          font-size: 10.5px; color: #c4c9d1;
+        }
+
+        @keyframes tour-ring-pulse {
+          0%, 100% { box-shadow: 0 0 0 3px #6366f1, 0 0 0 5px rgba(99,102,241,0.3); }
+          50%       { box-shadow: 0 0 0 3px #6366f1, 0 0 0 9px rgba(99,102,241,0.12); }
+        }
+
+        /* Input zone must be relative for guided panel positioning */
+        .agc-chat-panel { position: relative; }
+        .agc-messages-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
       `}</style>
 
       <div className="agc-root">
@@ -1211,9 +1441,7 @@ const AgentChat: React.FC = () => {
           <div className="agc-header-actions">
             {isAvatarActive && <span className="agc-timer">⏱ {fmt(sessionDuration)}</span>}
             {isAvatarActive && (
-              <button className="agc-hbtn agc-hbtn-neutral" onClick={handleInterrupt} disabled={!isPlaying}>
-                ⏸ Interrupt
-              </button>
+              <button className="agc-hbtn agc-hbtn-neutral" onClick={handleInterrupt} disabled={!isPlaying}>⏸ Interrupt</button>
             )}
           </div>
         </header>
@@ -1226,35 +1454,27 @@ const AgentChat: React.FC = () => {
                 style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }} />
               {hasVideo && (
                 <canvas ref={canvasRef} style={{
-                  position: 'absolute', top: 0, left: 0,
-                  width: '100%', height: '100%',
-                  objectFit: 'contain', objectPosition: 'bottom center',
-                  display: 'block', background: '#f8fafc',
+                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                  objectFit: 'contain', objectPosition: 'bottom center', display: 'block', background: '#f8fafc',
                 }} />
               )}
               {!hasVideo && (
                 <div className="agc-avatar-idle">
-                  {avatarImg ? (
-                    <img src={avatarImg} alt={avatarName} className="agc-avatar-idle-img" />
-                  ) : (
-                    <div className="agc-avatar-idle-placeholder">{(avatarName[0] ?? 'A').toUpperCase()}</div>
-                  )}
+                  {avatarImg
+                    ? <img src={avatarImg} alt={avatarName} className="agc-avatar-idle-img" />
+                    : <div className="agc-avatar-idle-placeholder">{(avatarName[0] ?? 'A').toUpperCase()}</div>
+                  }
                 </div>
               )}
               <div className="agc-avatar-top-bar">
                 <span className="agc-status-pill-fixed">
-                  <span style={{
-                    width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                    background: isPlaying ? '#10b981' : isListening ? '#ef4444' : isTyping ? '#6366f1' : isAvatarActive ? '#10b981' : '#6b7280',
-                  }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: isPlaying ? '#10b981' : isListening ? '#ef4444' : isTyping ? '#6366f1' : isAvatarActive ? '#10b981' : '#6b7280' }} />
                   {isPlaying ? 'Speaking' : isListening ? 'Listening' : isTyping ? 'Thinking' : isAvatarActive ? 'Ready' : 'Inactive'}
                 </span>
                 <div className="agc-avatar-top-bar-actions">
                   {!isAvatarActive ? (
-                    <button className="agc-overlay-btn agc-overlay-btn-green" onClick={startSession} disabled={isLoadingSession}>
-                      {isLoadingSession
-                        ? <><div className="agc-spinner" style={{ width: 8, height: 8, borderTopColor: '#6ee7b7' }} /> Starting…</>
-                        : <>▶ Start</>}
+                    <button id="tour-start-btn" className="agc-overlay-btn agc-overlay-btn-green" onClick={startSession} disabled={isLoadingSession}>
+                      {isLoadingSession ? <><div className="agc-spinner" style={{ width: 8, height: 8, borderTopColor: '#6ee7b7' }} /> Starting…</> : <>▶ Start</>}
                     </button>
                   ) : (
                     <>
@@ -1274,48 +1494,25 @@ const AgentChat: React.FC = () => {
                 borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
               }}>
                 {isLoadingSession && (
-                  <div style={{ 
-                    borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-                    paddingBottom: '16px',
-                    marginBottom: '8px',
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    gap: 10 
-                  }}>
+                  <div style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, paddingBottom: '16px', marginBottom: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 40, height: 40, border: `3px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderTopColor: '#6366f1', borderRadius: '50%', animation: 'agc-spin 0.8s linear infinite' }} />
                     <span style={{ color: '#6366f1', fontSize: 13, fontWeight: 500 }}>Connecting to avatar…</span>
                   </div>
                 )}
                 {isAvatarActive && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      className="agc-vol-icon-btn"
-                      onClick={handleMuteToggle}
-                      title={muted || volume === 0 ? 'Unmute' : 'Mute'}
-                    >
+                    <button className="agc-vol-icon-btn" onClick={handleMuteToggle} title={muted || volume === 0 ? 'Unmute' : 'Mute'}>
                       {muted || volume === 0 ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
-                        </svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                       ) : volume < 0.5 ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/>
-                        </svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
                       ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                        </svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                       )}
                     </button>
-                    <input
-                      type="range"
-                      className="agc-volume-slider"
-                      min={0} max={1} step={0.02}
-                      value={muted ? 0 : volume}
+                    <input type="range" className="agc-volume-slider" min={0} max={1} step={0.02} value={muted ? 0 : volume}
                       style={{ '--vol-pct': `${(muted ? 0 : volume) * 100}%` } as React.CSSProperties}
-                      onChange={e => handleVolumeChange(parseFloat(e.target.value))}
-                    />
+                      onChange={e => handleVolumeChange(parseFloat(e.target.value))} />
                     <span className="agc-vol-pct">{muted ? '0%' : `${Math.round(volume * 100)}%`}</span>
                   </div>
                 )}
@@ -1325,12 +1522,6 @@ const AgentChat: React.FC = () => {
                       {agent.description.substring(0, 40)}{agent.description.length > 40 ? '…' : ''}
                     </span>
                   )}
-                  {(agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url) && (
-                    <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
-                      🟢 {agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url}
-                    </span>
-                  )}
-                  
                 </div>
               </div>
             </div>
@@ -1344,7 +1535,6 @@ const AgentChat: React.FC = () => {
                   <AvatarImg src={avatarImg} name={avatarName} size={38}
                     className="relative z-10 border-2 border-white"
                     style={{ position: 'relative', zIndex: 1 } as React.CSSProperties} />
-                  <div className="agc-online-dot" />
                 </div>
                 <div>
                   <div className="agc-agent-name">{agent?.name || avatarName}</div>
@@ -1353,118 +1543,121 @@ const AgentChat: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button className="agc-hbtn agc-hbtn-red" onClick={handleClearChat}>
+              <button id="tour-clear-chat" className="agc-hbtn agc-hbtn-red" onClick={handleClearChat}>
                 <IoClose style={{ fontSize: 13 }} /> Clear chat
               </button>
             </div>
 
-            <div className="agc-messages">
-              {messages.length === 0 && showWelcomeMessage ? (
-                <div className="agc-welcome">
-                  <div className="agc-welcome-title">{loadingAgent ? 'Loading agent…' : 'How may I help you?'}</div>
-                  <div className="agc-welcome-sub">
-                    {agent?.description || agent?.role || 'Your intelligent license agent'}
-                    {(agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url) && (
-                      <>
-                        <br />
-                        <span style={{ textTransform: 'none' }}>
-                          ({agent?.target_system?.base_url || agent?.target_system?.server_url || agent?.config?.server_url})
-                        </span>
-                      </>
-                    )}
+            {/* Messages area + guided panel wrapper */}
+            <div className="agc-messages-wrap">
+              <div className="agc-messages">
+                {messages.length === 0 && showWelcomeMessage ? (
+                  <div className="agc-welcome">
+                    <div className="agc-welcome-title">{loadingAgent ? 'Loading agent…' : 'How may I help you?'}</div>
+                    <div className="agc-welcome-sub">
+                      {agent?.description || agent?.role || 'Your intelligent license agent'}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <>
-                  {messages.map(message => (
-                    <div key={message.id}>
-                      <div className={`agc-row ${message.sender}`}>
-                        {(message.sender === 'ai' || message.sender === 'system') && (
-                          <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
-                        )}
-                        <div className={`agc-bubble ${message.sender}${message.isError ? ' error' : ''}`}>
-                          <div dangerouslySetInnerHTML={{ __html: message.text }} />
-                          {message.files && message.files.length > 0 && (
-                            <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>📎 {message.files.join(', ')}</div>
+                ) : (
+                  <>
+                    {messages.map(message => (
+                      <div key={message.id}>
+                        <div className={`agc-row ${message.sender}`}>
+                          {(message.sender === 'ai' || message.sender === 'system') && (
+                            <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
                           )}
-                          {message.metadata?.type && message.metadata?.filename && (
-                            <div style={{ marginTop: 8 }}>
-                              <button onClick={() => handleDownloadFromMetadata(message.metadata?.csr_content || '', message.metadata?.filename || 'file.txt', 'application/x-pem-file')}
-                                style={{ padding: '6px 12px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                📥 Download {message.metadata.filename}
-                              </button>
-                            </div>
-                          )}
-                          {message.file_path && message.sender === 'ai' && (
-                            <div style={{ marginTop: 8 }}>
-                              <button onClick={() => handleDownloadFile(message)} disabled={downloadingFileId === message.id}
-                                style={{ padding: '6px 12px', fontSize: 12, backgroundColor: downloadingFileId === message.id ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: downloadingFileId === message.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {downloadingFileId === message.id ? '⏳ Downloading...' : `📥 Download ${message.filename || 'file'}`}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className={`agc-ts ${message.sender}`}>
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  ))}
-
-                  {isTyping && (
-                    <div className="agc-row ai">
-                      <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
-                      <div className="agc-typing">
-                        <div className="agc-dot" /><div className="agc-dot" /><div className="agc-dot" />
-                      </div>
-                    </div>
-                  )}
-
-                  {pendingApproval && (
-                    <div className="agc-row ai">
-                      <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
-                      <div className="agc-approval">
-                        <div className="agc-approval-title">
-                          🔐{' '}
-                          {pendingApproval.action_type === 'update_ssl_certificate'
-                            ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
-                            : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
-                          }
-                        </div>
-                        <div className="agc-approval-actions">
-                          <button
-                            className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
-                            onClick={() => handleApprovalButtonClick('approve')}
-                            disabled={approvalProcessing}>
-                            {approvalProcessing && approvalClickedAction === 'approve'
-                              ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} />
-                              : '✓'} Approve
-                          </button>
-                          <button
-                            className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`}
-                            onClick={() => handleApprovalButtonClick('reject')}
-                            disabled={approvalProcessing}>
-                            {approvalProcessing && approvalClickedAction === 'reject'
-                              ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} />
-                              : '✗'} Reject
-                          </button>
-                        </div>
-                        {approvalProcessing && (
-                          <div className="agc-approval-processing">
-                            <div className="agc-spinner" />
-                            {approvalClickedAction === 'approve' ? 'Approving…' : 'Rejecting…'}
+                          <div className={`agc-bubble ${message.sender}${message.isError ? ' error' : ''}`}>
+                            <div dangerouslySetInnerHTML={{ __html: message.text }} />
+                            {message.files && message.files.length > 0 && (
+                              <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>📎 {message.files.join(', ')}</div>
+                            )}
+                            {message.metadata?.type && message.metadata?.filename && (
+                              <div style={{ marginTop: 8 }}>
+                                <button onClick={() => handleDownloadFromMetadata(message.metadata?.csr_content || '', message.metadata?.filename || 'file.txt', 'application/x-pem-file')}
+                                  style={{ padding: '6px 12px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  📥 Download {message.metadata.filename}
+                                </button>
+                              </div>
+                            )}
+                            {message.file_path && message.sender === 'ai' && (
+                              <div style={{ marginTop: 8 }}>
+                                <button onClick={() => handleDownloadFile(message)} disabled={downloadingFileId === message.id}
+                                  style={{ padding: '6px 12px', fontSize: 12, backgroundColor: downloadingFileId === message.id ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: downloadingFileId === message.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  {downloadingFileId === message.id ? '⏳ Downloading...' : `📥 Download ${message.filename || 'file'}`}
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {pendingApproval.expires_at && (
-                          <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>Expires {new Date(pendingApproval.expires_at).toLocaleString()}</p>
-                        )}
+                        </div>
+                        <div className={`agc-ts ${message.sender}`}>
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ))}
 
-                  <div ref={messagesEndRef} />
-                </>
-              )}
+                    {isTyping && (
+                      <div className="agc-row ai">
+                        <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
+                        <div className="agc-typing">
+                          <div className="agc-dot" /><div className="agc-dot" /><div className="agc-dot" />
+                        </div>
+                      </div>
+                    )}
+
+                    {pendingApproval && (
+                      <div className="agc-row ai">
+                        <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
+                        <div className="agc-approval">
+                          <div className="agc-approval-title">
+                            🔐{' '}
+                            {pendingApproval.action_type === 'update_ssl_certificate'
+                              ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
+                              : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
+                            }
+                          </div>
+                          <div className="agc-approval-actions">
+                            <button className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
+                              onClick={() => handleApprovalButtonClick('approve')} disabled={approvalProcessing}>
+                              {approvalProcessing && approvalClickedAction === 'approve'
+                                ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} /> : '✓'} Approve
+                            </button>
+                            <button className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`}
+                              onClick={() => handleApprovalButtonClick('reject')} disabled={approvalProcessing}>
+                              {approvalProcessing && approvalClickedAction === 'reject'
+                                ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} /> : '✗'} Reject
+                            </button>
+                          </div>
+                          {approvalProcessing && (
+                            <div className="agc-approval-processing">
+                              <div className="agc-spinner" />
+                              {approvalClickedAction === 'approve' ? 'Approving…' : 'Rejecting…'}
+                            </div>
+                          )}
+                          {pendingApproval.expires_at && (
+                            <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>Expires {new Date(pendingApproval.expires_at).toLocaleString()}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+
+              {/* ── Backdrop blur overlay ── */}
+              <div className={`agc-guided-backdrop ${showGuidedActions ? 'agc-guided-backdrop-visible' : ''}`}
+                onMouseDown={e => e.preventDefault()}
+                onClick={handleDismissGuided}
+              />
+
+              {/* ── Guided Actions Panel (floats above input zone) ── */}
+              <GuidedActionsPanel
+                agent={agent}
+                visible={showGuidedActions}
+                onDismiss={handleDismissGuided}
+                onActionClick={handleGuidedActionClick}
+              />
             </div>
 
             <div className="agc-input-zone">
@@ -1481,17 +1674,27 @@ const AgentChat: React.FC = () => {
               )}
               <input ref={fileInputRef} type="file" onChange={handleFileSelect} multiple accept=".lic,.txt,.pem,.crt,.key,.license" style={{ display: 'none' }} />
               <div className="agc-input-wrap">
-                <button className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
-                <input type="text" className="agc-text-input" value={inputValue}
+                <button id="tour-attach-btn" className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
+                <input id="tour-quick-actions" type="text" className="agc-text-input" value={inputValue}
                   onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyPress}
+                  onFocus={() => {
+                    // Show guided actions whenever agent is idle — not typing/processing
+                    if (!isTyping) {
+                      setShowGuidedActions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay so mousedown on action chip registers before hiding
+                    setTimeout(() => setShowGuidedActions(false), 200);
+                  }}
                   placeholder={isAvatarActive ? `Ask ${agent?.name || avatarName} anything…` : 'Type your message…'}
                   disabled={isTyping} />
-                <button className={`agc-icon-btn ${isListening ? 'recording' : ''}`} onClick={startListening}
+                <button id="tour-voice-btn" className={`agc-icon-btn ${isListening ? 'recording' : ''}`} onClick={startListening}
                   disabled={isListening || isTyping} title={isListening ? 'Listening…' : 'Voice input'}>
                   <FaMicrophone />
                 </button>
                 <div className="agc-divider" />
-                <button className="agc-send-btn" onClick={handleSend} disabled={isTyping || !inputValue.trim()}>
+                <button id="tour-send-btn" className="agc-send-btn" onClick={handleSend} disabled={isTyping || !inputValue.trim()}>
                   {isTyping ? <><div className="agc-spinner" /> Sending…</> : <><FaPaperPlane size={12} /> Send</>}
                 </button>
               </div>
@@ -1499,6 +1702,46 @@ const AgentChat: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* ── Onboarding Tour Overlay ── */}
+      {tourActive && tourTargetRect && (() => {
+        const r = tourTargetRect;
+        const pad = 8;
+        return (
+          <>
+            {/* Spotlight: 4 dark panels around the highlighted element */}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9998, pointerEvents: 'none' }}>
+              {/* Top */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: r.top - pad, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
+              {/* Bottom */}
+              <div style={{ position: 'absolute', top: r.bottom + pad, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
+              {/* Left */}
+              <div style={{ position: 'absolute', top: r.top - pad, left: 0, width: r.left - pad, height: r.height + pad * 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
+              {/* Right */}
+              <div style={{ position: 'absolute', top: r.top - pad, left: r.right + pad, right: 0, height: r.height + pad * 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
+              {/* Spotlight ring around target */}
+              <div style={{
+                position: 'absolute',
+                top: r.top - pad, left: r.left - pad,
+                width: r.width + pad * 2, height: r.height + pad * 2,
+                borderRadius: 12,
+                boxShadow: '0 0 0 3px #6366f1, 0 0 0 5px rgba(99,102,241,0.3)',
+                animation: 'tour-ring-pulse 1.8s ease-in-out infinite',
+              }} />
+            </div>
+            {/* Skip overlay click area (click outside spotlight to skip) */}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9997, cursor: 'default' }} onClick={handleTourSkip} />
+            {/* Tooltip */}
+            <TourTooltip
+              step={TOUR_STEPS[tourStep]}
+              stepIndex={tourStep}
+              totalSteps={TOUR_STEPS.length}
+              targetRect={tourTargetRect}
+              onNext={handleTourNext}
+              onSkip={handleTourSkip}
+            />
+          </>
+        );
+      })()}
     </>
   );
 };
