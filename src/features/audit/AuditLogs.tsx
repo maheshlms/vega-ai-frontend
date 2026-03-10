@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaCheckCircle, FaExclamationTriangle, FaClock, FaDownload, FaSync, FaChevronDown } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationTriangle, FaClock, FaDownload, FaSync, FaChevronDown, FaCopy, FaTimes, FaUser, FaTag, FaInfoCircle, FaIdBadge } from 'react-icons/fa';
 import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 
@@ -7,12 +7,24 @@ interface AuditLog {
   id?: string;
   timestamp: string;
   user_email: string;
+  user_id?: string;
   event_type?: string;
   action?: string;
   status?: string;
   severity?: string;
-  details?: string;
+  details?: any;
   description?: string;
+  session_id?: string;
+  agent_id?: string;
+  agent_type?: string;
+  resource_type?: string;
+  resource_id?: string;
+  target_id?: string;
+  target_type?: string;
+  ip_address?: string;
+  user_agent?: string;
+  error_message?: string;
+  [key: string]: any;
 }
 
 interface Stats {
@@ -34,8 +46,8 @@ interface Filters {
   user_email: string;
   limit: number;
   skip: number;
-  date_from?: string;
-  date_to?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 interface ApiFilters {
@@ -45,15 +57,15 @@ interface ApiFilters {
   limit: number;
   skip: number;
   sort_order: string;
-  date_from?: string;
-  date_to?: string;
+  start_date?: string;  // ✅ Fixed: was date_from
+  end_date?: string;    // ✅ Fixed: was date_to
 }
 
 type SortOrder = 'ascending' | 'descending';
 type ExportScope = 'current' | 'all';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared CustomSelect — same look as the TimeRangePicker trigger + dropdown
+// Shared CustomSelect
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SelectOption { value: string; label: string; }
@@ -89,7 +101,6 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     <div className="flex flex-col gap-1 relative" ref={ref}>
       <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">{label}</span>
 
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -107,7 +118,6 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         />
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute top-full mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1"
@@ -150,7 +160,8 @@ const TIME_OPTIONS: SelectOption[] = [
   { value: 'custom',    label: 'Custom Range…' },
 ];
 
-const getDateRange = (preset: TimePreset): { date_from?: string; date_to?: string } => {
+// ✅ Fixed: returns start_date / end_date (not date_from / date_to)
+const getDateRange = (preset: TimePreset): { start_date?: string; end_date?: string } => {
   const now = new Date();
   const toISO    = (d: Date) => d.toISOString();
   const startOf  = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0);       return x; };
@@ -158,17 +169,17 @@ const getDateRange = (preset: TimePreset): { date_from?: string; date_to?: strin
   const daysAgo  = (n: number) => { const d = new Date(now); d.setDate(d.getDate() - n); return d; };
 
   switch (preset) {
-    case 'today':     return { date_from: toISO(startOf(now)),       date_to: toISO(endOf(now))     };
-    case 'yesterday': return { date_from: toISO(startOf(daysAgo(1))), date_to: toISO(endOf(daysAgo(1))) };
-    case '7d':        return { date_from: toISO(startOf(daysAgo(7))), date_to: toISO(endOf(now))    };
-    case '30d':       return { date_from: toISO(startOf(daysAgo(30))),date_to: toISO(endOf(now))    };
-    case '90d':       return { date_from: toISO(startOf(daysAgo(90))),date_to: toISO(endOf(now))    };
+    case 'today':     return { start_date: toISO(startOf(now)),        end_date: toISO(endOf(now))         };
+    case 'yesterday': return { start_date: toISO(startOf(daysAgo(1))), end_date: toISO(endOf(daysAgo(1)))  };
+    case '7d':        return { start_date: toISO(startOf(daysAgo(7))), end_date: toISO(endOf(now))         };
+    case '30d':       return { start_date: toISO(startOf(daysAgo(30))),end_date: toISO(endOf(now))         };
+    case '90d':       return { start_date: toISO(startOf(daysAgo(90))),end_date: toISO(endOf(now))         };
     default:          return {};
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Time Range Picker  (extends CustomSelect with a "Custom Range" inline form)
+// Time Range Picker
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TimeRangePickerProps {
@@ -193,14 +204,13 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const isActive    = preset !== 'all';
+  const isActive      = preset !== 'all';
   const selectedLabel = TIME_OPTIONS.find(o => o.value === preset)?.label ?? 'All Time';
 
   return (
     <div className="flex flex-col gap-1 relative" ref={ref}>
       <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">Time Range</span>
 
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -214,7 +224,6 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
         <FaChevronDown className={`text-gray-400 text-[10px] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute top-full mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
           style={{ minWidth: 200 }}>
@@ -236,7 +245,6 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
             ))}
           </div>
 
-          {/* Custom range section */}
           <div className="border-t border-gray-100">
             <button
               type="button"
@@ -297,16 +305,19 @@ const AuditLogs: React.FC = () => {
   const [sortOrder,   setSortOrder]   = useState<SortOrder>('descending');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [selectedLog,     setSelectedLog]     = useState<AuditLog | null>(null);
+  const [copied,          setCopied]          = useState<boolean>(false);
   const [exportScope,     setExportScope]     = useState<ExportScope>('current');
   const [hasAuditReadPermission, setHasAuditReadPermission] = useState<boolean>(false);
   const [userEmail,    setUserEmail]   = useState<string>('');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  const getActiveDateRange = (): { date_from?: string; date_to?: string } => {
+  // ✅ Fixed: returns start_date / end_date to match backend AuditLogQuery model
+  const getActiveDateRange = (): { start_date?: string; end_date?: string } => {
     if (timePreset === 'custom') {
       return {
-        date_from: customFrom ? new Date(customFrom).toISOString() : undefined,
-        date_to:   customTo   ? new Date(customTo).toISOString()   : undefined,
+        start_date: customFrom ? new Date(customFrom).toISOString() : undefined,
+        end_date:   customTo   ? new Date(customTo).toISOString()   : undefined,
       };
     }
     return getDateRange(timePreset);
@@ -343,10 +354,13 @@ const AuditLogs: React.FC = () => {
   const fetchData = async (): Promise<void> => {
     setLoading(true); setError(null);
     try {
+      // ✅ Fixed: dateRange now contains start_date / end_date
       const dateRange = getActiveDateRange();
       const apiFilters: ApiFilters = {
-        limit: filters.limit, skip: (currentPage - 1) * filters.limit,
-        sort_order: sortOrder, ...dateRange,
+        limit: filters.limit,
+        skip: (currentPage - 1) * filters.limit,
+        sort_order: sortOrder,
+        ...dateRange, // spreads start_date and end_date correctly
       };
       if (filters.event_type) apiFilters.event_type = filters.event_type;
       if (filters.severity)   apiFilters.severity   = filters.severity;
@@ -390,11 +404,13 @@ const AuditLogs: React.FC = () => {
   const handleExport = async (format: string = 'csv', scope: ExportScope = exportScope): Promise<void> => {
     try {
       setLoading(true);
+      // ✅ Fixed: dateRange now contains start_date / end_date
       const dateRange = getActiveDateRange();
       const apiFilters: ApiFilters = {
         limit: scope === 'current' ? filters.limit : totalLogs,
         skip:  scope === 'current' ? (currentPage - 1) * filters.limit : 0,
-        sort_order: sortOrder, ...dateRange,
+        sort_order: sortOrder,
+        ...dateRange, // spreads start_date and end_date correctly
       };
       if (filters.event_type) apiFilters.event_type = filters.event_type;
       if (filters.severity)   apiFilters.severity   = filters.severity;
@@ -502,10 +518,10 @@ const AuditLogs: React.FC = () => {
           <div className="py-5 border-b border-gray-100">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { icon: FaCheckCircle,         label: 'Successful',  value: stats.events_by_severity?.success ?? 0, bg: '#F0FDF4', color: '#22C55E' },
-                { icon: FaExclamationTriangle,  label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, bg: '#FEF2F2', color: '#EF4444' },
-                { icon: FaExclamationTriangle,  label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, bg: '#FFFBEB', color: '#F59E0B' },
-                { icon: FaClock,               label: 'Total Events', value: stats.total_events                ?? 0, bg: '#FAF5FF', color: '#A855F7' },
+                { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, bg: '#F0FDF4', color: '#22C55E' },
+                { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, bg: '#FEF2F2', color: '#EF4444' },
+                { icon: FaExclamationTriangle, label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, bg: '#FFFBEB', color: '#F59E0B' },
+                { icon: FaClock,              label: 'Total Events', value: stats.total_events                ?? 0, bg: '#FAF5FF', color: '#A855F7' },
               ].map((s, i) => {
                 const Icon = s.icon as React.ElementType;
                 return (
@@ -669,7 +685,7 @@ const AuditLogs: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {logs.map((log, idx) => (
-                    <tr key={log.id || idx} className="hover:bg-[#FAFAFA] transition-colors">
+                    <tr key={log.id || idx} onClick={() => setSelectedLog(log)} className="hover:bg-[#FAFAFA] transition-colors cursor-pointer">
                       <td className="px-6 py-3 text-[13px] text-gray-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2.5">
@@ -711,6 +727,313 @@ const AuditLogs: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Log Detail Modal ── */}
+      {selectedLog && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => { setSelectedLog(null); setCopied(false); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ── Header ── */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Colored dot indicator */}
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                  (selectedLog.status === 'success' || selectedLog.severity === 'info' || selectedLog.status === 'info') ? 'bg-green-500'
+                  : (selectedLog.status === 'error' || selectedLog.status === 'failed' || selectedLog.severity === 'error') ? 'bg-red-500'
+                  : (selectedLog.status === 'warning' || selectedLog.severity === 'warning') ? 'bg-amber-500'
+                  : 'bg-gray-400'
+                }`} />
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-bold text-[#0A0A0A] truncate">
+                    {selectedLog.event_type || selectedLog.action || 'Audit Event'}
+                  </h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{formatTimestamp(selectedLog.timestamp)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    const clean = Object.fromEntries(
+                      Object.entries(selectedLog).filter(([, v]) => v !== null && v !== undefined && v !== '')
+                    );
+                    navigator.clipboard.writeText(JSON.stringify(clean, null, 2)).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-all ${
+                    copied ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {copied ? <FaCheckCircle size={10} /> : <FaCopy size={10} />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </button>
+                <button
+                  onClick={() => { setSelectedLog(null); setCopied(false); }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <FaTimes size={13} />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Scrollable Body ── */}
+            <div className="overflow-y-auto flex-1 p-6 space-y-6">
+
+              {/* ── SECTION 1: Overview row ── */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Status',     value: selectedLog.status || selectedLog.severity || '—' },
+                  { label: 'Event Type', value: selectedLog.event_type || selectedLog.action || '—' },
+                  { label: 'Timestamp',  value: formatTimestamp(selectedLog.timestamp) },
+                ].map(f => (
+                  <div key={f.label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                    <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1.5">{f.label}</div>
+                    <div className="text-[12px] font-semibold text-[#0A0A0A] break-all leading-snug">
+                      {f.label === 'Status' ? (
+                        <span className={`inline-flex items-center gap-1.5 ${
+                          (f.value === 'success' || f.value === 'info') ? 'text-green-700'
+                          : (f.value === 'error' || f.value === 'failed') ? 'text-red-700'
+                          : f.value === 'warning' ? 'text-amber-700'
+                          : 'text-gray-600'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                            (f.value === 'success' || f.value === 'info') ? 'bg-green-500'
+                            : (f.value === 'error' || f.value === 'failed') ? 'bg-red-500'
+                            : f.value === 'warning' ? 'bg-amber-500'
+                            : 'bg-gray-400'
+                          }`} />
+                          {f.value}
+                        </span>
+                      ) : f.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── SECTION 2: User & Identity ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FaUser size={9} className="text-gray-300" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">User & Identity</span>
+                  <div className="flex-1 h-px bg-gray-100" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Email',      value: selectedLog.user_email },
+                    { label: 'User ID',    value: selectedLog.user_id },
+                    { label: 'IP Address', value: selectedLog.ip_address },
+                    { label: 'User Agent', value: selectedLog.user_agent },
+                  ].filter(f => f.value).map(f => (
+                    <div key={f.label} className={`rounded-xl border border-gray-100 bg-white px-4 py-3 ${f.label === 'User Agent' ? 'col-span-2' : ''}`}>
+                      <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1">{f.label}</div>
+                      <div className="text-[12.5px] text-[#0A0A0A] font-medium break-all leading-snug">{formatValue(f.value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── SECTION 3: Event Details ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FaTag size={9} className="text-gray-300" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Event Details</span>
+                  <div className="flex-1 h-px bg-gray-100" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Action',        value: selectedLog.action },
+                    { label: 'Severity',      value: selectedLog.severity },
+                    { label: 'Session ID',    value: selectedLog.session_id },
+                    { label: 'Agent ID',      value: selectedLog.agent_id },
+                    { label: 'Agent Type',    value: selectedLog.agent_type },
+                    { label: 'Target ID',     value: selectedLog.target_id },
+                    { label: 'Target Type',   value: selectedLog.target_type },
+                    { label: 'Resource Type', value: selectedLog.resource_type },
+                    { label: 'Resource ID',   value: selectedLog.resource_id },
+                  ].filter(f => f.value).map(f => (
+                    <div key={f.label} className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+                      <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1">{f.label}</div>
+                      <div className="text-[12.5px] text-[#0A0A0A] font-medium break-all leading-snug font-mono">{formatValue(f.value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── SECTION 4: Description ── */}
+              {selectedLog.description && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FaInfoCircle size={9} className="text-gray-300" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Description</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+                    <p className="text-[13px] text-[#222] leading-relaxed">{formatValue(selectedLog.description)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── SECTION 5: Details / Payload — structured fields + raw toggle ── */}
+              {selectedLog.details && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FaTag size={9} className="text-gray-300" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Payload</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  {typeof selectedLog.details === 'object' && !Array.isArray(selectedLog.details) ? (
+                    <div className="space-y-2">
+                      {/* Render each key as a labeled card */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(selectedLog.details).map(([key, val]) => {
+                          const isLong = typeof val === 'object' || String(val).length > 60;
+                          return (
+                            <div
+                              key={key}
+                              className={`rounded-xl border border-gray-100 bg-white px-4 py-3 ${isLong ? 'col-span-2' : ''}`}
+                            >
+                              <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1.5">
+                                {key.replace(/_/g, ' ')}
+                              </div>
+                              {typeof val === 'boolean' ? (
+                                <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${val ? 'text-green-700' : 'text-red-700'}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  {val ? 'true' : 'false'}
+                                </span>
+                              ) : typeof val === 'object' ? (
+                                <pre className="text-[11px] text-[#1a1a1a] font-mono leading-relaxed whitespace-pre-wrap break-all bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 mt-1">
+                                  {JSON.stringify(val, null, 2)}
+                                </pre>
+                              ) : (
+                                <div className="text-[12.5px] text-[#0A0A0A] font-medium break-all leading-snug">{String(val)}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback: plain string or array */
+                    <div className="rounded-xl border border-gray-200 bg-[#FAFAFA] px-4 py-3">
+                      <pre className="text-[11.5px] text-[#1a1a1a] font-mono leading-relaxed whitespace-pre-wrap break-all overflow-x-auto">
+                        {Array.isArray(selectedLog.details)
+                          ? JSON.stringify(selectedLog.details, null, 2)
+                          : formatValue(selectedLog.details)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── SECTION 6: Metadata ── */}
+              {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FaIdBadge size={9} className="text-gray-300" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Metadata</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(selectedLog.metadata).map(([key, val]) => {
+                      const isLong = typeof val === 'object' || String(val).length > 60;
+                      return (
+                        <div
+                          key={key}
+                          className={`rounded-xl border border-gray-100 bg-white px-4 py-3 ${isLong ? 'col-span-2' : ''}`}
+                        >
+                          <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1.5">
+                            {key.replace(/_/g, ' ')}
+                          </div>
+                          {typeof val === 'boolean' ? (
+                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${val ? 'text-green-700' : 'text-red-700'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-green-500' : 'bg-red-500'}`} />
+                              {val ? 'true' : 'false'}
+                            </span>
+                          ) : typeof val === 'object' ? (
+                            <pre className="text-[11px] text-[#1a1a1a] font-mono leading-relaxed whitespace-pre-wrap break-all bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 mt-1">
+                              {JSON.stringify(val, null, 2)}
+                            </pre>
+                          ) : (
+                            <div className="text-[12.5px] text-[#0A0A0A] font-medium break-all leading-snug">{String(val)}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── SECTION 7: Error — enhanced display ── */}
+              {selectedLog.error_message && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FaExclamationTriangle size={9} className="text-red-500" />
+                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-[0.1em]">Error Detail</span>
+                    <div className="flex-1 h-px bg-red-100" />
+                  </div>
+                  <div className="rounded-xl border border-red-200 bg-red-50 overflow-hidden">
+                    {/* Error header bar */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-red-100 bg-red-100/60">
+                      <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                      <span className="text-[11px] font-bold text-red-700 uppercase tracking-[0.06em]">
+                        {selectedLog.status === 'failed' ? 'Failure' : 'Error'}
+                      </span>
+                      {selectedLog.event_type && (
+                        <span className="ml-auto text-[10px] text-red-400 font-mono">{selectedLog.event_type}</span>
+                      )}
+                    </div>
+                    {/* Error message body */}
+                    <div className="px-4 py-3">
+                      <pre className="text-[12.5px] text-red-800 font-mono leading-relaxed whitespace-pre-wrap break-all">
+                        {formatValue(selectedLog.error_message)}
+                      </pre>
+                    </div>
+                    {/* Context from payload if has_error flag present */}
+                    {selectedLog.details && typeof selectedLog.details === 'object' && selectedLog.details.has_error && (
+                      <div className="px-4 py-2.5 border-t border-red-100 bg-red-100/40 flex items-center gap-2">
+                        <FaExclamationTriangle size={9} className="text-red-400 flex-shrink-0" />
+                        <span className="text-[11px] text-red-600">
+                          Error flagged in payload —
+                          {selectedLog.details.intent ? <> intent: <span className="font-semibold">{String(selectedLog.details.intent)}</span></> : null}
+                          {selectedLog.details.message_preview ? <> · &quot;{String(selectedLog.details.message_preview)}&quot;</> : null}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── SECTION 8: Log ID ── */}
+              {selectedLog.id && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[9.5px] font-bold text-gray-400 uppercase tracking-[0.08em] mb-1">Log ID</div>
+                    <div className="text-[11.5px] text-gray-500 font-mono break-all">{selectedLog.id}</div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-shrink-0 bg-white">
+              <span className="text-[11px] text-gray-400">Click outside to dismiss</span>
+              <button
+                onClick={() => { setSelectedLog(null); setCopied(false); }}
+                className="px-5 py-2 rounded-lg text-[13px] font-medium bg-[#111] text-white hover:bg-[#333] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Export Modal ── */}
       {showExportModal && (

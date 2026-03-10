@@ -38,8 +38,8 @@ const TopBar: React.FC = () => {
 
         {/* RIGHT - Actions */}
         <div className="flex items-center gap-4">
-          <NotificationDropdown />
-          <HelpDropdown />
+          {/* <NotificationDropdown /> */}
+          {/* <HelpDropdown /> */}
           <ProfileDropdown />
         </div>
       </div>

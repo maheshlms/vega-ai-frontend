@@ -969,7 +969,7 @@ const AdminAgentControll: React.FC = () => {
         setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, ...update } : a));
         setSelectedAgent(prev => prev ? { ...prev, ...update } : null);
         setShowAgentModal(false);
-        toast.success('Kill switch activated. Agent has been terminated.');
+        toast.success('Agent disabled successfully.');
       } else {
         await api.llmRuntime.updateAgent(agent.id, {
           killswitch_activated: false, killswitch_activated_at: '',
@@ -1006,16 +1006,20 @@ const AdminAgentControll: React.FC = () => {
   const activeAgents   = agents.filter(a => a.isActive && !a.killswitchActivated && !a.softDeleted).length;
   const inactiveAgents = agents.filter(a => !a.isActive || a.killswitchActivated || a.softDeleted).length;
 
-  const avgSuccessRate = telemetryData?.agent_metrics?.length
-    ? (telemetryData.agent_metrics.reduce((s, m) => s + m.overall_success_rate, 0) / telemetryData.agent_metrics.length).toFixed(1)
+  // ── FIXED: filter ALL telemetry stats to only this user's agents ──
+  const agentIdSet = new Set(agents.map(a => a.id));
+  const filteredMetrics = telemetryData?.agent_metrics?.filter(m => agentIdSet.has(m.agent_id)) ?? [];
+
+  const avgSuccessRate = filteredMetrics.length
+    ? (filteredMetrics.reduce((s, m) => s + m.overall_success_rate, 0) / filteredMetrics.length).toFixed(1)
     : agents.length > 0 ? (agents.reduce((s, a) => s + a.successRate, 0) / agents.length).toFixed(1) : '0';
 
-  const totalTasks = telemetryData?.agent_metrics?.length
-    ? telemetryData.agent_metrics.reduce((s, m) => s + m.successful_tasks, 0)
+  const totalTasks = filteredMetrics.length
+    ? filteredMetrics.reduce((s, m) => s + m.successful_tasks, 0)
     : agents.reduce((s, a) => s + a.tasksCompleted, 0);
 
-  const avgResponseTime = telemetryData?.agent_metrics?.length
-    ? Math.floor(telemetryData.agent_metrics.reduce((s, m) => s + m.avg_response_time_ms, 0) / telemetryData.agent_metrics.length)
+  const avgResponseTime = filteredMetrics.length
+    ? Math.floor(filteredMetrics.reduce((s, m) => s + m.avg_response_time_ms, 0) / filteredMetrics.length)
     : agents.length > 0 ? Math.floor(agents.reduce((s, a) => s + a.responseTime, 0) / agents.length) : 0;
 
   const environmentStats: EnvironmentStats = agents.reduce((acc, a) => {
@@ -1201,7 +1205,7 @@ const AdminAgentControll: React.FC = () => {
               { icon: FaRobot,       label: 'Total Agents', value: totalAgents,                             bg: '#EFF6FF', color: '#3B82F6', tooltip: { title: 'Total Agents',         desc: 'The total number of AI agents configured in your system, including those that are active, inactive, or disabled.' } },
               { icon: FaCheckCircle, label: 'Active',       value: activeAgents,                            bg: '#F0FDF4', color: '#22C55E', tooltip: { title: 'Active Agents',         desc: 'Agents that are active and prepared to handle incoming tasks in the IAM system.' } },
               { icon: FaTimesCircle, label: 'Inactive',     value: inactiveAgents,                          bg: '#FFF7ED', color: '#F97316', tooltip: { title: 'Inactive Agents',       desc: 'Agents that are inactive or disabled and currently unavailable to process tasks.' } },
-              { icon: FaChartLine,   label: 'Success Rate', value: `${avgSuccessRate}%`,                    bg: '#FAF5FF', color: '#A855F7', tooltip: { title: 'Average Success Rate',  desc: 'Shows how efficiently your agents complete assigned tasks across the system.' } },
+              { icon: FaChartLine,   label: 'Success Rate', value: `${avgSuccessRate}%`,                    bg: '#FAF5FF', color: '#A855F7', tooltip: { title: 'Average Success Rate',  desc: 'Shows how accurately your agents complete assigned tasks across the system.' } },
               { icon: FaBolt,        label: 'Tasks Done',   value: totalTasks.toLocaleString(),             bg: '#EFF6FF', color: '#3B82F6', tooltip: { title: 'Tasks Completed',       desc: 'The total number of tasks your agents have successfully completed.' } },
               { icon: MdSpeed,       label: 'Avg Response', value: `${(avgResponseTime/1000).toFixed(2)}s`, bg: '#F0FDF4', color: '#22C55E', tooltip: { title: 'Average Response Time', desc: 'The average time it takes your agents to respond to your request.' } },
             ].map((s, i) => {

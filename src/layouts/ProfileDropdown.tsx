@@ -51,26 +51,26 @@ const ProfileDropdown: React.FC = () => {
   }, []);
 
   const menuItems: MenuItem[] = [
-    {
-      icon: FaUser,
-      label: 'My Profile',
-      action: () => {}
-    },
-    {
-      icon: FaCog,
-      label: 'Account Settings',
-      action: () => navigate('/settings')
-    },
-    {
-      icon: FaCreditCard,
-      label: 'Billing',
-      action: () => navigate('/settings?tab=billing')
-    },
-    {
-      icon: FaChartBar,
-      label: 'Usage & Stats',
-      action: () => navigate('/settings?tab=usage')
-    }
+    // {
+    //   icon: FaUser,
+    //   label: 'My Profile',
+    //   action: () => {}
+    // },
+    // {
+    //   icon: FaCog,
+    //   label: 'Account Settings',
+    //   action: () => navigate('/settings')
+    // },
+    // {
+    //   icon: FaCreditCard,
+    //   label: 'Billing',
+    //   action: () => navigate('/settings?tab=billing')
+    // },
+    // {
+    //   icon: FaChartBar,
+    //   label: 'Usage & Stats',
+    //   action: () => navigate('/settings?tab=usage')
+    // }
   ];
 
   useEffect(() => {
