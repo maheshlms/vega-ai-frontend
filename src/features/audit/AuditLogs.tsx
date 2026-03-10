@@ -209,7 +209,7 @@ const TimeRangePicker: React.FC<TimeRangePickerProps> = ({
 
   return (
     <div className="flex flex-col gap-1 relative" ref={ref}>
-      <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">Time Range</span>
+      <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">Date Range</span>
 
       <button
         type="button"
