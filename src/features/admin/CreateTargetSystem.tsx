@@ -42,6 +42,8 @@ const CreateTargetSystem: React.FC = () => {
       console.error('[CreateTargetSystem] Error creating target system:', err);
       toast.error('Failed to create target system: ' + (err as Error).message);
       setLoading(false);
+      // Re-throw so TargetSystemForm knows the submission failed and won't show success modal
+      throw err;
     }
   };
 

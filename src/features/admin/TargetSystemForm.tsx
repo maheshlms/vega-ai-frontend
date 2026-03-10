@@ -908,10 +908,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         submitData.domain = formData.domain;
       }
 
+      // ── Call parent onSubmit and ONLY show success if it resolves without throwing ──
       await onSubmit(submitData);
+
+      // If we reach here, the API call succeeded
       setShowSuccess(true);
       setLoading(false);
     } catch (err) {
+      // onSubmit threw (API error) — show the error, do NOT show success
       setError((err as Error).message || 'Failed to save target system');
       setLoading(false);
     }
@@ -938,25 +942,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       });
     }
   };
-
-  // const handleReset = (): void => {
-  //   setFormData({
-  //     name: '',
-  //     type: integrationValue || '',
-  //     integration_id: integrationId || '',
-  //     environment: 'production',
-  //     auth_method: 'BearerToken',
-  //     host: '',
-  //     port: 443,
-  //     engine_port: 9031,
-  //     username: '',
-  //     password: '',
-  //     client_id: '',
-  //     client_secret: '',
-  //     api_key: '',
-  //     description: ''
-  //   });
-  // };
 
   /* ── derived flags ── */
   const isPingFederate = (t: string) => t === 'PingFederate' || t === 'ping_federate';

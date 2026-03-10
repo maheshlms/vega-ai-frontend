@@ -429,6 +429,8 @@ const AgentCreationForm: React.FC = () => {
     slackChannel: '#alerts', selectedTargetSystem: null,
   });
 
+  // ── CHANGE 1: removed createdAgentId state — no longer navigating to agent chat ──
+
   // ── Only hit HeyGen API when manifest is absent (first-time setup) ──────────
   React.useEffect(() => {
     if (hasManifest) return;
@@ -538,6 +540,7 @@ const AgentCreationForm: React.FC = () => {
           selectedAvatarName: formData.selectedAvatarName,
         },
       };
+      // ── CHANGE 2: just await the call, no need to capture returned agent id ──
       await api.llmRuntime.createAgent(payload);
       setShowSuccess(true);
     } catch (err: any) {
@@ -637,8 +640,12 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 ))}
               </div>
+              {/* ── CHANGE 3: always navigate to /agents list, user opens agent when they want ── */}
               <button
-                onClick={() => { setShowSuccess(false); navigate('/agents'); }}
+                onClick={() => {
+                  setShowSuccess(false);
+                  navigate('/agents');
+                }}
                 className="w-full bg-[#111] hover:bg-[#222] text-white px-6 py-3 rounded-xl text-[13.5px] font-semibold transition-colors"
               >
                 View Agents

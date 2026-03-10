@@ -223,7 +223,7 @@ const IntegrationsPage: React.FC = () => {
                         {item.verified && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[10.5px] font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                             <span className="int-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                            Verified
+                            Certified
                           </span>
                         )}
                       </div>
