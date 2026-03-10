@@ -243,6 +243,13 @@ const LoginPage: React.FC = () => {
               disabled={auth0Loading || isLoading}
             /> */}
 
+             <Btn
+              value="Sign In with Auth0"
+              className="bg-gray-100 hover:bg-gray-200 w-full h-10 rounded-md transition-all duration-300 ease-in-out border border-gray-300 mt-3"
+              style={{ color: '#000000' }}
+              disabled={false}
+            />
+
             {/* PINGFEDERATE LOGIN BUTTON */}
             <Btn
               value="Sign In with PingFederate"
