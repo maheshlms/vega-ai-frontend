@@ -3,6 +3,7 @@ name: PR Docker Compose Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   docker-compose-up:
