@@ -190,17 +190,33 @@ interface DashboardMetricsResponse {
 }
 
 // ─── Session Timer Hook ───────────────────────────────────────────────────────
-const SESSION_STORAGE_KEY = 'vega_session_start';
+// Derives the session start time directly from the JWT token's `iat` (issued-at)
+// claim. This means the timer is always tied to when the token was issued —
+// i.e. when the user logged in. No sessionStorage needed; logout → new token →
+// new iat → timer resets to 00m 00s automatically on every fresh login.
+
+const getTokenIssuedAt = (): number => {
+  try {
+    const token = auth.getToken();
+    if (!token) return Date.now();
+    const payload = token.split('.')[1];
+    if (!payload) return Date.now();
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const { iat } = JSON.parse(json);
+    if (typeof iat === 'number' && iat > 0) return iat * 1000;
+  } catch {
+    // malformed token — fall back to now
+  }
+  return Date.now();
+};
 
 const useSessionTimer = () => {
   const [elapsed, setElapsed] = useState<number>(0);
 
   useEffect(() => {
-    if (!sessionStorage.getItem(SESSION_STORAGE_KEY)) {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, String(Date.now()));
-    }
+    const start = getTokenIssuedAt();
+
     const tick = () => {
-      const start = Number(sessionStorage.getItem(SESSION_STORAGE_KEY) || Date.now());
       setElapsed(Math.floor((Date.now() - start) / 1000));
     };
     tick();
@@ -219,7 +235,9 @@ const useSessionTimer = () => {
   return { formatted, elapsed };
 };
 
-export const clearSessionTimer = () => sessionStorage.removeItem(SESSION_STORAGE_KEY);
+// clearSessionTimer is kept for backward compatibility (no-op now since we
+// derive time from the token itself — nothing to clear)
+export const clearSessionTimer = () => {};
 
 // ─── Avatar Image Resolver ────────────────────────────────────────────────────
 const resolveAgentAvatarUrl = (name: string, avatarId?: string, storedImg?: string): string => {
@@ -884,7 +902,7 @@ const AdminAgentControll: React.FC = () => {
         name:           agent.name,
         type:           agent.type,
         status:         agent.status || 'enabled',
-        isActive:       agent.status === 'enabled' || agent.status === 'active',
+        isActive:       (agent.status === 'enabled' || agent.status === 'active') && !agent.killswitch_activated && !agent.soft_deleted,
         permission:     agent.permission || 'read',
         environment:    agent.config?.environment,
         checkInterval:  agent.checkInterval,
@@ -1033,7 +1051,6 @@ const AdminAgentControll: React.FC = () => {
     return acc;
   }, {} as TypeStats);
 
-  // ── Activity timeline: HeyGen's robust 7-day builder (fills zeros for missing days) ──
   const activityData: ActivityDataPoint[] = React.useMemo(() => {
     // Generate last 7 days (including today)
     const last7Days: string[] = [];
@@ -1158,11 +1175,14 @@ const AdminAgentControll: React.FC = () => {
     });
   };
 
+  // ── Derived count for truly inactive agents (not active, not killed, not deleted) ──
+  const trulyInactiveAgents = agents.filter(a => !a.isActive && !a.killswitchActivated && !a.softDeleted).length;
+  const disabledDeletedAgents = agents.filter(a => a.killswitchActivated || a.softDeleted).length;
+
   return (
     <div className="aad-font min-h-screen bg-[#FAFAFA] text-[#111] overflow-x-hidden">
       <style>{customStyles}</style>
 
-      {/* ── Shared AgentToggleModal (replaces both kill-switch & re-enable modals) ── */}
       {toggleModal && (
         <AgentToggleModal
           open={true}
@@ -1514,8 +1534,8 @@ const AdminAgentControll: React.FC = () => {
 
       {/* ════════════ VIEW DETAILS PANEL ════════════ */}
       {showDetailsPanel && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowDetailsPanel(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl max-h-[90vh] flex flex-col my-8" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDetailsPanel(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-2xl z-10">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -1538,10 +1558,10 @@ const AdminAgentControll: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4">
                 {[
-                  { label:'Total',            value: totalAgents,                                                                    filter:'all'      as const, color:'bg-gray-100 text-gray-900 border-gray-200'       },
-                  { label:'Active',           value: activeAgents,                                                                   filter:'active'   as const, color:'bg-green-50 text-green-700 border-green-200'    },
-                  { label:'Inactive',         value: inactiveAgents - agents.filter(a=>a.killswitchActivated||a.softDeleted).length, filter:'inactive' as const, color:'bg-yellow-50 text-yellow-700 border-yellow-200' },
-                  { label:'Disabled/Deleted', value: agents.filter(a=>a.killswitchActivated||a.softDeleted).length,                 filter:'killed'   as const, color:'bg-red-50 text-red-700 border-red-200'          },
+                  { label: 'Total',            value: totalAgents,             filter: 'all'      as const, color: 'bg-gray-100 text-gray-900 border-gray-200'       },
+                  { label: 'Active',           value: activeAgents,            filter: 'active'   as const, color: 'bg-green-50 text-green-700 border-green-200'    },
+                  { label: 'Inactive',         value: trulyInactiveAgents,     filter: 'inactive' as const, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                  { label: 'Disabled/Deleted', value: disabledDeletedAgents,   filter: 'killed'   as const, color: 'bg-red-50 text-red-700 border-red-200'          },
                 ].map(item => (
                   <button key={item.filter} onClick={() => setDetailsFilter(item.filter)}
                     className={`p-3 rounded-xl border text-left transition-all ${item.color} ${detailsFilter === item.filter ? 'ring-2 ring-blue-500 ring-offset-1' : 'opacity-80 hover:opacity-100'}`}>
@@ -1560,7 +1580,7 @@ const AdminAgentControll: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className={`flex-1 overflow-y-auto p-6 space-y-3 ${scrollbarClass}`} style={{ willChange: 'transform', contain: 'strict', WebkitOverflowScrolling: 'touch' }}>
+            <div className={`flex-1 overflow-y-auto p-6 space-y-3 min-h-0 ${scrollbarClass}`}>
               {getFilteredDetailAgents().length === 0 ? (
                 <div className="text-center py-12 text-gray-400">No agents match this filter.</div>
               ) : getFilteredDetailAgents().map(agent => (
@@ -1637,7 +1657,6 @@ const AdminAgentControll: React.FC = () => {
                 <span className="px-4 py-2 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">{selectedAgent.type}</span>
               </div>
 
-              {/* ── Re-enable via shared modal ── */}
               {isAdmin && selectedAgent.killswitchActivated && !selectedAgent.softDeleted && (
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
                   <div className="flex items-start gap-3">
@@ -1663,7 +1682,6 @@ const AdminAgentControll: React.FC = () => {
                 </div>
               )}
 
-              {/* ── Disable via shared modal ── */}
               {isAdmin && !selectedAgent.killswitchActivated && !selectedAgent.softDeleted && (
                 <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
                   <div className="flex items-start gap-3">
@@ -1753,6 +1771,8 @@ const AdminAgentControll: React.FC = () => {
           </div>
         </div>
       )}
+
+      <FloatingChat />
     </div>
   );
 };
