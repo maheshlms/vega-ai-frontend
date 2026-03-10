@@ -190,17 +190,36 @@ interface DashboardMetricsResponse {
 }
 
 // ─── Session Timer Hook ───────────────────────────────────────────────────────
-const SESSION_STORAGE_KEY = 'vega_session_start';
+// Derives the session start time directly from the JWT token's `iat` (issued-at)
+// claim. This means the timer is always tied to when the token was issued —
+// i.e. when the user logged in. No sessionStorage needed; logout → new token →
+// new iat → timer resets to 00m 00s automatically on every fresh login.
+
+const getTokenIssuedAt = (): number => {
+  try {
+    const token = auth.getToken();
+    if (!token) return Date.now();
+    // JWT is three base64url segments separated by '.'
+    const payload = token.split('.')[1];
+    if (!payload) return Date.now();
+    // base64url → base64 → JSON
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const { iat } = JSON.parse(json);
+    // iat is in seconds; convert to ms
+    if (typeof iat === 'number' && iat > 0) return iat * 1000;
+  } catch {
+    // malformed token — fall back to now
+  }
+  return Date.now();
+};
 
 const useSessionTimer = () => {
   const [elapsed, setElapsed] = useState<number>(0);
 
   useEffect(() => {
-    if (!sessionStorage.getItem(SESSION_STORAGE_KEY)) {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, String(Date.now()));
-    }
+    const start = getTokenIssuedAt();
+
     const tick = () => {
-      const start = Number(sessionStorage.getItem(SESSION_STORAGE_KEY) || Date.now());
       setElapsed(Math.floor((Date.now() - start) / 1000));
     };
     tick();
@@ -219,7 +238,9 @@ const useSessionTimer = () => {
   return { formatted, elapsed };
 };
 
-export const clearSessionTimer = () => sessionStorage.removeItem(SESSION_STORAGE_KEY);
+// clearSessionTimer is kept for backward compatibility (no-op now since we
+// derive time from the token itself — nothing to clear)
+export const clearSessionTimer = () => {};
 
 // ─── Avatar Image Resolver ────────────────────────────────────────────────────
 const resolveAgentAvatarUrl = (name: string, avatarId?: string, storedImg?: string): string => {
