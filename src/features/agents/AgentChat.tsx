@@ -126,121 +126,6 @@ interface GuidedAction {
   // color: string;  // REMOVED — backend no longer sends this field
 }
 
-// ─── CHANGE 3: getActionsForAgent() commented out — backend now provides
-//     guided_actions directly on the agent object. Keeping code for reference.
-// ─────────────────────────────────────────────────────────────────────────────
-/*
-function getActionsForAgent(agent: Agent | null): GuidedAction[] {
-  // Build a single lowercase search string from all identity fields
-  const identity = [
-    agent?.name ?? '',
-    agent?.type ?? '',
-    agent?.config?.integrationType ?? '',
-    agent?.config?.targetSystemName ?? '',
-    agent?.description ?? '',
-    agent?.role ?? '',
-  ].join(' ').toLowerCase().replace(/[-\s]+/g, '_');
-
-  // ── Certificate / SSL agent ───────────────────────────────────────────────
-  if (
-    identity.includes('cert') ||
-    identity.includes('ssl') ||
-    identity.includes('tls') ||
-    identity.includes('pki')
-  ) {
-    return [
-      { icon: '🔍', label: 'Certificate status',   prompt: 'What is the current status of all certificates?',         color: '#6366f1' },
-      { icon: '⚠️', label: 'Expiring certs',        prompt: 'Which certificates are expiring in the next 30 days?',    color: '#f59e0b' },
-      { icon: '📋', label: 'List certificates',     prompt: 'List all certificates with their expiry dates.',          color: '#10b981' },
-      { icon: '🔄', label: 'Update certificate',    prompt: 'I want to update or renew a certificate.',               color: '#3b82f6' },
-      { icon: '📥', label: 'Install certificate',   prompt: 'How do I install a new SSL/TLS certificate?',            color: '#8b5cf6' },
-      { icon: '📊', label: 'Certificate report',    prompt: 'Generate a full report of all certificate activity.',    color: '#ec4899' },
-    ];
-  }
-
-  // ── License agent ─────────────────────────────────────────────────────────
-  if (identity.includes('licen')) {
-    return [
-      { icon: '🔍', label: 'License status',        prompt: 'What is the current status of my licenses?',             color: '#6366f1' },
-      { icon: '⚠️', label: 'Expiring licenses',     prompt: 'Which licenses are expiring in the next 30 days?',       color: '#f59e0b' },
-      { icon: '📋', label: 'List all licenses',      prompt: 'Show me all active licenses and their details.',         color: '#10b981' },
-      { icon: '🔄', label: 'Update license',         prompt: 'Update license',                 color: '#3b82f6' },
-      { icon: '📥', label: 'Install a license',      prompt: 'I want to install a new license file.',                 color: '#8b5cf6' },
-      { icon: '📊', label: 'License report',         prompt: 'Generate a summary report of all license activity.',    color: '#ec4899' },
-    ];
-  }
-
-  // ── PingFederate / SSO / Federation agent ────────────────────────────────
-  if (
-    identity.includes('ping_federate') ||
-    identity.includes('pingfederate') ||
-    identity.includes('federation') ||
-    identity.includes('sso')
-  ) {
-    return [
-      { icon: '🔐', label: 'SSO status',            prompt: 'What is the current SSO federation status?',             color: '#e9472a' },
-      { icon: '📜', label: 'Certificate check',     prompt: 'Check all SSL/TLS certificates for expiry.',             color: '#f59e0b' },
-      { icon: '👥', label: 'Active sessions',       prompt: 'How many active SSO sessions are there right now?',      color: '#10b981' },
-      { icon: '⚙️', label: 'Config review',         prompt: 'Review current PingFederate configuration settings.',   color: '#6366f1' },
-      { icon: '🔄', label: 'Sync adapters',         prompt: 'Check the status of all authentication adapters.',      color: '#8b5cf6' },
-      { icon: '📊', label: 'Audit log',             prompt: 'Show recent authentication audit log entries.',          color: '#ec4899' },
-    ];
-  }
-
-  // ── PingDirectory / LDAP / Directory agent ────────────────────────────────
-  if (
-    identity.includes('ping_directory') ||
-    identity.includes('pingdirectory') ||
-    identity.includes('directory') ||
-    identity.includes('ldap')
-  ) {
-    return [
-      { icon: '📁', label: 'Directory status',      prompt: 'What is the current directory health status?',           color: '#0a85c2' },
-      { icon: '🔍', label: 'Search users',          prompt: 'Help me search for a user in the directory.',            color: '#6366f1' },
-      { icon: '🔄', label: 'Replication status',    prompt: 'Check the directory replication status.',               color: '#10b981' },
-      { icon: '📊', label: 'Schema details',        prompt: 'Show me the directory schema details.',                  color: '#f59e0b' },
-      { icon: '🔐', label: 'Access controls',       prompt: 'Review current access control settings.',               color: '#8b5cf6' },
-      { icon: '⚠️', label: 'Error logs',            prompt: 'Show recent error log entries from the directory.',      color: '#ef4444' },
-    ];
-  }
-
-  // ── PingOne / Cloud Identity agent ────────────────────────────────────────
-  if (identity.includes('ping_one') || identity.includes('pingone') || identity.includes('cloud_identity')) {
-    return [
-      { icon: '☁️', label: 'Cloud status',          prompt: 'What is the current PingOne cloud status?',             color: '#7c3aed' },
-      { icon: '👤', label: 'User management',       prompt: 'How do I manage users in PingOne?',                     color: '#6366f1' },
-      { icon: '🔐', label: 'MFA status',            prompt: 'Check the multi-factor authentication status.',          color: '#10b981' },
-      { icon: '📊', label: 'Sign-on report',        prompt: 'Show recent sign-on activity and statistics.',           color: '#f59e0b' },
-      { icon: '⚙️', label: 'App connections',       prompt: 'List all connected applications and their status.',     color: '#8b5cf6' },
-      { icon: '🔄', label: 'Sync status',           prompt: 'Check the identity sync status across systems.',        color: '#ec4899' },
-    ];
-  }
-
-  // ── Connection / Connectivity agent ───────────────────────────────────────
-  if (identity.includes('connect')) {
-    return [
-      { icon: '🔗', label: 'Test connection',       prompt: 'Can you test the current system connection?',           color: '#6366f1' },
-      { icon: '📡', label: 'Connection status',     prompt: 'What is the current connection status?',               color: '#10b981' },
-      { icon: '🛠️', label: 'Troubleshoot',          prompt: 'Help me troubleshoot connection issues.',               color: '#f59e0b' },
-      { icon: '🔐', label: 'SSL certificate',       prompt: 'Check the SSL certificate status and expiry.',          color: '#3b82f6' },
-      { icon: '📋', label: 'View config',           prompt: 'Show me the current system configuration.',             color: '#8b5cf6' },
-      { icon: '🔄', label: 'Restart service',       prompt: 'How do I restart the connected service?',              color: '#ec4899' },
-    ];
-  }
-
-  // ── Fallback: generic agent ───────────────────────────────────────────────
-  const agentLabel = agent?.name || 'this agent';
-  return [
-    { icon: '🚀', label: 'What can you do?',        prompt: `What tasks can ${agentLabel} perform?`,                 color: '#6366f1' },
-    { icon: '📊', label: 'System status',           prompt: 'Give me an overview of the current system status.',     color: '#10b981' },
-    { icon: '🔍', label: 'Run diagnostics',         prompt: 'Run a full system diagnostic check.',                   color: '#3b82f6' },
-    { icon: '📁', label: 'Recent activity',         prompt: 'Show me the recent activity and changes.',              color: '#f59e0b' },
-    { icon: '⚙️', label: 'Configuration',           prompt: 'Review the current configuration settings.',            color: '#8b5cf6' },
-    { icon: '❓', label: 'How to get started',      prompt: `How do I get started using ${agentLabel}?`,            color: '#ec4899' },
-  ];
-}
-*/
-
 // ─── Guided Actions Panel ─────────────────────────────────────────────────────
 
 interface GuidedActionsPanelProps {
@@ -563,6 +448,15 @@ const AgentChat: React.FC = () => {
   const volumeRef = useRef(0.8);
   const latestAIResponseRef = useRef<string>('');
 
+  // Refs to track interaction state inside the timer callback
+  const messagesRef = useRef<Message[]>(messages);
+  const showWelcomeRef = useRef<boolean>(showWelcomeMessage);
+  const isTypingRef = useRef<boolean>(isTyping);
+
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { showWelcomeRef.current = showWelcomeMessage; }, [showWelcomeMessage]);
+  useEffect(() => { isTypingRef.current = isTyping; }, [isTyping]);
+
   const avatarImg  = agent?.config?.selectedAvatarImg  || (agent as any)?.avatarImg  || '';
   const avatarName = agent?.config?.selectedAvatarName || (agent as any)?.avatarName || agent?.name || 'Agent';
   const avatarId   = agent?.config?.selectedAvatarId   || '';
@@ -576,9 +470,13 @@ const AgentChat: React.FC = () => {
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
   // ── Show guided actions after 5 seconds on initial load ──────────────────
+  // BUG FIX: Use refs to check current state at callback time, so the panel
+  // does NOT appear if the user has already sent a message within those 5 seconds.
   useEffect(() => {
     guidedTimerRef.current = setTimeout(() => {
-      if (!isTyping) setShowGuidedActions(true);
+      if (!isTypingRef.current && messagesRef.current.length === 0 && showWelcomeRef.current) {
+        setShowGuidedActions(true);
+      }
     }, 5000);
     return () => {
       if (guidedTimerRef.current) clearTimeout(guidedTimerRef.current);
@@ -1008,6 +906,11 @@ const AgentChat: React.FC = () => {
     setPendingApproval(null);
     setShowWelcomeMessage(false);
     setShowGuidedActions(false);
+    // Cancel the 5-second guided actions timer if user sends before it fires
+    if (guidedTimerRef.current) {
+      clearTimeout(guidedTimerRef.current);
+      guidedTimerRef.current = null;
+    }
     const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
     const userKey = `User${userMessageIndex}`;
     const userMessage: Message = { id: Date.now(), text: inputValue, sender: 'user', timestamp: new Date(), files: attachedFiles.length > 0 ? attachedFiles.map(f => f.name) : undefined };
@@ -1743,4 +1646,4 @@ const AgentChat: React.FC = () => {
   );
 };
 
-export default AgentChat;
+export default AgentChat; 
