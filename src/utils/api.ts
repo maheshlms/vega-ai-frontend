@@ -237,6 +237,15 @@ export const api = {
     return response.ok;
   },
 
+  // Audit service health check — contacts audit-service directly
+  // Local dev: uses VITE_AUDIT_SERVICE_URL (e.g. http://localhost:8002/health)
+  // Docker:    uses /audit/health which nginx proxies to audit-service:8002
+  auditHealthCheck: async (): Promise<Response> => {
+    const url = AUDIT_SERVICE ? `${AUDIT_SERVICE}/health` : '/audit/health';
+    return fetch(url);
+  },
+
+
   // ============================================================
   // LLM RUNTIME ENDPOINTS (Port 8002)
   // ============================================================

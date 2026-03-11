@@ -24,7 +24,7 @@ import DirectoryAgentChat from './features/agents/DirectoryAgentChat';
 
 // Admin
 import AdminSidebar from './features/admin/AdminSidebar';
-import AdminAgentControll from './features/admin/AdminAgentControll';
+import AdminAgentControl from './features/admin/AdminAgentControl';
 import TargetSystemIntegration from './features/admin/TargetSystemIntegration';
 import AvailableIntegration from './features/admin/AvailableIntegration';
 import TargetSystemShow from './features/admin/TargetSystemShow';
@@ -213,9 +213,9 @@ function AppContent() {
             <Route path="/systems/targetsys" element={<ProtectedRoute><TargetSystemIntegration /></ProtectedRoute>} />
             <Route path="/systems/createtarsys" element={<ProtectedRoute><CreateTargetSystem /></ProtectedRoute>} />
             <Route path="/systems/targetsystems" element={<Navigate to="/systems" replace />} />
-            <Route path="/systems/agent" element={<ProtectedRoute><AdminAgentControll /></ProtectedRoute>} />
+            <Route path="/systems/agent" element={<ProtectedRoute><AdminAgentControl /></ProtectedRoute>} />
             <Route path="/systems/integration/target-systems/:integrationId" element={<ProtectedRoute><TargetSystems /></ProtectedRoute>} />
-            <Route path="/agent_dashboard" element={<ProtectedRoute><AdminAgentControll /></ProtectedRoute>} />
+            <Route path="/agent_dashboard" element={<ProtectedRoute><AdminAgentControl /></ProtectedRoute>} />
             <Route path="/integration" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
 
             {/* Audit */}
