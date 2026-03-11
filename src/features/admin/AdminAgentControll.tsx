@@ -1772,7 +1772,7 @@ const AdminAgentControll: React.FC = () => {
         </div>
       )}
 
-      <FloatingChat />
+      {/* <FloatingChat /> */}
     </div>
   );
 };

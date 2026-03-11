@@ -40,6 +40,8 @@ interface Agent {
   role?: string;
   description?: string;
   type?: string;
+  // CHANGE 1: Added guided_actions field — populated by backend (fixes/state_management branch)
+  guided_actions?: Array<{ label: string; prompt: string }>;
   config?: {
     environment?: string;
     selectedAvatarImg?: string;
@@ -113,20 +115,21 @@ const KNOWN_STREAMING_AVATARS: Record<string, string[]> = {
 
 const DEFAULT_STREAMING_AVATAR = 'Marianne_ProfessionalLook_public';
 
-// ─── Guided Actions — fully dynamic per agent ────────────────────────────────
+// ─── Guided Actions — CHANGE 2: Updated interface — icon and color removed,
+//     now driven purely by backend data (fixes/state_management branch)
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface GuidedAction {
-  icon: string;
+  // icon: string;   // REMOVED — backend no longer sends this field
   label: string;
   prompt: string;
-  color: string;
+  // color: string;  // REMOVED — backend no longer sends this field
 }
 
-/**
- * Derives contextual quick-actions purely from the agent's name, type, and
- * integrationType. No hardcoded category buckets — we match keywords in the
- * combined identity string so every agent gets actions that match what it does.
- */
+// ─── CHANGE 3: getActionsForAgent() commented out — backend now provides
+//     guided_actions directly on the agent object. Keeping code for reference.
+// ─────────────────────────────────────────────────────────────────────────────
+/*
 function getActionsForAgent(agent: Agent | null): GuidedAction[] {
   // Build a single lowercase search string from all identity fields
   const identity = [
@@ -236,6 +239,7 @@ function getActionsForAgent(agent: Agent | null): GuidedAction[] {
     { icon: '❓', label: 'How to get started',      prompt: `How do I get started using ${agentLabel}?`,            color: '#ec4899' },
   ];
 }
+*/
 
 // ─── Guided Actions Panel ─────────────────────────────────────────────────────
 
@@ -247,7 +251,8 @@ interface GuidedActionsPanelProps {
 }
 
 const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible, onDismiss, onActionClick }) => {
-  const actions = getActionsForAgent(agent);
+  // CHANGE 4: Use backend-provided guided_actions instead of getActionsForAgent()
+  const actions = agent?.guided_actions || [];
   const agentName = agent?.name || 'your agent';
 
   return (
@@ -273,11 +278,11 @@ const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible,
             <button
               key={i}
               className="agc-guided-action"
-              style={{ '--action-color': action.color, animationDelay: `${i * 0.06 + 0.1}s` } as React.CSSProperties}
+              style={{ animationDelay: `${i * 0.06 + 0.1}s` } as React.CSSProperties}
               onMouseDown={e => e.preventDefault()}
               onClick={() => onActionClick(action.prompt)}
             >
-              {/* <span className="agc-guided-action-icon">{action.icon}</span> */}
+              {/* icon and color removed — backend no longer sends these fields */}
               <span className="agc-guided-action-label">{action.label}</span>
               <span className="agc-guided-action-arrow">→</span>
             </button>
@@ -1201,7 +1206,6 @@ const AgentChat: React.FC = () => {
         }
         .agc-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
         .agc-volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
-        .agc-vol-pct { font-size: 10px; color: #9ca3af; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
         .agc-chat-panel { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #F9FAFB; }
         .agc-chat-header {
           height: 56px; flex-shrink: 0; padding: 0 16px; box-sizing: border-box;
@@ -1386,33 +1390,26 @@ const AgentChat: React.FC = () => {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .agc-guided-action:hover {
-          background: color-mix(in srgb, var(--action-color) 6%, white);
-          border-color: color-mix(in srgb, var(--action-color) 30%, white);
+          background: #f0f0ff;
+          border-color: #c7d2fe;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px color-mix(in srgb, var(--action-color) 15%, transparent);
+          box-shadow: 0 4px 12px rgba(99,102,241,0.1);
         }
         .agc-guided-action:active { transform: translateY(0); }
-        .agc-guided-action-icon {
-          font-size: 15px; flex-shrink: 0;
-          width: 24px; height: 24px;
-          display: flex; align-items: center; justify-content: center;
-          background: color-mix(in srgb, var(--action-color) 10%, white);
-          border-radius: 7px;
-        }
         .agc-guided-action-label {
           font-size: 11.5px; font-weight: 500; color: #374151;
           flex: 1; line-height: 1.3; min-width: 0;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .agc-guided-action:hover .agc-guided-action-label {
-          color: var(--action-color);
+          color: #4f46e5;
         }
         .agc-guided-action-arrow {
           font-size: 11px; color: #d1d5db; flex-shrink: 0;
           transition: transform 0.18s, color 0.18s;
         }
         .agc-guided-action:hover .agc-guided-action-arrow {
-          color: var(--action-color);
+          color: #6366f1;
           transform: translateX(2px);
         }
         .agc-guided-footer {

@@ -1,675 +1,600 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FaPlus, FaSync, FaTrash, FaEdit, FaCheckCircle, FaTimesCircle, FaClock, FaLock } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FaPlus, FaSync, FaTrash, FaEdit, FaCheckCircle, FaLock, FaChevronDown, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 import TargetSystemForm from './TargetSystemForm';
-import TargetSystemStatus from './TargetSystemStatus';
-import { toast } from "react-toastify";
+import { toast } from 'react-toastify';
 
-interface LocationState {
-  integrationName?: string;
-  integrationValue?: string;
-  authMethods?: string[];
-}
-
+/* ─────────────────────────────── interfaces ─────────────────────────────── */
+interface LocationState { integrationName?: string; integrationValue?: string; authMethods?: string[]; }
 interface System {
-  _id: string;
-  name: string;
-  type: string;
-  environment: string;
-  status: string;
-  base_url?: string;
-  host?: string;
-  integration_id?: string;
+  _id: string; name: string; type: string; environment: string;
+  status: string; base_url?: string; host?: string; integration_id?: string;
 }
+interface Stats { total_systems: number; connected: number; disconnected: number; error: number; pending: number; }
+interface Filters { environment: string; status: string; }
+interface TypeOption { value: string; label: string; }
+interface SystemsResponse { systems?: System[]; [k: string]: any; }
+interface TypesResponse   { types?: TypeOption[];  [k: string]: any; }
+interface TestResult      { message?: string; detail?: string; success?: boolean; status?: string; connected?: boolean; [k: string]: any; }
+interface User            { role?: string; roles?: string[]; [k: string]: any; }
 
-interface Stats {
-  total_systems: number;
-  connected: number;
-  disconnected: number;
-  error: number;
-  pending: number;
-}
+/* ─────────────────────────────── status config ──────────────────────────── */
+const STATUS_CFG: Record<string, { dot: string; label: string; bg: string; color: string; glow: string }> = {
+  connected:    { dot: '#22c55e', label: 'Connected',    bg: '#f0fdf4', color: '#15803d', glow: 'rgba(34,197,94,0.35)'  },
+  disconnected: { dot: '#ef4444', label: 'Disconnected', bg: '#fef2f2', color: '#b91c1c', glow: 'rgba(239,68,68,0.35)'  },
+  error:        { dot: '#f97316', label: 'Error',        bg: '#fff7ed', color: '#c2410c', glow: 'rgba(249,115,22,0.35)' },
+  pending:      { dot: '#eab308', label: 'Pending',      bg: '#fefce8', color: '#a16207', glow: 'rgba(234,179,8,0.35)'  },
+};
 
-interface Filters {
-  environment: string;
-  status: string;
-}
+/* ─────────────────────────────── sub-components ────────────────────────── */
 
-interface TypeOption {
-  value: string;
-  label: string;
-}
+const StatusBadge = ({ status }: { status: string }) => {
+  const c = STATUS_CFG[status] ?? { dot: '#9ca3af', label: status, bg: '#f9fafb', color: '#6b7280', glow: 'transparent' };
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold"
+      style={{ background: c.bg, color: c.color }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
+      {c.label}
+    </span>
+  );
+};
 
-interface SystemsResponse {
-  systems?: System[];
-  [key: string]: any;
-}
+/* Stat card — soft bg, no border */
+const StatCard = ({ label, dot, value, delay }: { label: string; dot: string; value: number; delay: number }) => (
+  <div className="stat-card flex-1 bg-gray-50 rounded-2xl px-5 py-5" style={{ animationDelay: `${delay}ms` }}>
+    <div className="flex items-center gap-2 mb-3">
+      <span className="w-2 h-2 rounded-full" style={{ background: dot }} />
+      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">{label}</span>
+    </div>
+    <span className="text-[42px] font-bold text-gray-950 tracking-tight leading-none">{value}</span>
+  </div>
+);
 
-interface TypesResponse {
-  types?: TypeOption[];
-  [key: string]: any;
-}
-
-interface TestConnectionResult {
-  message?: string;
-  detail?: string;
-  [key: string]: any;
-}
-
-interface User {
-  role?: string;
-  roles?: string[];
-  [key: string]: any;
-}
-
-const TargetSystemShow: React.FC = () => {
-  const { integrationId } = useParams<{ integrationId?: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const locationState = location.state as LocationState | undefined;
-  const integrationName = locationState?.integrationName;
-  const integrationValue = locationState?.integrationValue;
-  const authMethodsFromState = locationState?.authMethods || [];
-  
-  const [systems, setSystems] = useState<System[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState<boolean>(false);
-  const [editingSystem, setEditingSystem] = useState<System | null>(null);
-  const [testingId, setTestingId] = useState<string | null>(null);
-  const [typeOptions, setTypeOptions] = useState<TypeOption[]>([]);
-  const [availableAuthMethods, setAvailableAuthMethods] = useState<string[]>([]);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [canAdd, setCanAdd] = useState<boolean>(false);
-  const [canEdit, setCanEdit] = useState<boolean>(false);
-  const [canDelete, setCanDelete] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [systemToDelete, setSystemToDelete] = useState<System | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
-  
-  // Filter states - don't include integrationId in API filters
-  const [filters, setFilters] = useState<Filters>({
-    environment: '',
-    status: ''
-  });
+/* Dropdown filter */
+interface DDOption { key: string; label: string; dot?: string; }
+const DropdownFilter = ({
+  label, value, options, onChange,
+}: { label: string; value: string; options: DDOption[]; onChange: (v: string) => void }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = options.find(o => o.key === value);
+  const isActive = value !== '';
 
   useEffect(() => {
-    // Check user roles and permissions
-    const user: User | null = auth.getCurrentUser();
-    const isUserAdmin: boolean = auth.isAdmin();
-    setIsAdmin(isUserAdmin);
-    
-    const roles = user?.roles || [];
-    setUserRoles(roles);
-    
-    console.log('[TargetSystemShow] User:', user);
-    console.log('[TargetSystemShow] Is Admin:', isUserAdmin);
-    console.log('[TargetSystemShow] Roles:', roles);
-    
-    // Admins can do everything
-    const hasCreatePerm = roles.includes('create:target_systems') || isUserAdmin;
-    const hasEditPerm = roles.includes('edit:target_systems') || isUserAdmin;
-    const hasDeletePerm = roles.includes('delete:target_systems') || isUserAdmin;
-    
-    console.log('[TargetSystemShow] Permissions - Create:', hasCreatePerm, 'Edit:', hasEditPerm, 'Delete:', hasDeletePerm);
-    
-    setCanAdd(hasCreatePerm);
-    setCanEdit(hasEditPerm);
-    setCanDelete(hasDeletePerm);
-    
-    fetchData();
-  }, [filters]);
-
-  // Use auth methods from route state
-  useEffect(() => {
-    if (authMethodsFromState && authMethodsFromState.length > 0) {
-      setAvailableAuthMethods(authMethodsFromState);
-    }
-  }, [authMethodsFromState]);
-
-  const fetchData = async (): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [systemsData, typesData]: [SystemsResponse, TypesResponse | TypeOption[]] = await Promise.all([
-        api.targetSystems.list(filters),
-        api.targetSystems.getTypes().catch(() => [])
-      ]);
-
-      let systemsList: System[] = Array.isArray(systemsData) ? systemsData : systemsData.systems || [];
-      
-      console.log('[fetchData] Raw systems data:', systemsData);
-      if (systemsList.length > 0) {
-        console.log('[fetchData] First system object keys:', Object.keys(systemsList[0]));
-        console.log('[fetchData] First system object:', systemsList[0]);
-      }
-      
-      // Filter by integration_id on the frontend if integrationId is provided
-      if (integrationId) {
-        console.log('[fetchData] Filtering by integrationId:', integrationId);
-        systemsList = systemsList.filter(s => {
-          console.log('[fetchData] System:', s.name, 'integration_id:', s.integration_id, 'matches:', s.integration_id === integrationId);
-          return s.integration_id === integrationId;
-        });
-      }
-  
-      setSystems(systemsList);
-      setTypeOptions(Array.isArray(typesData) ? typesData : (typesData as TypesResponse).types || []);
-      
-      // Calculate stats from the filtered systems list
-      const calculatedStats: Stats = {
-        total_systems: systemsList.length,
-        connected: systemsList.filter(s => s.status === 'connected').length,
-        disconnected: systemsList.filter(s => s.status === 'disconnected').length,
-        error: systemsList.filter(s => s.status === 'error').length,
-        pending: systemsList.filter(s => s.status === 'pending').length
-      };
-      setStats(calculatedStats);
-    } catch (err) {
-      console.error('Error fetching target systems:', err);
-      setError((err as Error).message || 'Failed to fetch target systems');
-      setSystems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreate = async (data: any): Promise<void> => {
-    try {
-      await api.targetSystems.create(data);
-      toast.success('Target system created successfully');
-      // Only close form and refresh on success
-      setShowForm(false);
-      setEditingSystem(null);
-      fetchData();
-    } catch (err: any) {
-      console.error('Error creating target system:', err);
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to create target system';
-      toast.error(errorMessage);
-      // DON'T close form - let user fix the error
-    }
-  };
-
-  const handleUpdate = async (id: string, data: any): Promise<void> => {
-    try {
-      await api.targetSystems.update(id, data);
-      toast.success('Target system updated successfully');
-      // Only close form and refresh on success
-      setShowForm(false);
-      setEditingSystem(null);
-      fetchData();
-    } catch (err: any) {
-      console.error('Error updating target system:', err);
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to update target system';
-      toast.error(errorMessage);
-      // DON'T close form - let user fix the error
-    }
-  };
-
-  // Handle delete button click - show modal
-  const handleDeleteClick = useCallback((system: System): void => {
-    setSystemToDelete(system);
-    setShowDeleteModal(true);
+    const fn = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
   }, []);
-
-  // Confirm delete
-  const confirmDelete = useCallback(async (): Promise<void> => {
-    if (!systemToDelete) return;
-
-    try {
-      await api.targetSystems.delete(systemToDelete._id);
-      toast.success('Target system deleted successfully. Associated agents have been removed.');
-      setShowDeleteModal(false);
-      setSystemToDelete(null);
-      setDeleteConfirmText('');
-      fetchData();
-    } catch (err: any) {
-      console.error('Error deleting target system:', err);
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to delete target system';
-      toast.error(errorMessage);
-      // Don't close modal on error
-    }
-  }, [systemToDelete]);
-
-  // Cancel delete
-  const cancelDelete = useCallback((): void => {
-    setShowDeleteModal(false);
-    setSystemToDelete(null);
-    setDeleteConfirmText('');
-  }, []);
-
-  const handleTestConnection = async (id: string): Promise<void> => {
-    setTestingId(id);
-    try {
-      const result: TestConnectionResult = await api.targetSystems.testConnection(id);
-      console.log('[handleTestConnection] Result:', result);
-      const message = result.message || result.detail || 'Connection test completed';
-      toast.success(`Connection test: ${message}`);
-      fetchData();
-    } catch (err: any) {
-      console.error('Connection test failed:', err);
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Connection test failed';
-      toast.error(errorMessage);
-    } finally {
-      setTestingId(null);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'connected':
-        return <FaCheckCircle className="text-green-500" />;
-      case 'disconnected':
-        return <FaTimesCircle className="text-red-500" />;
-      case 'pending':
-        return <FaClock className="text-yellow-500 animate-spin" />;
-      default:
-        return <FaClock className="text-gray-500" />;
-    }
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'connected':    return 'bg-green-50 text-green-700';
-      case 'disconnected': return 'bg-red-50 text-red-700';
-      case 'error':        return 'bg-red-50 text-red-700';
-      case 'pending':      return 'bg-yellow-50 text-yellow-700';
-      default:             return 'bg-gray-50 text-gray-600';
-    }
-  };
-
-  const getStatusDot = (status: string): string => {
-    switch (status) {
-      case 'connected':    return 'bg-green-500';
-      case 'disconnected': return 'bg-red-500';
-      case 'error':        return 'bg-red-500';
-      case 'pending':      return 'bg-yellow-400';
-      default:             return 'bg-gray-400';
-    }
-  };
 
   return (
-    <div className="ts-font min-h-screen bg-[#FAFAFA]">
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md 2xl:max-w-xl w-full p-8 2xl:p-12 animate-scaleIn">
-            {/* Warning Icon */}
-            <div className="flex justify-center mb-6 2xl:mb-8">
-              <div className="w-16 h-16 2xl:w-20 2xl:h-20 bg-red-100 rounded-full flex items-center justify-center">
-                <FaTrash className="text-red-600 text-2xl 2xl:text-3xl" />
-              </div>
-            </div>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-semibold border transition-all duration-150 select-none
+          ${isActive
+            ? 'bg-white text-gray-900 border-gray-900 shadow-sm'
+            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+          }`}
+      >
+        {isActive && active?.dot && (
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: active.dot }} />
+        )}
+        <span>{isActive ? active?.label : label}</span>
+        <FaChevronDown
+          size={9}
+          className={`transition-transform duration-200 text-gray-400 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-            {/* Title */}
-            <h2 className="text-2xl 2xl:text-3xl font-bold text-gray-900 text-center mb-3">
-              Delete Target System?
-            </h2>
-
-            {/* System Info */}
-            <div className="bg-gray-50 rounded-lg p-4 2xl:p-5 mb-6 2xl:mb-8">
-              <div className="mb-3">
-                <p className="font-semibold text-gray-900 text-lg 2xl:text-xl">{systemToDelete?.name}</p>
-                <p className="text-sm 2xl:text-base text-gray-500">{systemToDelete?.type}</p>
-              </div>
-              <div className="space-y-1 text-sm 2xl:text-base">
-                <p className="text-gray-600">
-                  Environment: <span className="font-medium text-gray-800">{systemToDelete?.environment}</span>
-                </p>
-                <p className="text-gray-600">
-                  Host: <span className="font-medium text-gray-800 break-all">{systemToDelete?.base_url || systemToDelete?.host}</span>
-                </p>
-                <div className="mt-2">
-                  <span className={`px-2.5 py-1 2xl:px-3 2xl:py-1.5 rounded-full text-xs 2xl:text-sm font-medium ${getStatusColor(systemToDelete?.status || '')}`}>
-                    {systemToDelete?.status}
+      {open && (
+        <div className="dd-panel absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/[.08] overflow-hidden z-30">
+          <div className="py-1.5">
+            {options.map(opt => {
+              const sel = value === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => { onChange(opt.key); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-[13px] transition-colors
+                    ${sel ? 'bg-gray-50 text-gray-950 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950'}`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    {opt.dot && <span className="w-2 h-2 rounded-full" style={{ background: opt.dot }} />}
+                    {opt.label}
                   </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Warning Message */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-red-700">
-                <strong>Warning:</strong> Deleting this target system will permanently remove it along with all associated agents and monitoring data. This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Confirmation Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-red-600 mb-2">
-                To confirm deletion, please enter the target system name
-              </label>
-              <input
-                type="text"
-                placeholder={`Type "${systemToDelete?.name}" to confirm`}
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-              {deleteConfirmText && deleteConfirmText !== systemToDelete?.name && (
-                <p className="text-red-600 text-xs mt-2">Target system name does not match</p>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 2xl:gap-4">
-              <button
-                onClick={cancelDelete}
-                className="flex-1 px-6 py-3 2xl:px-8 2xl:py-4 2xl:text-base bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleteConfirmText !== systemToDelete?.name}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Yes, Delete
-              </button>
-            </div>
+                  {sel && <FaCheck size={10} className="text-gray-950" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
+    </div>
+  );
+};
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-        <div className="max-w-[1400px] mx-auto pt-10 pb-8">
-          <div className="flex items-start justify-between gap-6 max-md:flex-col">
+/* ═══════════════════════════ Main Component ════════════════════════════ */
+export default function TargetSystemShow() {
+  const { integrationId } = useParams<{ integrationId?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const ls = location.state as LocationState | undefined;
+  const integrationName      = ls?.integrationName;
+  const integrationValue     = ls?.integrationValue;
+  const authMethodsFromState = ls?.authMethods || [];
+
+  const [systems,     setSystems]     = useState<System[]>([]);
+  const [stats,       setStats]       = useState<Stats | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
+  const [showForm,    setShowForm]    = useState(false);
+  const [editingSys,  setEditingSys]  = useState<System | null>(null);
+  const [testingId,   setTestingId]   = useState<string | null>(null);
+  const [typeOptions, setTypeOptions] = useState<TypeOption[]>([]);
+  const [authMethods, setAuthMethods] = useState<string[]>([]);
+  const [canAdd,      setCanAdd]      = useState(false);
+  const [canEdit,     setCanEdit]     = useState(false);
+  const [canDelete,   setCanDelete]   = useState(false);
+  const [delModal,    setDelModal]    = useState(false);
+  const [delTarget,   setDelTarget]   = useState<System | null>(null);
+  const [delText,     setDelText]     = useState('');
+  const [filters,     setFilters]     = useState<Filters>({ environment: '', status: '' });
+
+  useEffect(() => {
+    const user: User | null = auth.getCurrentUser();
+    const isAdmin = auth.isAdmin();
+    const roles = user?.roles || [];
+    setCanAdd(roles.includes('create:target_systems') || isAdmin);
+    setCanEdit(roles.includes('edit:target_systems') || isAdmin);
+    setCanDelete(roles.includes('delete:target_systems') || isAdmin);
+    fetchData();
+  }, [filters]);
+
+  useEffect(() => { if (authMethodsFromState.length) setAuthMethods(authMethodsFromState); }, []);
+
+  async function fetchData() {
+    setLoading(true); setError(null);
+    try {
+      const [sd, td]: [SystemsResponse, TypesResponse | TypeOption[]] = await Promise.all([
+        api.targetSystems.list(filters),
+        api.targetSystems.getTypes().catch(() => []),
+      ]);
+      let list: System[] = Array.isArray(sd) ? sd : sd.systems || [];
+      if (integrationId) list = list.filter(s => s.integration_id === integrationId);
+      setSystems(list);
+      setTypeOptions(Array.isArray(td) ? td : (td as TypesResponse).types || []);
+      setStats({
+        total_systems: list.length,
+        connected:     list.filter(s => s.status === 'connected').length,
+        disconnected:  list.filter(s => s.status === 'disconnected').length,
+        error:         list.filter(s => s.status === 'error').length,
+        pending:       list.filter(s => s.status === 'pending').length,
+      });
+    } catch (e) {
+      setError((e as Error).message);
+      setSystems([]);
+    } finally { setLoading(false); }
+  }
+
+  async function handleCreate(data: any) {
+    try {
+      await api.targetSystems.create(data);
+      toast.success('Target system created successfully');
+      setShowForm(false); setEditingSys(null); fetchData();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to create'); }
+  }
+
+  async function handleUpdate(id: string, data: any) {
+    try {
+      await api.targetSystems.update(id, data);
+      toast.success('Target system updated successfully');
+      setShowForm(false); setEditingSys(null); fetchData();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to update'); }
+  }
+
+  const openDelete  = useCallback((s: System) => { setDelTarget(s); setDelModal(true); }, []);
+  const closeDelete = useCallback(() => { setDelModal(false); setDelTarget(null); setDelText(''); }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!delTarget) return;
+    try {
+      await api.targetSystems.delete(delTarget._id);
+      toast.success('Target system deleted successfully. Associated agents have been removed.');
+      closeDelete(); fetchData();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
+  }, [delTarget]);
+
+  async function testConn(id: string) {
+    setTestingId(id);
+    try {
+      const r: TestResult = await api.targetSystems.testConnection(id);
+      const msg = r.message || r.detail || '';
+      const isFailure =
+        r.success === false ||
+        r.connected === false ||
+        r.status === 'error' ||
+        r.status === 'failed' ||
+        /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
+      if (isFailure) {
+        toast.error(msg || 'Connection test failed');
+      } else {
+        toast.success(msg || 'Connection successful');
+      }
+      fetchData();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
+    } finally { setTestingId(null); }
+  }
+
+  /* filter options */
+  const ENV_OPTIONS: DDOption[] = [
+    { key: '',            label: 'All Environments' },
+    { key: 'development', label: 'Development' },
+    { key: 'staging',     label: 'Staging' },
+    { key: 'production',  label: 'Production' },
+  ];
+  const STATUS_OPTIONS: DDOption[] = [
+    { key: '',             label: 'All Statuses' },
+    { key: 'connected',    label: 'Connected',    dot: '#22c55e' },
+    { key: 'disconnected', label: 'Disconnected', dot: '#ef4444' },
+    { key: 'error',        label: 'Error',        dot: '#f97316' },
+    { key: 'pending',      label: 'Pending',      dot: '#eab308' },
+  ];
+
+  const STAT_CARDS = [
+    { label: 'Total Systems', value: stats?.total_systems ?? 0, dot: '#9ca3af', delay: 0   },
+    { label: 'Connected',     value: stats?.connected     ?? 0, dot: '#22c55e', delay: 50  },
+    { label: 'Disconnected',  value: stats?.disconnected  ?? 0, dot: '#ef4444', delay: 100 },
+    { label: 'Error',         value: stats?.error         ?? 0, dot: '#f97316', delay: 150 },
+    { label: 'Pending',       value: stats?.pending       ?? 0, dot: '#eab308', delay: 200 },
+  ];
+
+  const getStatusColor = (status: string) => {
+    const map: Record<string, string> = {
+      connected:    'bg-green-100 text-green-700 border border-green-300',
+      disconnected: 'bg-red-100 text-red-700 border border-red-300',
+      error:        'bg-red-100 text-red-700 border border-red-300',
+      pending:      'bg-yellow-100 text-yellow-700 border border-yellow-300',
+    };
+    return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
+  };
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        .ts { font-family: 'Inter', system-ui, sans-serif; }
+
+        @keyframes fade-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes modal-in {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes overlay-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+
+        .stat-card { animation: fade-up .4s cubic-bezier(.22,1,.36,1) both; }
+        .sys-card  { animation: fade-up .35s cubic-bezier(.22,1,.36,1) both; }
+        .modal-box { animation: modal-in .28s cubic-bezier(.22,1,.36,1); }
+        .overlay   { animation: overlay-in .2s ease; }
+
+        .sys-card {
+          transition: box-shadow .2s ease, transform .2s ease;
+        }
+        .sys-card:hover {
+          box-shadow: 0 8px 30px rgba(0,0,0,.08);
+          transform: translateY(-2px);
+        }
+
+        /* top accent bar */
+        .sys-card .top-bar {
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform .3s cubic-bezier(.22,1,.36,1);
+        }
+        .sys-card:hover .top-bar { transform: scaleX(1); }
+
+        /* glowing trash button */
+        .btn-trash {
+          transition: background .2s, box-shadow .2s, color .2s;
+        }
+        .btn-trash:hover {
+          background: #fef2f2 !important;
+          color: #ef4444 !important;
+          box-shadow: 0 0 0 4px rgba(239,68,68,.15), 0 0 14px rgba(239,68,68,.25);
+        }
+
+        .dd-panel { animation: fade-up .15s cubic-bezier(.22,1,.36,1); }
+      `}</style>
+
+      <div className="ts min-h-screen bg-white">
+
+        {/* ════════════════════ DELETE MODAL ════════════════════ */}
+        {delModal && (
+          <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+            <div className="modal-box bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+
+              <div className="p-6">
+                {/* Compact header row */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                    <FaTrash className="text-red-500 text-sm" />
+                  </div>
+                  <div>
+                    <h2 className="text-[16px] font-bold text-gray-900 leading-tight">Delete Target System?</h2>
+                    <p className="text-[12px] text-gray-400 mt-0.5">This action cannot be undone</p>
+                  </div>
+                </div>
+
+                {/* System info — inline compact */}
+                <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-900 text-[14px] truncate">{delTarget?.name}</p>
+                      <p className="text-[12px] text-gray-400">{delTarget?.type} · <span className="capitalize">{delTarget?.environment}</span></p>
+                    </div>
+                    <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${getStatusColor(delTarget?.status || '')}`}>
+                      {delTarget?.status}
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-gray-500 mt-1.5 break-all">{delTarget?.base_url || delTarget?.host}</p>
+                </div>
+
+                {/* Warning — compact */}
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 mb-4">
+                  <p className="text-[12px] text-red-600 leading-relaxed">
+                    <span className="font-bold">Warning:</span> Permanently removes this system along with all associated agents and monitoring data.
+                  </p>
+                </div>
+
+                {/* Confirm input */}
+                <div className="mb-4">
+                  <label className="block text-[12px] font-bold text-red-500 mb-1.5">
+                    Type <span className="font-black">"{delTarget?.name}"</span> to confirm
+                  </label>
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
+                    placeholder={`Type "${delTarget?.name}" to confirm`}
+                    value={delText}
+                    onChange={e => setDelText(e.target.value)}
+                  />
+                  {delText && delText !== delTarget?.name && (
+                    <p className="text-red-400 text-[11px] mt-1">System name does not match</p>
+                  )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-2.5">
+                  <button onClick={closeDelete}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={confirmDelete} disabled={delText !== delTarget?.name}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    Yes, Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════════ HEADER ════════════════════ */}
+        <div className="px-8 max-md:px-5 pt-9 pb-6">
+          <div className="max-w-7xl mx-auto flex items-start justify-between gap-6">
             <div>
-
-              <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl mb-2">
+              <h1 className="text-[34px] font-bold tracking-tight text-gray-950 leading-tight">
                 {integrationName ? `${integrationName} Systems` : 'Target Systems'}
               </h1>
-              <p className="text-[15px] text-gray-500 font-normal leading-relaxed m-0">
+              <p className="text-[14px] text-gray-400 mt-1.5">
                 {integrationName
                   ? `Manage target systems for ${integrationName}`
                   : 'Manage your connected systems and integrations'}
               </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={fetchData}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50"
-                title="Refresh systems"
-              >
-                <FaSync className={loading ? 'animate-spin' : ''} size={12} />
+            <div className="flex items-center gap-2.5 pt-1 shrink-0">
+              <button onClick={fetchData} disabled={loading}
+                className="h-10 px-4 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[13px] font-semibold text-gray-600 transition-all disabled:opacity-50">
+                <FaSync size={11} className={loading ? 'animate-spin' : ''} />
                 Refresh
               </button>
               {canAdd ? (
-                <button
-                  onClick={() => navigate("/systems/targetsys")}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors"
-                  title="Add a new target system"
-                >
-                  <FaPlus size={12} />
-                  Create Target System
+                <button onClick={() => navigate('/systems/targetsys')}
+                  className="h-10 px-4 inline-flex items-center gap-2 rounded-xl bg-[#0f0f0f] hover:bg-[#2a2a2a] text-[13px] font-semibold text-white transition-all">
+                  <FaPlus size={11} /> Create Target System
                 </button>
               ) : (
-                <button
-                  disabled
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed"
-                  title="You do not have permission to add target systems"
-                >
-                  <FaLock size={12} />
-                  Restricted
+                <button disabled className="h-10 px-4 inline-flex items-center gap-2 rounded-xl bg-gray-100 text-[13px] text-gray-400 cursor-not-allowed">
+                  <FaLock size={11} /> Restricted
                 </button>
               )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Stats Strip */}
-      {stats && (
-        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-          <div className="max-w-[1400px] mx-auto py-5">
-            <div className="grid grid-cols-5 gap-4 max-md:grid-cols-3">
-              {[
-                { label: 'Total Systems', value: stats.total_systems || 0, dot: 'bg-gray-400' },
-                { label: 'Connected',     value: stats.connected     || 0, dot: 'bg-green-500' },
-                { label: 'Disconnected',  value: stats.disconnected  || 0, dot: 'bg-red-500' },
-                { label: 'Error',         value: stats.error         || 0, dot: 'bg-orange-500' },
-                { label: 'Pending',       value: stats.pending       || 0, dot: 'bg-yellow-400' },
-              ].map(({ label, value, dot }) => (
-                <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 flex flex-col gap-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${dot}`} />
-                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">{label}</span>
-                  </div>
-                  <div className="text-3xl font-bold text-[#0A0A0A] tracking-tight">{value}</div>
-                </div>
-              ))}
+        {/* ════════════════════ STAT CARDS ════════════════════ */}
+        <div className="px-8 max-md:px-5 pb-6">
+          <div className="max-w-7xl mx-auto flex gap-4 max-md:grid max-md:grid-cols-2">
+            {STAT_CARDS.map(c => <StatCard key={c.label} {...c} />)}
+          </div>
+        </div>
+
+        {/* ════════════════════ FILTER BAR ════════════════════ */}
+        <div className="px-8 max-md:px-5 sticky top-0 z-10 bg-white py-3 border-y border-gray-100">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <DropdownFilter
+                label="All Environments"
+                value={filters.environment}
+                options={ENV_OPTIONS}
+                onChange={v => setFilters(f => ({ ...f, environment: v }))}
+              />
+              <DropdownFilter
+                label="All Statuses"
+                value={filters.status}
+                options={STATUS_OPTIONS}
+                onChange={v => setFilters(f => ({ ...f, status: v }))}
+              />
+              {(filters.environment || filters.status) && (
+                <button onClick={() => setFilters({ environment: '', status: '' })}
+                  className="h-10 px-3.5 rounded-xl text-[12px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors border border-dashed border-gray-200">
+                  Clear ×
+                </button>
+              )}
+            </div>
+            <span className="text-[13px] text-gray-400 font-medium">
+              {systems.length} system{systems.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* ════════════════════ FORM MODAL ════════════════════ */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto">
+            <div className="w-full max-w-3xl my-auto">
+              <TargetSystemForm
+                system={editingSys}
+                typeOptions={typeOptions}
+                availableAuthMethods={authMethods}
+                integrationValue={integrationValue}
+                integrationId={integrationId}
+                integrationName={integrationName}
+                isModal={true}
+                onSubmit={editingSys ? d => handleUpdate(editingSys._id, d) : handleCreate}
+                onCancel={() => { setShowForm(false); setEditingSys(null); }}
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Filters Toolbar */}
-      <div className="bg-white border-b border-gray-200 px-12 sticky top-0 z-10 max-md:px-5">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6 h-14">
-          {/* Environment pills */}
-          <div className="flex items-center gap-0.5">
-            {['All', 'development', 'staging', 'production'].map(env => {
-              const label = env === 'All' ? 'All Environments' : env.charAt(0).toUpperCase() + env.slice(1);
-              const active = env === 'All' ? filters.environment === '' : filters.environment === env;
-              return (
-                <button
-                  key={env}
-                  onClick={() => setFilters({ ...filters, environment: env === 'All' ? '' : env })}
-                  className={`px-3.5 py-1.5 rounded-md border-none text-[13px] font-medium cursor-pointer transition-all duration-150 whitespace-nowrap font-[inherit]
-                    ${active ? 'bg-[#111] text-white' : 'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-[#111]'}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          {/* Status pills */}
-          <div className="flex items-center gap-0.5">
-            {['All', 'connected', 'disconnected', 'error', 'pending'].map(st => {
-              const label = st === 'All' ? 'All Statuses' : st.charAt(0).toUpperCase() + st.slice(1);
-              const active = st === 'All' ? filters.status === '' : filters.status === st;
-              return (
-                <button
-                  key={st}
-                  onClick={() => setFilters({ ...filters, status: st === 'All' ? '' : st })}
-                  className={`px-3.5 py-1.5 rounded-md border-none text-[13px] font-medium cursor-pointer transition-all duration-150 whitespace-nowrap font-[inherit]
-                    ${active ? 'bg-[#111] text-white' : 'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-[#111]'}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <span className="text-[13px] text-gray-400 whitespace-nowrap font-normal shrink-0">
-            {systems.length} system{systems.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      </div>
-
-      {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto animate-fadeIn">
-          <div className="w-full max-w-3xl my-auto">
-            <TargetSystemForm
-              system={editingSystem}
-              typeOptions={typeOptions}
-              availableAuthMethods={availableAuthMethods}
-              integrationValue={integrationValue}
-              integrationId={integrationId}
-              integrationName={integrationName}
-              isModal={true}
-              onSubmit={editingSystem ? (data) => handleUpdate(editingSystem._id, data) : handleCreate}
-              onCancel={() => {
-                setShowForm(false);
-                setEditingSystem(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="max-w-[1400px] mx-auto px-12 pt-6 max-md:px-5">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-            {error}
-          </div>
-        </div>
-      )}
-
-      {/* Target Systems Grid */}
-      <div className="max-w-[1400px] mx-auto px-12 pt-10 pb-20 max-md:px-5">
-        {loading ? (
-          <div className="flex items-center justify-center p-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
-          </div>
-        ) : systems.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-20 text-center">
-            <div className="text-5xl mb-4 opacity-30">🖥️</div>
-            <p className="text-[15px] text-gray-400 mb-6">No target systems found</p>
-            {canAdd && (
-              <button
-                onClick={() => navigate("/systems/targetsys")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors"
-              >
-                <FaPlus size={12} />
-                Create your first target system
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-            {systems.map((system, idx) => (
-              <div
-                key={system._id}
-                className="ts-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col transition-all duration-[220ms] hover:shadow-lg hover:-translate-y-0.5"
-                style={{ animationDelay: `${idx * 0.04}s` }}
-              >
-                {/* Accent bar */}
-                <div className="ts-accent-bar h-[3px] bg-gradient-to-r from-indigo-500 to-violet-500" />
-
-                {/* Card body */}
-                <div className="p-6 flex flex-col flex-1">
-                  {/* Title row */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-[16px] font-semibold text-[#0A0A0A] leading-tight">{system.name}</h3>
-                      <p className="text-[13px] text-gray-500 mt-0.5">{system.type}</p>
-                    </div>
-                    <TargetSystemStatus status={system.status} />
-                  </div>
-
-                  {/* Meta */}
-                  <div className="space-y-2 mb-4 text-[13px]">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 w-24 shrink-0">Environment</span>
-                      <span className="font-medium text-[#111]">{system.environment}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 w-24 shrink-0">Host</span>
-                      <span className="font-medium text-[#111] break-all">{system.base_url || system.host}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 w-24 shrink-0">Status</span>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold ${getStatusColor(system.status)}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(system.status)}`} />
-                        {system.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="border-t border-gray-100 pt-4 mt-auto flex gap-2">
-                    {canEdit ? (
-                      <button
-                        onClick={() => { setEditingSystem(system); setShowForm(true); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[12px] font-medium transition-colors"
-                        title="Edit this target system"
-                      >
-                        <FaEdit size={11} />
-                        Edit
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-300 cursor-not-allowed rounded-lg text-[12px] font-medium"
-                      >
-                        <FaEdit size={11} />
-                        Edit
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleTestConnection(system._id)}
-                      disabled={testingId === system._id}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[12px] font-medium transition-colors disabled:opacity-50"
-                    >
-                      <FaCheckCircle size={11} className={testingId === system._id ? 'animate-spin' : ''} />
-                      {testingId === system._id ? 'Testing…' : 'Test'}
-                    </button>
-                    {canDelete ? (
-                      <button
-                        onClick={() => handleDeleteClick(system)}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[12px] font-medium transition-colors"
-                        title="Delete this target system"
-                      >
-                        <FaTrash size={11} />
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-300 cursor-not-allowed rounded-lg text-[12px] font-medium"
-                      >
-                        <FaTrash size={11} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* ════════════════════ ERROR ════════════════════ */}
+        {error && (
+          <div className="max-w-7xl mx-auto px-8 pt-5">
+            <div className="bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3">{error}</div>
           </div>
         )}
+
+        {/* ════════════════════ CARD GRID ════════════════════ */}
+        <div className="max-w-7xl mx-auto px-8 pt-7 pb-20 max-md:px-5">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-28 gap-3">
+              <div className="w-7 h-7 rounded-full border-2 border-gray-200 border-t-gray-900 animate-spin" />
+              <span className="text-sm text-gray-400">Loading systems…</span>
+            </div>
+          ) : systems.length === 0 ? (
+            <div className="flex flex-col items-center py-28 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-5">
+                <svg width="22" height="22" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <rect x="2" y="6" width="20" height="14" rx="2"/>
+                  <path d="M2 10h20M8 2v4M16 2v4"/>
+                </svg>
+              </div>
+              <p className="text-[15px] font-semibold text-gray-500">No systems found</p>
+              <p className="text-sm text-gray-400 mt-1">Try adjusting your filters or create a new target system</p>
+            </div>
+          ) : (
+            <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+              {systems.map((sys, i) => (
+                <article
+                  key={sys._id}
+                  className="sys-card bg-gray-50 rounded-2xl overflow-hidden"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  {/* Animated top accent bar */}
+                  <div className="top-bar h-[3px] bg-gradient-to-r from-indigo-500 to-violet-500" />
+
+                  <div className="p-6">
+                    {/* Name + badge */}
+                    <div className="flex items-start justify-between gap-3 mb-5">
+                      <div className="min-w-0">
+                        <h3 className="text-[16px] font-bold text-gray-950 truncate leading-tight">{sys.name}</h3>
+                        <p className="text-[13px] text-gray-400 mt-0.5">{sys.type}</p>
+                      </div>
+                      <div className="shrink-0 mt-0.5">
+                        <StatusBadge status={sys.status} />
+                      </div>
+                    </div>
+
+                    {/* Detail rows */}
+                    <div className="space-y-2.5 mb-6">
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <span className="text-gray-400 w-24 shrink-0">Environment</span>
+                        <span className="font-medium text-gray-800 capitalize">{sys.environment}</span>
+                      </div>
+                      <div className="flex items-start gap-3 text-[13px]">
+                        <span className="text-gray-400 w-24 shrink-0">Host</span>
+                        <span className="font-medium text-gray-800 break-all leading-snug">
+                          {sys.base_url || sys.host || '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <span className="text-gray-400 w-24 shrink-0">Status</span>
+                        <span className="flex items-center gap-1.5 font-medium text-gray-800">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: STATUS_CFG[sys.status]?.dot ?? '#9ca3af' }}
+                          />
+                          {sys.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-5 border-t border-gray-200/60">
+                      {/* Edit */}
+                      {canEdit ? (
+                        <button
+                          onClick={() => { setEditingSys(sys); setShowForm(true); }}
+                          className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white hover:bg-gray-100 text-[12px] font-semibold text-gray-600 transition-colors"
+                        >
+                          <FaEdit size={10} /> Edit
+                        </button>
+                      ) : (
+                        <button disabled className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white text-[12px] text-gray-300 cursor-not-allowed">
+                          <FaEdit size={10} /> Edit
+                        </button>
+                      )}
+
+                      {/* Test */}
+                      <button
+                        onClick={() => testConn(sys._id)}
+                        disabled={testingId === sys._id}
+                        className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0f0f0f] hover:bg-[#2a2a2a] text-[12px] font-semibold text-white transition-colors disabled:opacity-50"
+                      >
+                        <FaCheckCircle size={10} className={testingId === sys._id ? 'animate-spin' : ''} />
+                        {testingId === sys._id ? 'Testing…' : 'Test'}
+                      </button>
+
+                      {/* Delete — glowing trash */}
+                      {canDelete ? (
+                        <button
+                          onClick={() => openDelete(sys)}
+                          className="btn-trash w-9 h-9 inline-flex items-center justify-center rounded-xl bg-white text-gray-400"
+                        >
+                          <FaTrash size={10} />
+                        </button>
+                      ) : (
+                        <button disabled className="w-9 h-9 inline-flex items-center justify-center rounded-xl bg-white text-gray-200 cursor-not-allowed">
+                          <FaTrash size={10} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
-
-        .ts-font { font-family: 'DM Sans', sans-serif; }
-
-        /* Card rise animation */
-        @keyframes ts-rise {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .ts-card { animation: ts-rise 0.35s ease both; }
-
-        /* Accent bar: scaleX on hover */
-        .ts-accent-bar {
-          transform: scaleX(0);
-          transform-origin: left;
-          transition: transform 0.3s ease;
-        }
-        .ts-card:hover .ts-accent-bar { transform: scaleX(1); }
-
-        /* Delete modal animations */
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        .animate-fadeIn  { animation: fadeIn  0.2s ease-out; }
-        .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
-      `}</style>
-    </div>
+    </>
   );
-};
-
-export default TargetSystemShow;
+}
