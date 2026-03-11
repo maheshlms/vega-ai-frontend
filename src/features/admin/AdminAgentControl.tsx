@@ -17,9 +17,7 @@ import {
   FaSortDown,
   FaCircle,
   FaWifi,
-  FaDatabase,
 } from "react-icons/fa";
-import { IoMdStats } from "react-icons/io";
 import { MdSecurity, MdSpeed } from "react-icons/md";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
@@ -737,7 +735,7 @@ interface AgentDistributionCardProps {
   typeStats: TypeStats;
 }
 
-const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, totalAgents, environmentStats, typeStats }) => {
+const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, totalAgents }) => {
   const [expandedKey, setExpandedKey] = useState<string | null>(PRODUCT_REGISTRY[0]?.key ?? null);
 
   const productGroups: ProductGroup[] = React.useMemo(() => {
@@ -846,7 +844,7 @@ const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, t
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const AdminAgentControll: React.FC = () => {
+const AdminAgentControl: React.FC = () => {
   const { isDark } = useTheme();
   const { formatted: sessionTime, elapsed: sessionElapsed } = useSessionTimer();
 
@@ -880,17 +878,47 @@ const AdminAgentControll: React.FC = () => {
 
   const fetchSystemHealth = async () => {
     setSystemHealth(prev => ({ ...prev, isChecking: true }));
-    try {
-      const response = await api.fetchWithAuth('/api/v1/health');
-      if (response.ok) {
-        const data = await response.json();
-        setSystemHealth({ overall: data.status as HealthStatus, checks: data.checks || {}, lastChecked: new Date(), isChecking: false });
-      } else {
-        setSystemHealth({ overall: 'unhealthy', checks: { backend: { status: 'unhealthy', error: `HTTP ${response.status}` } }, lastChecked: new Date(), isChecking: false });
-      }
-    } catch {
-      setSystemHealth({ overall: 'unreachable', checks: { backend: { status: 'unreachable', error: 'Cannot reach backend' } }, lastChecked: new Date(), isChecking: false });
+
+    // Run backend and audit-service health checks in parallel
+    const [backendResult, auditResult] = await Promise.allSettled([
+      api.fetchWithAuth('/api/v1/health'),
+      api.auditHealthCheck(),
+    ]);
+
+    // ── Parse backend response ───────────────────────────────────────────────
+    let checks: SystemHealthState['checks'] = {};
+    let overall: HealthStatus = 'unhealthy';
+
+    if (backendResult.status === 'fulfilled' && backendResult.value.ok) {
+      const data = await backendResult.value.json();
+      checks = data.checks || {};
+      overall = data.status as HealthStatus;
+    } else if (backendResult.status === 'fulfilled') {
+      checks.backend = { status: 'unhealthy', error: `HTTP ${backendResult.value.status}` };
+    } else {
+      checks.backend = { status: 'unreachable', error: 'Cannot reach backend' };
     }
+
+    // ── Parse audit service response ─────────────────────────────────────────
+    if (auditResult.status === 'fulfilled' && auditResult.value.ok) {
+      checks.audit_service = { status: 'healthy' };
+    } else if (auditResult.status === 'fulfilled') {
+      checks.audit_service = { status: 'unreachable', error: `HTTP ${auditResult.value.status}` };
+    } else {
+      checks.audit_service = { status: 'unreachable', error: 'Cannot reach audit service' };
+    }
+
+    // ── Derive overall status from all checks ────────────────────────────────
+    const statuses = Object.values(checks).map(c => c?.status);
+    if (statuses.some(s => s === 'unreachable' || s === 'unhealthy')) {
+      overall = statuses.every(s => s === 'unreachable' || s === 'unhealthy') ? 'unhealthy' : 'degraded';
+    } else if (statuses.some(s => s === 'degraded')) {
+      overall = 'degraded';
+    } else {
+      overall = 'healthy';
+    }
+
+    setSystemHealth({ overall, checks, lastChecked: new Date(), isChecking: false });
   };
 
   const fetchAgents = async (): Promise<void> => {
@@ -1772,9 +1800,9 @@ const AdminAgentControll: React.FC = () => {
         </div>
       )}
 
-      <FloatingChat />
+      {/* <FloatingChat /> */}
     </div>
   );
 };
 
-export default AdminAgentControll;
+export default AdminAgentControl;

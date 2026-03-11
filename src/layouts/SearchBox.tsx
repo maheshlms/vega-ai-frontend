@@ -68,7 +68,7 @@ const buildPageResults = (navigate: ReturnType<typeof useNavigate>): SearchResul
   { type: 'page', icon: '🖥️', name: 'Target Systems', description: 'Manage connected target systems',  action: () => navigate('/systems')              },
 ];
 
-// ─── Same avatar resolver as AdminAgentControll ───────────────────────────────
+// ─── Same avatar resolver as AdminAgentControl ───────────────────────────────
 const resolveAgentAvatarUrl = (name: string, avatarId?: string, storedImg?: string): string => {
   if (storedImg && !storedImg.match(/\.(mp4|webm|mov)(\?|$)/i)) return storedImg;
   if (avatarId && avatarId.trim()) return `/avatars/${avatarId.trim()}.webp`;

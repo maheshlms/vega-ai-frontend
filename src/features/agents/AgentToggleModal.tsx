@@ -3,7 +3,7 @@
  *
  * Used by both:
  *   - Agents.tsx              (user-facing card grid)
- *   - AdminAgentControll.tsx  (admin dashboard)
+ *   - AdminAgentControl.tsx  (admin dashboard)
  *
  * Props:
  *   open                – whether the modal is visible
