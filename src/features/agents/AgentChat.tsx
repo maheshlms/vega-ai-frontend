@@ -40,6 +40,8 @@ interface Agent {
   role?: string;
   description?: string;
   type?: string;
+  // CHANGE 1: Added guided_actions field — populated by backend (fixes/state_management branch)
+  guided_actions?: Array<{ label: string; prompt: string }>;
   config?: {
     environment?: string;
     selectedAvatarImg?: string;
@@ -113,128 +115,15 @@ const KNOWN_STREAMING_AVATARS: Record<string, string[]> = {
 
 const DEFAULT_STREAMING_AVATAR = 'Marianne_ProfessionalLook_public';
 
-// ─── Guided Actions — fully dynamic per agent ────────────────────────────────
+// ─── Guided Actions — CHANGE 2: Updated interface — icon and color removed,
+//     now driven purely by backend data (fixes/state_management branch)
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface GuidedAction {
-  icon: string;
+  // icon: string;   // REMOVED — backend no longer sends this field
   label: string;
   prompt: string;
-  color: string;
-}
-
-/**
- * Derives contextual quick-actions purely from the agent's name, type, and
- * integrationType. No hardcoded category buckets — we match keywords in the
- * combined identity string so every agent gets actions that match what it does.
- */
-function getActionsForAgent(agent: Agent | null): GuidedAction[] {
-  // Build a single lowercase search string from all identity fields
-  const identity = [
-    agent?.name ?? '',
-    agent?.type ?? '',
-    agent?.config?.integrationType ?? '',
-    agent?.config?.targetSystemName ?? '',
-    agent?.description ?? '',
-    agent?.role ?? '',
-  ].join(' ').toLowerCase().replace(/[-\s]+/g, '_');
-
-  // ── Certificate / SSL agent ───────────────────────────────────────────────
-  if (
-    identity.includes('cert') ||
-    identity.includes('ssl') ||
-    identity.includes('tls') ||
-    identity.includes('pki')
-  ) {
-    return [
-      { icon: '🔍', label: 'Certificate status',   prompt: 'What is the current status of all certificates?',         color: '#6366f1' },
-      { icon: '⚠️', label: 'Expiring certs',        prompt: 'Which certificates are expiring in the next 30 days?',    color: '#f59e0b' },
-      { icon: '📋', label: 'List certificates',     prompt: 'List all certificates with their expiry dates.',          color: '#10b981' },
-      { icon: '🔄', label: 'Update certificate',    prompt: 'I want to update or renew a certificate.',               color: '#3b82f6' },
-      { icon: '📥', label: 'Install certificate',   prompt: 'How do I install a new SSL/TLS certificate?',            color: '#8b5cf6' },
-      { icon: '📊', label: 'Certificate report',    prompt: 'Generate a full report of all certificate activity.',    color: '#ec4899' },
-    ];
-  }
-
-  // ── License agent ─────────────────────────────────────────────────────────
-  if (identity.includes('licen')) {
-    return [
-      { icon: '🔍', label: 'License status',        prompt: 'What is the current status of my licenses?',             color: '#6366f1' },
-      { icon: '⚠️', label: 'Expiring licenses',     prompt: 'Which licenses are expiring in the next 30 days?',       color: '#f59e0b' },
-      { icon: '📋', label: 'List all licenses',      prompt: 'Show me all active licenses and their details.',         color: '#10b981' },
-      { icon: '🔄', label: 'Update license',         prompt: 'Update license',                 color: '#3b82f6' },
-      { icon: '📥', label: 'Install a license',      prompt: 'I want to install a new license file.',                 color: '#8b5cf6' },
-      { icon: '📊', label: 'License report',         prompt: 'Generate a summary report of all license activity.',    color: '#ec4899' },
-    ];
-  }
-
-  // ── PingFederate / SSO / Federation agent ────────────────────────────────
-  if (
-    identity.includes('ping_federate') ||
-    identity.includes('pingfederate') ||
-    identity.includes('federation') ||
-    identity.includes('sso')
-  ) {
-    return [
-      { icon: '🔐', label: 'SSO status',            prompt: 'What is the current SSO federation status?',             color: '#e9472a' },
-      { icon: '📜', label: 'Certificate check',     prompt: 'Check all SSL/TLS certificates for expiry.',             color: '#f59e0b' },
-      { icon: '👥', label: 'Active sessions',       prompt: 'How many active SSO sessions are there right now?',      color: '#10b981' },
-      { icon: '⚙️', label: 'Config review',         prompt: 'Review current PingFederate configuration settings.',   color: '#6366f1' },
-      { icon: '🔄', label: 'Sync adapters',         prompt: 'Check the status of all authentication adapters.',      color: '#8b5cf6' },
-      { icon: '📊', label: 'Audit log',             prompt: 'Show recent authentication audit log entries.',          color: '#ec4899' },
-    ];
-  }
-
-  // ── PingDirectory / LDAP / Directory agent ────────────────────────────────
-  if (
-    identity.includes('ping_directory') ||
-    identity.includes('pingdirectory') ||
-    identity.includes('directory') ||
-    identity.includes('ldap')
-  ) {
-    return [
-      { icon: '📁', label: 'Directory status',      prompt: 'What is the current directory health status?',           color: '#0a85c2' },
-      { icon: '🔍', label: 'Search users',          prompt: 'Help me search for a user in the directory.',            color: '#6366f1' },
-      { icon: '🔄', label: 'Replication status',    prompt: 'Check the directory replication status.',               color: '#10b981' },
-      { icon: '📊', label: 'Schema details',        prompt: 'Show me the directory schema details.',                  color: '#f59e0b' },
-      { icon: '🔐', label: 'Access controls',       prompt: 'Review current access control settings.',               color: '#8b5cf6' },
-      { icon: '⚠️', label: 'Error logs',            prompt: 'Show recent error log entries from the directory.',      color: '#ef4444' },
-    ];
-  }
-
-  // ── PingOne / Cloud Identity agent ────────────────────────────────────────
-  if (identity.includes('ping_one') || identity.includes('pingone') || identity.includes('cloud_identity')) {
-    return [
-      { icon: '☁️', label: 'Cloud status',          prompt: 'What is the current PingOne cloud status?',             color: '#7c3aed' },
-      { icon: '👤', label: 'User management',       prompt: 'How do I manage users in PingOne?',                     color: '#6366f1' },
-      { icon: '🔐', label: 'MFA status',            prompt: 'Check the multi-factor authentication status.',          color: '#10b981' },
-      { icon: '📊', label: 'Sign-on report',        prompt: 'Show recent sign-on activity and statistics.',           color: '#f59e0b' },
-      { icon: '⚙️', label: 'App connections',       prompt: 'List all connected applications and their status.',     color: '#8b5cf6' },
-      { icon: '🔄', label: 'Sync status',           prompt: 'Check the identity sync status across systems.',        color: '#ec4899' },
-    ];
-  }
-
-  // ── Connection / Connectivity agent ───────────────────────────────────────
-  if (identity.includes('connect')) {
-    return [
-      { icon: '🔗', label: 'Test connection',       prompt: 'Can you test the current system connection?',           color: '#6366f1' },
-      { icon: '📡', label: 'Connection status',     prompt: 'What is the current connection status?',               color: '#10b981' },
-      { icon: '🛠️', label: 'Troubleshoot',          prompt: 'Help me troubleshoot connection issues.',               color: '#f59e0b' },
-      { icon: '🔐', label: 'SSL certificate',       prompt: 'Check the SSL certificate status and expiry.',          color: '#3b82f6' },
-      { icon: '📋', label: 'View config',           prompt: 'Show me the current system configuration.',             color: '#8b5cf6' },
-      { icon: '🔄', label: 'Restart service',       prompt: 'How do I restart the connected service?',              color: '#ec4899' },
-    ];
-  }
-
-  // ── Fallback: generic agent ───────────────────────────────────────────────
-  const agentLabel = agent?.name || 'this agent';
-  return [
-    { icon: '🚀', label: 'What can you do?',        prompt: `What tasks can ${agentLabel} perform?`,                 color: '#6366f1' },
-    { icon: '📊', label: 'System status',           prompt: 'Give me an overview of the current system status.',     color: '#10b981' },
-    { icon: '🔍', label: 'Run diagnostics',         prompt: 'Run a full system diagnostic check.',                   color: '#3b82f6' },
-    { icon: '📁', label: 'Recent activity',         prompt: 'Show me the recent activity and changes.',              color: '#f59e0b' },
-    { icon: '⚙️', label: 'Configuration',           prompt: 'Review the current configuration settings.',            color: '#8b5cf6' },
-    { icon: '❓', label: 'How to get started',      prompt: `How do I get started using ${agentLabel}?`,            color: '#ec4899' },
-  ];
+  // color: string;  // REMOVED — backend no longer sends this field
 }
 
 // ─── Guided Actions Panel ─────────────────────────────────────────────────────
@@ -247,7 +136,8 @@ interface GuidedActionsPanelProps {
 }
 
 const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible, onDismiss, onActionClick }) => {
-  const actions = getActionsForAgent(agent);
+  // CHANGE 4: Use backend-provided guided_actions instead of getActionsForAgent()
+  const actions = agent?.guided_actions || [];
   const agentName = agent?.name || 'your agent';
 
   return (
@@ -273,11 +163,11 @@ const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible,
             <button
               key={i}
               className="agc-guided-action"
-              style={{ '--action-color': action.color, animationDelay: `${i * 0.06 + 0.1}s` } as React.CSSProperties}
+              style={{ animationDelay: `${i * 0.06 + 0.1}s` } as React.CSSProperties}
               onMouseDown={e => e.preventDefault()}
               onClick={() => onActionClick(action.prompt)}
             >
-              {/* <span className="agc-guided-action-icon">{action.icon}</span> */}
+              {/* icon and color removed — backend no longer sends these fields */}
               <span className="agc-guided-action-label">{action.label}</span>
               <span className="agc-guided-action-arrow">→</span>
             </button>
@@ -558,6 +448,15 @@ const AgentChat: React.FC = () => {
   const volumeRef = useRef(0.8);
   const latestAIResponseRef = useRef<string>('');
 
+  // Refs to track interaction state inside the timer callback
+  const messagesRef = useRef<Message[]>(messages);
+  const showWelcomeRef = useRef<boolean>(showWelcomeMessage);
+  const isTypingRef = useRef<boolean>(isTyping);
+
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { showWelcomeRef.current = showWelcomeMessage; }, [showWelcomeMessage]);
+  useEffect(() => { isTypingRef.current = isTyping; }, [isTyping]);
+
   const avatarImg  = agent?.config?.selectedAvatarImg  || (agent as any)?.avatarImg  || '';
   const avatarName = agent?.config?.selectedAvatarName || (agent as any)?.avatarName || agent?.name || 'Agent';
   const avatarId   = agent?.config?.selectedAvatarId   || '';
@@ -571,9 +470,13 @@ const AgentChat: React.FC = () => {
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
   // ── Show guided actions after 5 seconds on initial load ──────────────────
+  // BUG FIX: Use refs to check current state at callback time, so the panel
+  // does NOT appear if the user has already sent a message within those 5 seconds.
   useEffect(() => {
     guidedTimerRef.current = setTimeout(() => {
-      if (!isTyping) setShowGuidedActions(true);
+      if (!isTypingRef.current && messagesRef.current.length === 0 && showWelcomeRef.current) {
+        setShowGuidedActions(true);
+      }
     }, 5000);
     return () => {
       if (guidedTimerRef.current) clearTimeout(guidedTimerRef.current);
@@ -1003,6 +906,11 @@ const AgentChat: React.FC = () => {
     setPendingApproval(null);
     setShowWelcomeMessage(false);
     setShowGuidedActions(false);
+    // Cancel the 5-second guided actions timer if user sends before it fires
+    if (guidedTimerRef.current) {
+      clearTimeout(guidedTimerRef.current);
+      guidedTimerRef.current = null;
+    }
     const userMessageIndex = Object.keys(chatHistory).filter(k => k.startsWith('User')).length + 1;
     const userKey = `User${userMessageIndex}`;
     const userMessage: Message = { id: Date.now(), text: inputValue, sender: 'user', timestamp: new Date(), files: attachedFiles.length > 0 ? attachedFiles.map(f => f.name) : undefined };
@@ -1201,7 +1109,6 @@ const AgentChat: React.FC = () => {
         }
         .agc-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
         .agc-volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
-        .agc-vol-pct { font-size: 10px; color: #9ca3af; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
         .agc-chat-panel { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #F9FAFB; }
         .agc-chat-header {
           height: 56px; flex-shrink: 0; padding: 0 16px; box-sizing: border-box;
@@ -1386,33 +1293,26 @@ const AgentChat: React.FC = () => {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .agc-guided-action:hover {
-          background: color-mix(in srgb, var(--action-color) 6%, white);
-          border-color: color-mix(in srgb, var(--action-color) 30%, white);
+          background: #f0f0ff;
+          border-color: #c7d2fe;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px color-mix(in srgb, var(--action-color) 15%, transparent);
+          box-shadow: 0 4px 12px rgba(99,102,241,0.1);
         }
         .agc-guided-action:active { transform: translateY(0); }
-        .agc-guided-action-icon {
-          font-size: 15px; flex-shrink: 0;
-          width: 24px; height: 24px;
-          display: flex; align-items: center; justify-content: center;
-          background: color-mix(in srgb, var(--action-color) 10%, white);
-          border-radius: 7px;
-        }
         .agc-guided-action-label {
           font-size: 11.5px; font-weight: 500; color: #374151;
           flex: 1; line-height: 1.3; min-width: 0;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .agc-guided-action:hover .agc-guided-action-label {
-          color: var(--action-color);
+          color: #4f46e5;
         }
         .agc-guided-action-arrow {
           font-size: 11px; color: #d1d5db; flex-shrink: 0;
           transition: transform 0.18s, color 0.18s;
         }
         .agc-guided-action:hover .agc-guided-action-arrow {
-          color: var(--action-color);
+          color: #6366f1;
           transform: translateX(2px);
         }
         .agc-guided-footer {
@@ -1746,4 +1646,4 @@ const AgentChat: React.FC = () => {
   );
 };
 
-export default AgentChat;
+export default AgentChat; 
