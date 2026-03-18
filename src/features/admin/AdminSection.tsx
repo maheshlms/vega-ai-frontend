@@ -148,6 +148,97 @@ const STYLES = `
 
   @keyframes asFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
+  /* ─── Responsive breakpoints ───
+     Baseline: 1920×1080 — all original values preserved exactly
+     1600px–1919px : large desktops, near-baseline
+     1366px–1599px : medium desktops
+     768px–1365px  : laptops (MacBook 13"/14"/15" and similar)
+     ≤640px        : original mobile blocker styles kept
+  ─────────────────────────────── */
+
+  /* 1920px+ — exact baseline, no overrides needed */
+
+  /* 1600px–1919px — large desktops */
+  @media (min-width: 1600px) and (max-width: 1919px) {
+    .as-nav { padding: 0 34px; height: 60px; }
+    .as-body { max-width: 920px; padding: 42px 34px; }
+    .as-header { margin-bottom: 34px; }
+    .as-header h1 { font-size: 32px; }
+    .as-header p { font-size: 13.5px; }
+    .as-cards { gap: 18px; margin-bottom: 34px; }
+    .as-card { padding: 24px; border-radius: 16px; }
+    .as-card h2 { font-size: 15px; }
+    .as-card p { font-size: 12.5px; margin-bottom: 20px; }
+    .as-card-icon-wrap { width: 44px; height: 44px; font-size: 18px; margin-bottom: 18px; }
+    .as-card-stat-val { font-size: 24px; }
+    .as-logout-box { padding: 22px 24px; border-radius: 16px; }
+    .as-logout-icon { width: 40px; height: 40px; font-size: 16px; }
+    .as-logout-text h3 { font-size: 13.5px; }
+    .as-logout-text p { font-size: 12px; }
+    .as-logout-cta { padding: 10px 20px; font-size: 12.5px; }
+  }
+
+  /* 1366px–1599px — medium desktops */
+  @media (min-width: 1366px) and (max-width: 1599px) {
+    .as-nav { padding: 0 28px; height: 58px; }
+    .as-nav-title { font-size: 14px; }
+    .as-nav-logo { width: 30px; height: 30px; font-size: 13px; border-radius: 8px; }
+    .as-user-name { font-size: 12.5px; }
+    .as-nav-logout { padding: 6px 12px; font-size: 12.5px; }
+    .as-body { max-width: 840px; padding: 36px 28px; }
+    .as-header { margin-bottom: 28px; }
+    .as-header h1 { font-size: 28px; }
+    .as-header p { font-size: 13px; }
+    .as-label { font-size: 10.5px; margin-bottom: 14px; }
+    .as-cards { gap: 16px; margin-bottom: 28px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .as-card { padding: 22px; border-radius: 14px; }
+    .as-card h2 { font-size: 14.5px; }
+    .as-card p { font-size: 12px; margin-bottom: 18px; }
+    .as-card-icon-wrap { width: 40px; height: 40px; font-size: 17px; margin-bottom: 16px; border-radius: 11px; }
+    .as-card-stat-val { font-size: 22px; }
+    .as-card-stat-lbl { font-size: 10.5px; }
+    .as-card-btn { padding: 8px 14px; font-size: 11.5px; border-radius: 8px; }
+    .as-logout-box { padding: 18px 22px; border-radius: 14px; gap: 18px; }
+    .as-logout-icon { width: 38px; height: 38px; font-size: 15px; border-radius: 10px; }
+    .as-logout-left { gap: 14px; }
+    .as-logout-text h3 { font-size: 13px; }
+    .as-logout-text p { font-size: 11.5px; }
+    .as-logout-cta { padding: 9px 18px; font-size: 12px; border-radius: 10px; }
+  }
+
+  /* 768px–1365px — laptops (MacBook 13"/14"/15" and similar) */
+  @media (min-width: 768px) and (max-width: 1365px) {
+    .as-nav { padding: 0 20px; height: 54px; }
+    .as-nav-title { font-size: 13.5px; }
+    .as-nav-logo { width: 28px; height: 28px; font-size: 12px; border-radius: 7px; }
+    .as-nav-right { gap: 8px; }
+    .as-user-chip { padding: 4px 10px 4px 5px; gap: 7px; }
+    .as-user-avatar { width: 22px; height: 22px; font-size: 10px; }
+    .as-user-name { font-size: 12px; }
+    .as-nav-logout { padding: 5px 10px; font-size: 12px; border-radius: 7px; gap: 5px; }
+    .as-body { max-width: 740px; padding: 28px 20px; }
+    .as-header { margin-bottom: 22px; }
+    .as-header h1 { font-size: 24px; }
+    .as-header p { font-size: 12.5px; }
+    .as-label { font-size: 10px; margin-bottom: 12px; }
+    .as-cards { gap: 14px; margin-bottom: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .as-card { padding: 18px; border-radius: 13px; }
+    .as-card h2 { font-size: 14px; margin-bottom: 5px; }
+    .as-card p { font-size: 11.5px; margin-bottom: 16px; line-height: 1.55; }
+    .as-card-icon-wrap { width: 36px; height: 36px; font-size: 15px; margin-bottom: 14px; border-radius: 9px; }
+    .as-card-stat-val { font-size: 20px; }
+    .as-card-stat-lbl { font-size: 10px; }
+    .as-card-btn { padding: 7px 12px; font-size: 11px; border-radius: 7px; gap: 4px; }
+    .as-logout-box { padding: 15px 18px; border-radius: 13px; gap: 14px; }
+    .as-logout-icon { width: 34px; height: 34px; font-size: 14px; border-radius: 9px; }
+    .as-logout-left { gap: 12px; }
+    .as-logout-text h3 { font-size: 12.5px; }
+    .as-logout-text p { font-size: 11px; }
+    .as-persist-badge { font-size: 10px; padding: 2px 6px; }
+    .as-logout-cta { padding: 8px 14px; font-size: 11.5px; border-radius: 9px; gap: 6px; }
+  }
+
+  /* original mobile breakpoint — kept exactly as-is */
   @media (max-width: 640px) {
     .as-nav { padding: 0 20px; }
     .as-body { padding: 32px 20px; }
@@ -231,4 +322,4 @@ const AdminSection: React.FC = () => {
   );
 };
 
-export default AdminSection;
+export default AdminSection;  

@@ -14,69 +14,77 @@ const STYLES = `
     width: 100vw !important; height: 100vh !important;
     font-family: 'DM Sans', sans-serif;
     background: #f5f5f7; overflow-y: auto; z-index: 9999 !important; box-sizing: border-box;
-    display: flex; align-items: center; justify-content: center; padding: 32px 20px;
+    display: flex; align-items: center; justify-content: center;
+    padding: var(--fpc-root-p);
   }
 
   .fpc-card {
-    background: #ffffff; border: 1px solid #e8e8ee; border-radius: 24px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.07); width: 100%; max-width: 480px;
-    padding: 44px 44px 40px;
+    background: #ffffff; border: 1px solid #e8e8ee;
+    border-radius: var(--fpc-card-br);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.07);
+    width: 100%; max-width: var(--fpc-card-max-w);
+    padding: var(--fpc-card-p);
     animation: fpcFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
   }
 
   .fpc-icon-wrap {
-    width: 56px; height: 56px; border-radius: 16px;
+    width: var(--fpc-icon-sz); height: var(--fpc-icon-sz);
+    border-radius: var(--fpc-icon-br);
     background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.15);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; margin-bottom: 22px;
+    font-size: var(--fpc-icon-fs); margin-bottom: var(--fpc-icon-mb);
   }
 
   .fpc-heading {
-    font-size: 30px; font-weight: 700; color: #0a0a0a;
-    letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.15;
+    font-size: var(--fpc-heading-fs); font-weight: 700; color: #0a0a0a;
+    letter-spacing: -0.03em; margin: 0 0 var(--fpc-heading-mb); line-height: 1.15;
   }
+
   .fpc-sub {
-    font-size: 14px; color: #9090a8; margin: 0 0 32px; font-weight: 300; line-height: 1.6;
+    font-size: var(--fpc-sub-fs); color: #9090a8;
+    margin: 0 0 var(--fpc-sub-mb); font-weight: 300; line-height: 1.6;
   }
 
   .fpc-sep {
-    height: 1px; background: #f0f0f5; margin: 6px 0 28px;
+    height: 1px; background: #f0f0f5; margin: var(--fpc-sep-my);
   }
 
   .fpc-error-box {
     background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
-    padding: 12px 16px; margin-bottom: 24px;
-    font-size: 13.5px; color: #ef4444; font-weight: 400;
+    padding: var(--fpc-error-p); margin-bottom: var(--fpc-error-mb);
+    font-size: var(--fpc-error-fs); color: #ef4444; font-weight: 400;
   }
 
-  .fpc-field { margin-bottom: 20px; }
+  .fpc-field { margin-bottom: var(--fpc-field-mb); }
+
   .fpc-label {
-    display: block; font-size: 13px; font-weight: 600;
-    color: #4b4b6b; margin-bottom: 7px;
+    display: block; font-size: var(--fpc-label-fs); font-weight: 600;
+    color: #4b4b6b; margin-bottom: var(--fpc-label-mb);
     text-transform: uppercase; letter-spacing: 0.06em;
   }
+
   .fpc-input {
-    width: 100%; padding: 12px 16px;
+    width: 100%; padding: var(--fpc-input-p);
     background: #fafafa; border: 1.5px solid #e8e8ee;
-    border-radius: 11px; font-family: 'DM Sans', sans-serif;
-    font-size: 14px; color: #1a1a2e; outline: none;
+    border-radius: var(--fpc-input-br); font-family: 'DM Sans', sans-serif;
+    font-size: var(--fpc-input-fs); color: #1a1a2e; outline: none;
     transition: all 0.18s; box-sizing: border-box;
   }
   .fpc-input::placeholder { color: #c8c8d8; }
   .fpc-input:focus { border-color: #7c3aed; background: #fff; box-shadow: 0 0 0 4px rgba(124,58,237,0.09); }
   .fpc-input-err { border-color: #fca5a5 !important; }
   .fpc-input-err:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 4px rgba(239,68,68,0.09) !important; }
-  .fpc-field-error { font-size: 12px; color: #ef4444; margin-top: 5px; display: block; }
+  .fpc-field-error { font-size: var(--fpc-field-err-fs); color: #ef4444; margin-top: 5px; display: block; }
 
   .fpc-strength-bar-wrap {
-    margin-top: 10px; display: flex; align-items: center; gap: 6px;
+    margin-top: var(--fpc-strength-mt); display: flex; align-items: center; gap: var(--fpc-strength-gap);
   }
   .fpc-strength-seg {
-    flex: 1; height: 4px; border-radius: 4px;
+    flex: 1; height: var(--fpc-strength-h); border-radius: 4px;
     background: #e8e8ee; transition: background 0.25s;
   }
   .fpc-strength-label {
-    font-size: 11.5px; font-weight: 600; min-width: 44px;
+    font-size: var(--fpc-strength-lbl-fs); font-weight: 600; min-width: 44px;
     text-align: right; letter-spacing: 0.02em;
   }
   .fpc-s0 { background: #e8e8ee; }
@@ -86,15 +94,17 @@ const STYLES = `
   .fpc-s4 { background: #10b981; }
 
   .fpc-reqs {
-    margin-top: 10px; padding: 12px 14px;
+    margin-top: var(--fpc-reqs-mt); padding: var(--fpc-reqs-p);
     background: #fafafa; border: 1px solid #f0f0f5;
-    border-radius: 10px;
+    border-radius: var(--fpc-reqs-br);
   }
-  .fpc-reqs-title { font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
-    text-transform: uppercase; color: #b0b0c8; margin-bottom: 8px; }
+  .fpc-reqs-title {
+    font-size: var(--fpc-reqs-title-fs); font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #b0b0c8; margin-bottom: var(--fpc-reqs-title-mb);
+  }
   .fpc-req-item {
     display: flex; align-items: center; gap: 7px;
-    font-size: 12.5px; color: #b0b0c8; margin-bottom: 5px; transition: color 0.18s;
+    font-size: var(--fpc-req-fs); color: #b0b0c8; margin-bottom: var(--fpc-req-mb); transition: color 0.18s;
   }
   .fpc-req-item:last-child { margin-bottom: 0; }
   .fpc-req-item.met { color: #10b981; }
@@ -106,7 +116,7 @@ const STYLES = `
 
   .fpc-match {
     display: flex; align-items: center; gap: 7px;
-    font-size: 12.5px; font-weight: 500; margin-top: 8px;
+    font-size: var(--fpc-match-fs); font-weight: 500; margin-top: var(--fpc-match-mt);
   }
   .fpc-match.ok { color: #10b981; }
   .fpc-match.no { color: #ef4444; }
@@ -116,9 +126,9 @@ const STYLES = `
   }
 
   .fpc-submit {
-    width: 100%; margin-top: 8px; padding: 14px 24px;
-    background: #111; border: none; border-radius: 12px;
-    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    width: 100%; margin-top: var(--fpc-submit-mt); padding: var(--fpc-submit-p);
+    background: #111; border: none; border-radius: var(--fpc-submit-br);
+    font-family: 'DM Sans', sans-serif; font-size: var(--fpc-submit-fs); font-weight: 600;
     color: #fff; cursor: pointer; transition: all 0.2s;
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
@@ -131,6 +141,244 @@ const STYLES = `
   }
   @keyframes fpcSpin { to { transform: rotate(360deg); } }
   .fpc-spin { animation: fpcSpin 0.8s linear infinite; }
+
+  /* =====================================================================
+     RESPONSIVE TOKENS — 1920×1080 is the baseline (default :root).
+     This is a centered card UI so we scale card size, padding & type.
+     No UI, structure, features, comments, or logic is altered.
+     ===================================================================== */
+
+  /* ── BASELINE : 1920×1080 ────────────────────────────────────────── */
+  :root {
+    --fpc-root-p:           32px 20px;
+    --fpc-card-max-w:       480px;
+    --fpc-card-p:           44px 44px 40px;
+    --fpc-card-br:          24px;
+    --fpc-icon-sz:          56px;
+    --fpc-icon-br:          16px;
+    --fpc-icon-fs:          24px;
+    --fpc-icon-mb:          22px;
+    --fpc-heading-fs:       30px;
+    --fpc-heading-mb:       8px;
+    --fpc-sub-fs:           14px;
+    --fpc-sub-mb:           32px;
+    --fpc-sep-my:           6px 0 28px;
+    --fpc-error-p:          12px 16px;
+    --fpc-error-mb:         24px;
+    --fpc-error-fs:         13.5px;
+    --fpc-field-mb:         20px;
+    --fpc-label-fs:         13px;
+    --fpc-label-mb:         7px;
+    --fpc-input-p:          12px 16px;
+    --fpc-input-fs:         14px;
+    --fpc-input-br:         11px;
+    --fpc-field-err-fs:     12px;
+    --fpc-strength-mt:      10px;
+    --fpc-strength-gap:     6px;
+    --fpc-strength-h:       4px;
+    --fpc-strength-lbl-fs:  11.5px;
+    --fpc-reqs-mt:          10px;
+    --fpc-reqs-p:           12px 14px;
+    --fpc-reqs-br:          10px;
+    --fpc-reqs-title-fs:    11px;
+    --fpc-reqs-title-mb:    8px;
+    --fpc-req-fs:           12.5px;
+    --fpc-req-mb:           5px;
+    --fpc-match-fs:         12.5px;
+    --fpc-match-mt:         8px;
+    --fpc-submit-p:         14px 24px;
+    --fpc-submit-fs:        14px;
+    --fpc-submit-br:        12px;
+    --fpc-submit-mt:        8px;
+  }
+
+  /* ── LARGE DESKTOP / 4K : >1920px ───────────────────────────────── */
+  @media (min-width: 1921px) {
+    :root {
+      --fpc-root-p:           48px 32px;
+      --fpc-card-max-w:       600px;
+      --fpc-card-p:           60px 60px 56px;
+      --fpc-card-br:          32px;
+      --fpc-icon-sz:          72px;
+      --fpc-icon-br:          20px;
+      --fpc-icon-fs:          32px;
+      --fpc-icon-mb:          28px;
+      --fpc-heading-fs:       40px;
+      --fpc-heading-mb:       12px;
+      --fpc-sub-fs:           17px;
+      --fpc-sub-mb:           40px;
+      --fpc-sep-my:           8px 0 36px;
+      --fpc-error-p:          16px 20px;
+      --fpc-error-mb:         30px;
+      --fpc-error-fs:         16px;
+      --fpc-field-mb:         26px;
+      --fpc-label-fs:         15px;
+      --fpc-label-mb:         9px;
+      --fpc-input-p:          15px 20px;
+      --fpc-input-fs:         16px;
+      --fpc-input-br:         14px;
+      --fpc-field-err-fs:     14px;
+      --fpc-strength-mt:      13px;
+      --fpc-strength-gap:     8px;
+      --fpc-strength-h:       5px;
+      --fpc-strength-lbl-fs:  13px;
+      --fpc-reqs-mt:          13px;
+      --fpc-reqs-p:           16px 18px;
+      --fpc-reqs-br:          13px;
+      --fpc-reqs-title-fs:    13px;
+      --fpc-reqs-title-mb:    10px;
+      --fpc-req-fs:           15px;
+      --fpc-req-mb:           7px;
+      --fpc-match-fs:         15px;
+      --fpc-match-mt:         10px;
+      --fpc-submit-p:         18px 28px;
+      --fpc-submit-fs:        17px;
+      --fpc-submit-br:        15px;
+      --fpc-submit-mt:        12px;
+    }
+  }
+
+  /* ── LAPTOP : 1280–1919px ─────────────────────────────────────────
+     Covers MacBook Pro 14" (1512px scaled), 15"/16" (1680px scaled),
+     standard 1280–1440 laptops. Card looks identical to 1920 baseline,
+     just proportionally tighter.
+  ─────────────────────────────────────────────────────────────────── */
+  @media (min-width: 1280px) and (max-width: 1919px) {
+    :root {
+      --fpc-root-p:           24px 16px;
+      --fpc-card-max-w:       420px;
+      --fpc-card-p:           36px 36px 32px;
+      --fpc-card-br:          20px;
+      --fpc-icon-sz:          48px;
+      --fpc-icon-br:          14px;
+      --fpc-icon-fs:          20px;
+      --fpc-icon-mb:          18px;
+      --fpc-heading-fs:       24px;
+      --fpc-heading-mb:       6px;
+      --fpc-sub-fs:           13px;
+      --fpc-sub-mb:           24px;
+      --fpc-sep-my:           4px 0 22px;
+      --fpc-error-p:          10px 14px;
+      --fpc-error-mb:         20px;
+      --fpc-error-fs:         12.5px;
+      --fpc-field-mb:         16px;
+      --fpc-label-fs:         11.5px;
+      --fpc-label-mb:         6px;
+      --fpc-input-p:          10px 13px;
+      --fpc-input-fs:         13px;
+      --fpc-input-br:         10px;
+      --fpc-field-err-fs:     11px;
+      --fpc-strength-mt:      8px;
+      --fpc-strength-gap:     5px;
+      --fpc-strength-h:       3px;
+      --fpc-strength-lbl-fs:  10.5px;
+      --fpc-reqs-mt:          8px;
+      --fpc-reqs-p:           10px 12px;
+      --fpc-reqs-br:          9px;
+      --fpc-reqs-title-fs:    10px;
+      --fpc-reqs-title-mb:    6px;
+      --fpc-req-fs:           11.5px;
+      --fpc-req-mb:           4px;
+      --fpc-match-fs:         11.5px;
+      --fpc-match-mt:         6px;
+      --fpc-submit-p:         12px 20px;
+      --fpc-submit-fs:        13px;
+      --fpc-submit-br:        10px;
+      --fpc-submit-mt:        6px;
+    }
+  }
+
+  /* ── SMALL LAPTOP : 1024–1279px ─────────────────────────────────── */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    :root {
+      --fpc-root-p:           20px 14px;
+      --fpc-card-max-w:       400px;
+      --fpc-card-p:           30px 30px 28px;
+      --fpc-card-br:          18px;
+      --fpc-icon-sz:          44px;
+      --fpc-icon-br:          12px;
+      --fpc-icon-fs:          18px;
+      --fpc-icon-mb:          16px;
+      --fpc-heading-fs:       22px;
+      --fpc-heading-mb:       6px;
+      --fpc-sub-fs:           12.5px;
+      --fpc-sub-mb:           22px;
+      --fpc-sep-my:           4px 0 20px;
+      --fpc-error-p:          9px 13px;
+      --fpc-error-mb:         18px;
+      --fpc-error-fs:         12px;
+      --fpc-field-mb:         15px;
+      --fpc-label-fs:         11px;
+      --fpc-label-mb:         5px;
+      --fpc-input-p:          9px 12px;
+      --fpc-input-fs:         12.5px;
+      --fpc-input-br:         9px;
+      --fpc-field-err-fs:     11px;
+      --fpc-strength-mt:      7px;
+      --fpc-strength-gap:     5px;
+      --fpc-strength-h:       3px;
+      --fpc-strength-lbl-fs:  10px;
+      --fpc-reqs-mt:          7px;
+      --fpc-reqs-p:           9px 11px;
+      --fpc-reqs-br:          8px;
+      --fpc-reqs-title-fs:    9.5px;
+      --fpc-reqs-title-mb:    5px;
+      --fpc-req-fs:           11px;
+      --fpc-req-mb:           4px;
+      --fpc-match-fs:         11px;
+      --fpc-match-mt:         5px;
+      --fpc-submit-p:         11px 18px;
+      --fpc-submit-fs:        12.5px;
+      --fpc-submit-br:        9px;
+      --fpc-submit-mt:        5px;
+    }
+  }
+
+  /* ── TABLET : 768–1023px ─────────────────────────────────────────── */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    :root {
+      --fpc-root-p:           16px 12px;
+      --fpc-card-max-w:       380px;
+      --fpc-card-p:           28px 28px 24px;
+      --fpc-card-br:          16px;
+      --fpc-icon-sz:          40px;
+      --fpc-icon-br:          11px;
+      --fpc-icon-fs:          17px;
+      --fpc-icon-mb:          14px;
+      --fpc-heading-fs:       20px;
+      --fpc-heading-mb:       5px;
+      --fpc-sub-fs:           12px;
+      --fpc-sub-mb:           20px;
+      --fpc-sep-my:           3px 0 18px;
+      --fpc-error-p:          9px 12px;
+      --fpc-error-mb:         16px;
+      --fpc-error-fs:         11.5px;
+      --fpc-field-mb:         14px;
+      --fpc-label-fs:         10.5px;
+      --fpc-label-mb:         5px;
+      --fpc-input-p:          9px 11px;
+      --fpc-input-fs:         12px;
+      --fpc-input-br:         9px;
+      --fpc-field-err-fs:     10.5px;
+      --fpc-strength-mt:      7px;
+      --fpc-strength-gap:     4px;
+      --fpc-strength-h:       3px;
+      --fpc-strength-lbl-fs:  10px;
+      --fpc-reqs-mt:          7px;
+      --fpc-reqs-p:           8px 10px;
+      --fpc-reqs-br:          8px;
+      --fpc-reqs-title-fs:    9px;
+      --fpc-reqs-title-mb:    5px;
+      --fpc-req-fs:           10.5px;
+      --fpc-req-mb:           3px;
+      --fpc-match-fs:         10.5px;
+      --fpc-match-mt:         5px;
+      --fpc-submit-p:         10px 16px;
+      --fpc-submit-fs:        12px;
+      --fpc-submit-br:        9px;
+      --fpc-submit-mt:        5px;
+    }
+  }
 `;
 
 export default function ForcedPasswordChange() {

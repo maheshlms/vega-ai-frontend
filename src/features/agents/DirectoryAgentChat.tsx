@@ -939,6 +939,144 @@ const DirectoryAgentChat: React.FC = () => {
         }
         .dac-import-drop:hover { border-color: #7c3aed; background: #f5f3ff; }
 
+        /* ═══════════════════════════════════════════════════════════════
+           RESPONSIVE RULES — DirectoryAgentChat
+           Follows the identical pattern used in AdminAgentControl
+           (aad-header-wrapper / aad-page-wrapper) and Agents
+           (ag-header-inner / ag-page-wrapper / ag-band-px).
+
+           Baseline 1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+           Tablet (768–1023px) → compressed
+           4K / ultrawide (2560px+) → expands gently
+
+           Key responsive targets:
+             - .dac-dash width (right panel)
+             - .dac-msgs padding (chat area)
+             - .dac-topbar padding
+             - .dac-bubble max-width
+             - .dac-form-card max-width
+             - .dac-confirm max-width
+             - .dac-modal max-width
+             - .dac-dash-title font size
+             - .dac-dash-header padding
+             - .dac-results padding
+        ═══════════════════════════════════════════════════════════════ */
+
+        /* Tablet: 768–1023px */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          /* Dashboard panel: narrower to give chat more room */
+          .dac-dash               { width: 320px; }
+          /* Chat message padding: tighter */
+          .dac-msgs               { padding: 16px 16px; }
+          /* Topbar: tighter horizontal padding */
+          .dac-topbar             { padding: 0 16px; }
+          /* Bubbles & cards: slightly wider on small viewports */
+          .dac-bubble             { max-width: 78%; font-size: 13px; }
+          .dac-confirm            { max-width: 78%; }
+          .dac-form-card          { max-width: 88%; }
+          /* Dashboard header: tighter */
+          .dac-dash-header        { padding: 10px 14px; }
+          .dac-dash-title         { font-size: 14px; margin-bottom: 10px; }
+          .dac-results            { padding: 10px 14px; }
+          /* Stats: compact */
+          .dac-stats              { gap: 6px; margin-bottom: 10px; }
+          /* Input zone: tighter */
+          .dac-inputzone          { padding: 8px 14px 12px; }
+          /* Table: smaller text */
+          .dac-table              { font-size: 11.5px; }
+          .dac-tbl-btn            { padding: 3px 7px; font-size: 10px; }
+          /* Filter section: tighter */
+          .dac-filter-section     { padding: 10px 11px; }
+          .dac-filter-label       { min-width: 60px; font-size: 11px; }
+          /* Bulk buttons: compact */
+          .dac-bulk-btn           { padding: 5px 10px; font-size: 11px; }
+        }
+
+        /* Small laptop: 1024–1279px (MacBook 13") */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          /* Dashboard panel: moderately narrower */
+          .dac-dash               { width: 380px; }
+          /* Chat message padding: slightly tighter */
+          .dac-msgs               { padding: 20px 20px; }
+          /* Topbar: slightly tighter */
+          .dac-topbar             { padding: 0 20px; }
+          /* Bubbles */
+          .dac-bubble             { max-width: 72%; font-size: 13.5px; }
+          .dac-confirm            { max-width: 72%; }
+          .dac-form-card          { max-width: 84%; }
+          /* Dashboard header */
+          .dac-dash-header        { padding: 12px 16px; }
+          .dac-dash-title         { font-size: 15px; margin-bottom: 12px; }
+          .dac-results            { padding: 12px 16px; }
+          /* Stats */
+          .dac-stats              { gap: 7px; margin-bottom: 12px; }
+          /* Table */
+          .dac-table              { font-size: 12px; }
+          .dac-tbl-btn            { padding: 3px 8px; font-size: 10.5px; }
+          /* Filter */
+          .dac-filter-section     { padding: 10px 12px; }
+          .dac-filter-label       { min-width: 64px; }
+          /* Bulk buttons */
+          .dac-bulk-btn           { padding: 6px 11px; font-size: 11.5px; }
+          /* Input zone */
+          .dac-inputzone          { padding: 10px 16px 14px; }
+          /* Send button: slightly compact */
+          .dac-send               { padding: 8px 16px; }
+        }
+
+        /* Laptop: 1280–1439px (MacBook 14/15", typical 1366/1440) */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          /* Dashboard panel: slightly narrower than baseline */
+          .dac-dash               { width: 420px; }
+          /* Chat: slightly tighter padding */
+          .dac-msgs               { padding: 22px 24px; }
+          .dac-topbar             { padding: 0 22px; }
+          /* Dashboard header */
+          .dac-dash-header        { padding: 13px 17px; }
+          .dac-dash-title         { font-size: 16px; }
+          .dac-results            { padding: 13px 17px; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919px */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          /* Dashboard panel: very close to baseline */
+          .dac-dash               { width: 460px; }
+        }
+
+        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+
+        /* 4K / ultrawide: 2560px+ */
+        @media (min-width: 2560px) {
+          /* Dashboard panel: wider to make use of extra screen */
+          .dac-dash               { width: 600px; }
+          /* Chat: more generous padding */
+          .dac-msgs               { padding: 32px 40px; gap: 18px; }
+          .dac-topbar             { padding: 0 40px; height: 64px; }
+          /* Bubbles: slightly larger text */
+          .dac-bubble             { font-size: 15px; }
+          .dac-confirm-text       { font-size: 15px; }
+          /* Dashboard */
+          .dac-dash-header        { padding: 18px 24px; }
+          .dac-dash-title         { font-size: 19px; }
+          .dac-results            { padding: 18px 24px; }
+          .dac-stats              { gap: 12px; margin-bottom: 18px; }
+          /* Table */
+          .dac-table              { font-size: 14px; }
+          .dac-tbl-btn            { padding: 5px 13px; font-size: 12px; }
+          /* Input zone */
+          .dac-inputzone          { padding: 16px 28px 20px; }
+          .dac-textinput          { font-size: 15px; }
+          .dac-send               { padding: 11px 26px; font-size: 14px; }
+          /* Buttons */
+          .dac-bulk-btn           { padding: 9px 18px; font-size: 13px; }
+          /* Modal */
+          .dac-modal              { max-width: 560px; }
+          /* Agent pill */
+          .dac-agent-name         { font-size: 14px; }
+        }
+
+        /* Original breakpoint — kept exactly as-is */
         @media (max-width: 1200px) {
           .dac-dash { width: 400px; }
         }

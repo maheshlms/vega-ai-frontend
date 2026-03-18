@@ -372,6 +372,100 @@ const STYLES = `
   @keyframes tmFadeUp   { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: translateY(0); } }
   @keyframes tmFadeUpCentered { from { opacity:0; transform: translate(-50%, calc(-50% + 14px)); } to { opacity:1; transform: translate(-50%, -50%); } }
 
+  /* ─── Responsive breakpoints ───
+     Baseline: 1920×1080 — all original values preserved exactly at this size.
+     1600px–1919px : large desktops, near-baseline
+     1366px–1599px : medium desktops
+     768px–1365px  : laptops (MacBook 13"/14"/15" and similar)
+     ≤700px        : original mobile/small breakpoint kept exactly as-is
+  ─────────────────────────────── */
+
+  /* 1920px+ — exact baseline, no overrides needed */
+
+  /* 1600px–1919px — large desktops */
+  @media (min-width: 1600px) and (max-width: 1919px) {
+    .tm-nav                   { padding: 0 40px; height: 64px; }
+    .tm-body                  { max-width: 840px; padding: 52px 40px 72px; }
+    .tm-header                { gap: 20px; margin-bottom: 36px; }
+    .tm-header-icon           { width: 58px; height: 58px; font-size: 25px; border-radius: 16px; }
+    .tm-header-text h1        { font-size: 32px; }
+    .tm-header-text p         { font-size: 14px; }
+    .tm-form                  { padding: 40px 40px 8px; gap: 26px; }
+    .tm-input, .tm-select     { padding: 13px 16px; font-size: 14px; }
+    .tm-instructions-header   { padding: 24px 40px; }
+    .tm-instructions-content  { padding: 24px 40px; }
+    .tm-instructions-content.collapsed { padding: 0 40px; }
+    .tm-actions               { padding: 24px 40px 32px; }
+    .tm-section-title         { font-size: 14.5px; }
+  }
+
+  /* 1366px–1599px — medium desktops */
+  @media (min-width: 1366px) and (max-width: 1599px) {
+    .tm-nav                   { padding: 0 32px; height: 60px; }
+    .tm-nav-title             { font-size: 14px; }
+    .tm-nav-logo              { width: 30px; height: 30px; font-size: 13px; }
+    .tm-back-btn              { padding: 7px 13px; font-size: 13px; }
+    .tm-breadcrumb            { font-size: 13px; }
+    .tm-body                  { max-width: 760px; padding: 44px 32px 64px; }
+    .tm-header                { gap: 18px; margin-bottom: 30px; }
+    .tm-header-icon           { width: 52px; height: 52px; font-size: 22px; border-radius: 14px; }
+    .tm-header-text h1        { font-size: 28px; }
+    .tm-header-text p         { font-size: 13.5px; }
+    .tm-card                  { border-radius: 18px; }
+    .tm-form                  { padding: 34px 34px 8px; gap: 22px; }
+    .tm-input, .tm-select     { padding: 12px 15px; font-size: 13.5px; border-radius: 10px; }
+    .tm-field label           { font-size: 13px; }
+    .tm-hint                  { font-size: 11.5px; }
+    .tm-section-title         { font-size: 14px; margin: 16px 0 12px 0; }
+    .tm-instructions-header   { padding: 22px 34px; }
+    .tm-instructions-header h2 { font-size: 15px; }
+    .tm-instructions-toggle   { width: 32px; height: 32px; font-size: 18px; }
+    .tm-instructions-content  { padding: 22px 34px; font-size: 13px; }
+    .tm-instructions-content.collapsed { padding: 0 34px; }
+    .tm-actions               { padding: 22px 34px 30px; gap: 10px; }
+    .tm-btn-reset             { padding: 10px 20px; font-size: 13.5px; }
+    .tm-btn-submit            { padding: 10px 26px; font-size: 13.5px; }
+    .tm-btn-test              { padding: 10px 26px; font-size: 13.5px; }
+    .tm-btn-action            { padding: 8px 14px; font-size: 12.5px; }
+  }
+
+  /* 768px–1365px — laptops (MacBook 13"/14"/15" and similar) */
+  @media (min-width: 768px) and (max-width: 1365px) {
+    .tm-nav                   { padding: 0 22px; height: 54px; }
+    .tm-nav-left              { gap: 12px; }
+    .tm-nav-title             { font-size: 13.5px; }
+    .tm-nav-logo              { width: 28px; height: 28px; font-size: 12px; border-radius: 7px; }
+    .tm-back-btn              { padding: 6px 11px; font-size: 12.5px; border-radius: 7px; }
+    .tm-breadcrumb            { font-size: 12.5px; gap: 5px; }
+    .tm-body                  { max-width: 680px; padding: 34px 22px 54px; }
+    .tm-header                { gap: 15px; margin-bottom: 24px; }
+    .tm-header-icon           { width: 46px; height: 46px; font-size: 19px; border-radius: 12px; }
+    .tm-header-text h1        { font-size: 23px; }
+    .tm-header-text p         { font-size: 13px; }
+    .tm-card                  { border-radius: 16px; }
+    .tm-form                  { padding: 26px 26px 8px; gap: 18px; }
+    .tm-input, .tm-select     { padding: 10px 13px; font-size: 13px; border-radius: 9px; }
+    .tm-field                 { gap: 7px; }
+    .tm-field label           { font-size: 12.5px; }
+    .tm-hint                  { font-size: 11px; }
+    .tm-req                   { width: 5px; height: 5px; }
+    .tm-section-title         { font-size: 13.5px; margin: 14px 0 10px 0; }
+    .tm-keypair-actions       { padding: 16px 0; gap: 8px; margin-bottom: 16px; }
+    .tm-instructions-header   { padding: 18px 26px; }
+    .tm-instructions-header h2 { font-size: 14px; }
+    .tm-instructions-toggle   { width: 30px; height: 30px; font-size: 16px; border-radius: 7px; }
+    .tm-instructions-content  { padding: 18px 26px; font-size: 12.5px; }
+    .tm-instructions-content.collapsed { padding: 0 26px; }
+    .tm-actions               { padding: 18px 26px 26px; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .tm-btn-reset             { padding: 9px 16px; font-size: 13px; border-radius: 9px; }
+    .tm-btn-submit            { padding: 9px 20px; font-size: 13px; border-radius: 9px; }
+    .tm-btn-test              { padding: 9px 20px; font-size: 13px; border-radius: 9px; }
+    .tm-btn-action            { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
+    .tm-toast                 { bottom: 20px; right: 20px; padding: 12px 18px; font-size: 13px; border-radius: 10px; }
+    .tm-grid-2                { gap: 18px; }
+  }
+
+  /* original small-screen breakpoint — kept exactly as-is */
   @media (max-width: 700px) {
     .tm-nav { padding: 0 20px; }
     .tm-body { padding: 32px 20px; }
@@ -721,7 +815,7 @@ const AdminTokenManagement: React.FC = () => {
             </div>
 
             <form className="tm-form" onSubmit={handleSubmit}>
-              <h3 className="tm-section-title">🔐 Vega AI JWT Generation:</h3>
+              <h3 className="tm-section-title">Vega AI JWT Generation:</h3>
               <div className="tm-field">
                 <label>Issuer</label>
                 <input
@@ -753,7 +847,7 @@ const AdminTokenManagement: React.FC = () => {
                   disabled={loadingKeypair}
                   onClick={handleGenerateKeypair}
                 >
-                  {loadingKeypair ? "🔄 Generating…" : "🔑 Generate Keypair"}
+                  {loadingKeypair ? "Generating…" : "Generate Keypair"}
                 </button>
                 <button 
                   type="button" 
@@ -761,13 +855,13 @@ const AdminTokenManagement: React.FC = () => {
                   disabled={generatingJwks}
                   onClick={handleGenerateJwks}
                 >
-                  {generatingJwks ? "🔄 Generating…" : "📋 Generate JWKS"}
+                  {generatingJwks ? "Generating…" : "Generate JWKS"}
                 </button>
               </div>
 
               <div className="tm-divider" />
 
-              <h3 className="tm-section-title">🔑 Token Provider Configuration:</h3>
+              <h3 className="tm-section-title">Token Provider Configuration:</h3>
               <div className="tm-field">
                 <label><span className="tm-req" />Token Provider Endpoint</label>
                 <input
@@ -818,7 +912,7 @@ const AdminTokenManagement: React.FC = () => {
 
               <div className="tm-divider" />
 
-              <h3 className="tm-section-title">🔍 Token Introspection Configuration:</h3>
+              <h3 className="tm-section-title">Token Introspection Configuration:</h3>
               <div className="tm-field">
                 <label><span className="tm-req" />Introspection Endpoint URL</label>
                 <input
@@ -861,10 +955,10 @@ const AdminTokenManagement: React.FC = () => {
             <div className="tm-actions">
               <button type="button" className="tm-btn-reset" onClick={handleReset}>Reset</button>
               <button type="button" className="tm-btn-test" disabled={testLoading} onClick={handleTest}>
-                {testLoading ? "Testing…" : "🧪 Test Token Exchange"}
+                {testLoading ? "Testing…" : "Test Token Exchange"}
               </button>
               <button type="submit" className="tm-btn-submit" disabled={loading} onClick={handleSubmit}>
-                {loading ? "Saving…" : "💾 Save Configuration"}
+                {loading ? "Saving…" : "Save Configuration"}
               </button>
             </div>
           </div>
@@ -959,7 +1053,7 @@ const AdminTokenManagement: React.FC = () => {
                 onClick={proceedWithSave}
                 disabled={loading}
               >
-                {loading ? "💾 Saving…" : "Yes, Save Configuration"}
+                {loading ? "Saving…" : "Yes, Save Configuration"}
               </button>
             </div>
           </div>

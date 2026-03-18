@@ -20,6 +20,7 @@ interface SearchResult {
   description: string;
   meta?: string;
   avatar?: string;   // image URL for agent avatars
+  disabled?: boolean; // ← NEW: carries killswitch state
   action: () => void;
 }
 
@@ -128,21 +129,32 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
       // Agents
       try {
         const remote = await api.llmRuntime.listAgents();
-        const mapped: SearchResult[] = (remote || []).map((a: any) => ({
-          type:        'agent' as const,
-          icon:        '🤖',
-          avatar:      resolveAgentAvatarUrl(
-                         a.name,
-                         a.config?.selectedAvatarId,
-                         a.avatar_url || a.config?.selectedAvatarImg,
-                       ),
-          name:        a.name,
-          description: a.type || 'AI Agent',
-          meta:        a.config?.environment
-                       ? a.config.environment.charAt(0).toUpperCase() + a.config.environment.slice(1)
-                       : (a.killswitch_activated ? 'Disabled' : a.status === 'active' ? 'Active' : 'Inactive'),
-          action: () => navigate(`/agents/${a.id}/chat`),
-        }));
+        const mapped: SearchResult[] = (remote || []).map((a: any) => {
+          const isDisabled = a.killswitch_activated || false;
+          return {
+            type:        'agent' as const,
+            icon:        '🤖',
+            avatar:      resolveAgentAvatarUrl(
+                           a.name,
+                           a.config?.selectedAvatarId,
+                           a.avatar_url || a.config?.selectedAvatarImg,
+                         ),
+            name:        a.name,
+            description: a.type || 'AI Agent',
+            // ── CHANGED: disabled agents always show 'Disabled' as meta ──
+            meta: isDisabled
+              ? 'Disabled'
+              : a.config?.environment
+                ? a.config.environment.charAt(0).toUpperCase() + a.config.environment.slice(1)
+                : (a.status === 'active' ? 'Active' : 'Inactive'),
+            // ── NEW: carry disabled flag through to the result row ──
+            disabled: isDisabled,
+            // ── CHANGED: no-op action for disabled agents ──
+            action: isDisabled
+              ? () => {}
+              : () => navigate(`/agents/${a.id}/chat`),
+          };
+        });
         setAgentResults(mapped);
       } catch {
         setAgentResults([]);
@@ -297,6 +309,8 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleResultClick = useCallback((result: SearchResult) => {
+    // ── CHANGED: block navigation for disabled agents ──
+    if (result.disabled) return;
     persistRecent(result.name);
     setRecentSearches(loadRecent());
     result.action();
@@ -371,23 +385,29 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
     );
   };
 
-  // ── Result row renderer ──────────────────────────────────────────────────
+  // ── Result row renderer (used in default/recent state) ──────────────────
   const ResultRow = ({ result }: { result: SearchResult }) => (
     <button
-      onMouseDown={() => handleResultClick(result)}   // ← onMouseDown avoids onBlur race
+      onMouseDown={() => handleResultClick(result)}
       className="w-full px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-3 text-left group"
+      style={result.disabled ? { cursor: 'not-allowed', opacity: 0.55 } : {}}
     >
       <AgentAvatar result={result} />
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-semibold text-gray-900 truncate">{result.name}</div>
         <div className="text-[11px] text-gray-400 truncate">{result.description}</div>
       </div>
-      {result.meta && (
+      {/* ── CHANGED: show dedicated Disabled badge or normal meta badge ── */}
+      {result.disabled ? (
+        <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200">
+          Disabled
+        </span>
+      ) : result.meta ? (
         <span className="flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
           {result.meta}
         </span>
-      )}
-      <span className="text-gray-300 group-hover:text-gray-400 text-xs flex-shrink-0">→</span>
+      ) : null}
+      <span className={`text-xs flex-shrink-0 ${result.disabled ? 'text-gray-200' : 'text-gray-300 group-hover:text-gray-400'}`}>→</span>
     </button>
   );
 
@@ -405,10 +425,13 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
     );
   };
 
+  // ── Highlighted result row (used during active search) ───────────────────
   const HighlightedResultRow = ({ result }: { result: SearchResult }) => (
     <button
       onMouseDown={() => handleResultClick(result)}
-      className="w-full px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-3 text-left group"
+      className={`w-full px-4 py-2.5 transition-colors flex items-center gap-3 text-left group ${!result.disabled ? 'hover:bg-gray-50' : ''}`}
+      // ── CHANGED: disabled styling — not-allowed cursor, dimmed opacity ──
+      style={result.disabled ? { cursor: 'not-allowed', opacity: 0.55 } : undefined}
     >
       <AgentAvatar result={result} />
       <div className="flex-1 min-w-0">
@@ -419,18 +442,27 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
           {highlight(result.description, inputValue)}
         </div>
       </div>
-      {result.meta && (
+      {/* ── CHANGED: show Disabled badge prominently, else normal meta badge ── */}
+      {result.disabled ? (
+        <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-400 border border-red-200">
+          Disabled
+        </span>
+      ) : result.meta ? (
         <span className="flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
           {result.meta}
         </span>
-      )}
-      <span className="text-gray-300 group-hover:text-gray-400 text-xs flex-shrink-0">→</span>
+      ) : null}
+      <span className={`text-xs flex-shrink-0 ${result.disabled ? 'text-gray-200' : 'text-gray-300 group-hover:text-gray-400'}`}>→</span>
     </button>
   );
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="relative w-[420px] max-w-full" ref={dropdownRef}>
+    <div
+      className="relative max-w-full"
+      ref={dropdownRef}
+      style={{ width: 'clamp(220px, 28vw, 420px)' }}
+    >
 
       {/* Input */}
       <input
@@ -442,7 +474,9 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
         onBlur={() => setIsFocused(false)}
         className="w-full h-10 pl-10 pr-16 rounded-md bg-white border border-[#CBD5E1]
           focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 text-slate-900 text-[13px]
-          placeholder:text-gray-400"
+          placeholder:text-gray-400
+          xl:h-10
+          lg:h-9 lg:text-[12px]"
       />
 
       {/* Left icon */}
@@ -462,7 +496,8 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
         </button>
       ) : (
         !isFocused && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 pointer-events-none">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 pointer-events-none
+            lg:hidden 2xl:flex">
             <kbd className="text-[9px] text-gray-400 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 font-mono leading-none">
               Ctrl
             </kbd>
@@ -475,12 +510,14 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
-          style={{ animation: 'searchSlideDown 0.15s ease-out both' }}>
+        <div
+          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
+          style={{ animation: 'searchSlideDown 0.15s ease-out both' }}
+        >
 
           {/* ── Active search ── */}
           {inputValue.trim() ? (
-            <div className="max-h-[420px] overflow-y-auto py-1">
+            <div className="overflow-y-auto py-1" style={{ maxHeight: 'clamp(280px, 40vh, 420px)' }}>
 
               {/* Searching indicator */}
               {isSearching && (
@@ -529,7 +566,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
 
           ) : (
             /* ── Default state: recent + quick actions ── */
-            <div className="max-h-[380px] overflow-y-auto">
+            <div className="overflow-y-auto" style={{ maxHeight: 'clamp(260px, 38vh, 380px)' }}>
 
               {/* Recent searches */}
               {recentSearches.length > 0 && (
@@ -573,7 +610,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
                         <ActionIcon size={12} />
                       </div>
                       <span className="flex-1 text-[13px] font-medium text-gray-800">{action.label}</span>
-                      <kbd className="text-[10px] text-gray-400 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded font-mono">
+                      <kbd className="hidden 2xl:inline text-[10px] text-gray-400 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded font-mono">
                         {action.shortcut}
                       </kbd>
                     </button>
