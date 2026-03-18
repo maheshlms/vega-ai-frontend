@@ -1,4 +1,4 @@
-name: PR Docker Compose Validation
+name: CICD for Frontend - Production
 
 on:
   push:
