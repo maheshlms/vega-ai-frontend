@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main  # triggers on every push/merge to main
+  workflow_dispatch:
 
 jobs:
   deploy-to-production:
