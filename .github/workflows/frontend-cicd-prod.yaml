@@ -1,0 +1,72 @@
+name: PR Docker Compose Validation
+
+on:
+  push:
+    branches:
+      - main  # triggers on every push/merge to main
+
+jobs:
+  deploy-to-production:
+    
+    name: Build and Start Services
+    runs-on: [production-demo-runner]
+
+    steps:
+
+ 
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+ 
+      - name: Setup Environment
+        run: |
+          echo "Copying .env files to repo"
+          sudo cp /home/vegaadmin/secrets/vega-frontend/.env ./.env
+          echo "PR #${{ github.event.pull_request.number }}"
+          echo "Branch: ${{ github.head_ref }}"
+          echo "Commit: ${{ github.event.pull_request.head.sha || github.sha }}"
+          sudo docker --version
+          sudo docker compose version
+
+      - name: Rebuild and Restart All Services
+        run: |
+          echo "🔄 Rebuilding and restarting all services..."
+          sudo docker compose down
+          sudo docker compose up --build -d
+
+      - name: Verify Services Running
+        run: sudo docker compose ps
+
+  deploy-to-production:
+    environment: production
+    name: Build and Start Services
+    runs-on: self-hosted
+    
+
+    steps:
+
+ 
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+ 
+      - name: Setup Environment
+        run: |
+          echo "Copying .env files to repo"
+          sudo cp /home/vegaadmin/secrets/vega-frontend/.env ./.env
+          echo "PR #${{ github.event.pull_request.number }}"
+          echo "Branch: ${{ github.head_ref }}"
+          echo "Commit: ${{ github.event.pull_request.head.sha || github.sha }}"
+          sudo docker --version
+          sudo docker compose version
+
+      - name: Rebuild and Restart All Services
+        run: |
+          echo "🔄 Rebuilding and restarting all services..."
+          sudo docker compose down
+          sudo docker compose up --build -d
+
+      - name: Verify Services Running
+        run: sudo docker compose ps
