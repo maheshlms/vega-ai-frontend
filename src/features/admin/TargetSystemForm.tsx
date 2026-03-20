@@ -1813,15 +1813,16 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           --tsf-ssl-gap:          20px;
           --tsf-ssl-icon-sz:      24px;
           --tsf-mono-fs:          12px;
-          --tsf-modal-max-w:      448px;
-          --tsf-modal-p:          32px;
-          --tsf-modal-icon-sz:    64px;
-          --tsf-modal-icon-fs:    30px;
-          --tsf-modal-icon-mb:    24px;
-          --tsf-modal-h2-fs:      24px;
-          --tsf-modal-sub-fs:     16px;
-          --tsf-modal-summary-p:  20px;
-          --tsf-modal-btn-py:     12px;
+          /* ── MODAL: wider + tighter to eliminate scroll ── */
+          --tsf-modal-max-w:      560px;
+          --tsf-modal-p:          24px;
+          --tsf-modal-icon-sz:    52px;
+          --tsf-modal-icon-fs:    24px;
+          --tsf-modal-icon-mb:    12px;
+          --tsf-modal-h2-fs:      20px;
+          --tsf-modal-sub-fs:     13px;
+          --tsf-modal-summary-p:  14px;
+          --tsf-modal-btn-py:     10px;
         }
 
         /* ── LARGE DESKTOP / 4K : >1920px ───────────────────────────────── */
@@ -1856,15 +1857,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             --tsf-ssl-gap:          24px;
             --tsf-ssl-icon-sz:      28px;
             --tsf-mono-fs:          14px;
-            --tsf-modal-max-w:      576px;
-            --tsf-modal-p:          48px;
-            --tsf-modal-icon-sz:    80px;
-            --tsf-modal-icon-fs:    40px;
-            --tsf-modal-icon-mb:    32px;
-            --tsf-modal-h2-fs:      30px;
-            --tsf-modal-sub-fs:     18px;
-            --tsf-modal-summary-p:  24px;
-            --tsf-modal-btn-py:     16px;
+            --tsf-modal-max-w:      640px;
+            --tsf-modal-p:          36px;
+            --tsf-modal-icon-sz:    68px;
+            --tsf-modal-icon-fs:    34px;
+            --tsf-modal-icon-mb:    20px;
+            --tsf-modal-h2-fs:      26px;
+            --tsf-modal-sub-fs:     16px;
+            --tsf-modal-summary-p:  20px;
+            --tsf-modal-btn-py:     14px;
           }
         }
 
@@ -1903,15 +1904,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             --tsf-ssl-gap:          16px;
             --tsf-ssl-icon-sz:      20px;
             --tsf-mono-fs:          11px;
-            --tsf-modal-max-w:      400px;
-            --tsf-modal-p:          26px;
-            --tsf-modal-icon-sz:    56px;
-            --tsf-modal-icon-fs:    26px;
-            --tsf-modal-icon-mb:    20px;
-            --tsf-modal-h2-fs:      20px;
-            --tsf-modal-sub-fs:     14px;
-            --tsf-modal-summary-p:  16px;
-            --tsf-modal-btn-py:     10px;
+            --tsf-modal-max-w:      500px;
+            --tsf-modal-p:          20px;
+            --tsf-modal-icon-sz:    46px;
+            --tsf-modal-icon-fs:    20px;
+            --tsf-modal-icon-mb:    10px;
+            --tsf-modal-h2-fs:      18px;
+            --tsf-modal-sub-fs:     12px;
+            --tsf-modal-summary-p:  12px;
+            --tsf-modal-btn-py:     9px;
           }
         }
 
@@ -1947,15 +1948,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             --tsf-ssl-gap:          14px;
             --tsf-ssl-icon-sz:      18px;
             --tsf-mono-fs:          10.5px;
-            --tsf-modal-max-w:      380px;
-            --tsf-modal-p:          22px;
-            --tsf-modal-icon-sz:    50px;
-            --tsf-modal-icon-fs:    22px;
-            --tsf-modal-icon-mb:    18px;
-            --tsf-modal-h2-fs:      18px;
-            --tsf-modal-sub-fs:     13px;
-            --tsf-modal-summary-p:  14px;
-            --tsf-modal-btn-py:     9px;
+            --tsf-modal-max-w:      460px;
+            --tsf-modal-p:          18px;
+            --tsf-modal-icon-sz:    42px;
+            --tsf-modal-icon-fs:    18px;
+            --tsf-modal-icon-mb:    10px;
+            --tsf-modal-h2-fs:      16px;
+            --tsf-modal-sub-fs:     11px;
+            --tsf-modal-summary-p:  12px;
+            --tsf-modal-btn-py:     8px;
           }
         }
 
@@ -1991,14 +1992,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             --tsf-ssl-gap:          12px;
             --tsf-ssl-icon-sz:      16px;
             --tsf-mono-fs:          10px;
-            --tsf-modal-max-w:      360px;
-            --tsf-modal-p:          20px;
-            --tsf-modal-icon-sz:    48px;
-            --tsf-modal-icon-fs:    20px;
-            --tsf-modal-icon-mb:    16px;
-            --tsf-modal-h2-fs:      16px;
-            --tsf-modal-sub-fs:     12px;
-            --tsf-modal-summary-p:  12px;
+            --tsf-modal-max-w:      420px;
+            --tsf-modal-p:          16px;
+            --tsf-modal-icon-sz:    40px;
+            --tsf-modal-icon-fs:    17px;
+            --tsf-modal-icon-mb:    10px;
+            --tsf-modal-h2-fs:      15px;
+            --tsf-modal-sub-fs:     11px;
+            --tsf-modal-summary-p:  10px;
             --tsf-modal-btn-py:     8px;
           }
         }
@@ -2039,15 +2040,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             --tsf-ssl-gap:          32px;
             --tsf-ssl-icon-sz:      38px;
             --tsf-mono-fs:          17px;
-            --tsf-modal-max-w:      720px;
-            --tsf-modal-p:          60px;
-            --tsf-modal-icon-sz:    100px;
-            --tsf-modal-icon-fs:    52px;
-            --tsf-modal-icon-mb:    44px;
-            --tsf-modal-h2-fs:      38px;
-            --tsf-modal-sub-fs:     24px;
-            --tsf-modal-summary-p:  32px;
-            --tsf-modal-btn-py:     20px;
+            --tsf-modal-max-w:      800px;
+            --tsf-modal-p:          48px;
+            --tsf-modal-icon-sz:    80px;
+            --tsf-modal-icon-fs:    40px;
+            --tsf-modal-icon-mb:    32px;
+            --tsf-modal-h2-fs:      34px;
+            --tsf-modal-sub-fs:     20px;
+            --tsf-modal-summary-p:  28px;
+            --tsf-modal-btn-py:     18px;
           }
         }
 
@@ -2132,7 +2133,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         .tsf-ssl-panel    { padding: var(--tsf-ssl-p); display: flex; flex-direction: column; gap: var(--tsf-ssl-gap); }
         .tsf-ssl-icon     { width: var(--tsf-ssl-icon-sz); height: var(--tsf-ssl-icon-sz); }
 
-        .tsf-modal-w          { max-width: var(--tsf-modal-max-w); max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
+        .tsf-modal-w          { max-width: var(--tsf-modal-max-w); max-height: 92vh; overflow-y: auto; box-sizing: border-box; }
         .tsf-modal-p          { padding: var(--tsf-modal-p); }
         .tsf-modal-icon       { width: var(--tsf-modal-icon-sz); height: var(--tsf-modal-icon-sz); }
         .tsf-modal-icon-fs    { font-size: var(--tsf-modal-icon-fs); }

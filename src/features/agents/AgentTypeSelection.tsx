@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  Award, ShieldCheck, Link2, Wrench, FileCode2, Coins, KeyRound,
+  Database, Lock, Users, RotateCcw, LayoutGrid, RefreshCw, HardDrive,
+  ShieldAlert, BarChart2, Search, Puzzle, Terminal, Fingerprint,
+  ShieldOff, UserPlus, LogIn, ScrollText, AlertTriangle, AppWindow, Workflow
+} from "lucide-react";
 
 interface Agent {
   id: string;
@@ -21,35 +27,64 @@ interface AgentTypesData {
 
 // Per-agent accent colours (mirrors IntegrationsPage card accents)
 const AGENT_ACCENTS: Record<string, { border: string; shadow: string; headerBg: string; logoBg: string }> = {
-  license:     { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  certificate: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  connection:  { border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  adapter:     { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  protocol:    { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  token:       { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)',   headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
-  oauth:       { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  datasources: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
-  ptmaster:    { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  // pingdirectory
-  'user-mgmt': { border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  'pwd-reset':  { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)',   headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
-  schema:      { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  replication: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  backup:      { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  security:    { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)',    headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
-  monitoring:  { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  indexing:    { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
-  plugins:     { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  'ldap-ops':  { border: '#6B7280', shadow: 'rgba(107,114,128,0.18)', headerBg: '#F9FAFB', logoBg: '#F3F4F6' },
-  // pingone
-  identity:    { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  mfa:         { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)',    headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
-  provisioning:{ border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  'sso-config':{ border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  policies:    { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  'risk-mgmt': { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  connectors:  { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  workflows:   { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  license: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  certificate: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  connection: { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  adapter: { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  protocol: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  token: { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)', headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
+  oauth: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  datasources: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  ptmaster: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  'user-mgmt': { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  'pwd-reset': { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)', headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
+  schema: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  replication: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  backup: { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  security: { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)', headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
+  monitoring: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  indexing: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  plugins: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  'ldap-ops': { border: '#6B7280', shadow: 'rgba(107,114,128,0.18)', headerBg: '#F9FAFB', logoBg: '#F3F4F6' },
+  identity: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  mfa: { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)', headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
+  provisioning: { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  'sso-config': { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  policies: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  'risk-mgmt': { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  connectors: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  workflows: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+};
+
+// ── CHANGED: map each agent id to a lucide icon component ──
+const AGENT_ICONS: Record<string, React.ElementType> = {
+  license: Award,
+  certificate: ShieldCheck,
+  connection: Link2,
+  adapter: Wrench,
+  protocol: FileCode2,
+  token: Coins,
+  oauth: KeyRound,
+  datasources: Database,
+  ptmaster: Lock,
+  'user-mgmt': Users,
+  'pwd-reset': RotateCcw,
+  schema: LayoutGrid,
+  replication: RefreshCw,
+  backup: HardDrive,
+  security: ShieldAlert,
+  monitoring: BarChart2,
+  indexing: Search,
+  plugins: Puzzle,
+  'ldap-ops': Terminal,
+  identity: Fingerprint,
+  mfa: ShieldOff,
+  provisioning: UserPlus,
+  'sso-config': LogIn,
+  policies: ScrollText,
+  'risk-mgmt': AlertTriangle,
+  connectors: AppWindow,
+  workflows: Workflow,
 };
 
 const AgentTypeSelection: React.FC = () => {
@@ -79,45 +114,45 @@ const AgentTypeSelection: React.FC = () => {
       title: "Ping Federate",
       subtitle: "Select the type of agent you want to create",
       agents: [
-        { id: "license",     name: "License",       description: "License monitoring & renewal",              icon: "🎫", active: true },
-        { id: "certificate", name: "Certificate",   description: "SSL/TLS certificate management",            icon: "📄", active: true },
-        { id: "connection",  name: "SP Connection", description: "Service Provider connection setup",         icon: "🔗", active: true },
-        { id: "adapter",     name: "Adapter Config",description: "Configure authentication adapters",         icon: "🔧", active: false },
-        { id: "protocol",    name: "Protocol",      description: "Protocol handler configuration",            icon: "📋", active: false },
-        { id: "token",       name: "Token Mgmt",    description: "Token lifecycle management",                icon: "🎯", active: false },
-        { id: "oauth",       name: "OAuth/OIDC",    description: "OAuth 2.0 & OIDC setup",                   icon: "🔑", active: false },
-        { id: "datasources", name: "Data Sources",  description: "Configure data source connections",         icon: "🗄️", active: false },
-        { id: "ptmaster",    name: "PF Master",     description: "Primary authentication master",             icon: "🔐", active: false }
+        { id: "license", name: "License", description: "License monitoring & renewal", icon: "", active: true },
+        { id: "certificate", name: "Certificate", description: "SSL/TLS certificate management", icon: "", active: true },
+        { id: "connection", name: "SP Connection", description: "Service Provider connection setup", icon: "", active: true },
+        { id: "adapter", name: "Adapter Config", description: "Configure authentication adapters", icon: "", active: false },
+        { id: "protocol", name: "Protocol", description: "Protocol handler configuration", icon: "", active: false },
+        { id: "token", name: "Token Mgmt", description: "Token lifecycle management", icon: "", active: false },
+        { id: "oauth", name: "OAuth/OIDC", description: "OAuth 2.0 & OIDC setup", icon: "", active: false },
+        { id: "datasources", name: "Data Sources", description: "Configure data source connections", icon: "", active: false },
+        { id: "ptmaster", name: "PF Master", description: "Primary authentication master", icon: "", active: false }
       ]
     },
     pingdirectory: {
       title: "Ping Directory",
       subtitle: "Configure your directory services agent",
       agents: [
-        { id: "user-mgmt",    name: "User Management",    description: "View, modify and enable/disable users",              icon: "👥", active: true },
-        { id: "pwd-reset",    name: "Password Reset",      description: "Reset passwords for directory users",               icon: "🔑", active: true },
-        { id: "schema",       name: "Schema Config",      description: "Define and manage directory schema attributes",      icon: "📐", active: false },
-        { id: "replication",  name: "Replication",        description: "Set up multi-master replication topology",           icon: "🔄", active: false },
-        { id: "backup",       name: "Backup & Restore",   description: "Automated backup and recovery solutions",            icon: "💾", active: false },
-        { id: "security",     name: "Access Control",     description: "Configure ACLs and security policies",               icon: "🛡️", active: false },
-        { id: "monitoring",   name: "Performance Monitor",description: "Real-time performance metrics and alerts",           icon: "📊", active: false },
-        { id: "indexing",     name: "Index Management",   description: "Optimize search performance with indexes",           icon: "🔍", active: false },
-        { id: "plugins",      name: "Plugin Config",      description: "Extend functionality with custom plugins",           icon: "🧩", active: false },
-        { id: "ldap-ops",     name: "LDAP Operations",    description: "Advanced LDAP query and operation tools",            icon: "⚙️", active: false }
+        { id: "user-mgmt", name: "User Management", description: "View, modify and enable/disable users", icon: "", active: true },
+        { id: "pwd-reset", name: "Password Reset", description: "Reset passwords for directory users", icon: "", active: true },
+        { id: "schema", name: "Schema Config", description: "Define and manage directory schema attributes", icon: "", active: false },
+        { id: "replication", name: "Replication", description: "Set up multi-master replication topology", icon: "", active: false },
+        { id: "backup", name: "Backup & Restore", description: "Automated backup and recovery solutions", icon: "", active: false },
+        { id: "security", name: "Access Control", description: "Configure ACLs and security policies", icon: "", active: false },
+        { id: "monitoring", name: "Performance Monitor", description: "Real-time performance metrics and alerts", icon: "", active: false },
+        { id: "indexing", name: "Index Management", description: "Optimize search performance with indexes", icon: "", active: false },
+        { id: "plugins", name: "Plugin Config", description: "Extend functionality with custom plugins", icon: "", active: false },
+        { id: "ldap-ops", name: "LDAP Operations", description: "Advanced LDAP query and operation tools", icon: "", active: false }
       ]
     },
     pingone: {
       title: "Ping One",
       subtitle: "Set up your cloud identity platform agent",
       agents: [
-        { id: "identity",     name: "Identity Provider",  description: "Configure IdP settings and attributes",             icon: "🆔", active: true },
-        { id: "mfa",          name: "MFA Configuration",  description: "Multi-factor authentication policies",              icon: "🔐", active: false },
-        { id: "provisioning", name: "User Provisioning",  description: "Automated user lifecycle management",               icon: "👤", active: false },
-        { id: "sso-config",   name: "SSO Setup",          description: "Single sign-on for applications",                   icon: "🔑", active: false },
-        { id: "policies",     name: "Access Policies",    description: "Define fine-grained access control",                icon: "📋", active: false },
-        { id: "risk-mgmt",    name: "Risk Management",    description: "Adaptive authentication and risk scoring",          icon: "⚠️", active: false },
-        { id: "connectors",   name: "App Connectors",     description: "Integrate with SaaS applications",                  icon: "🔌", active: false },
-        { id: "workflows",    name: "Workflow Automation",description: "Build identity governance workflows",               icon: "🔄", active: false }
+        { id: "identity", name: "Identity Provider", description: "Configure IdP settings and attributes", icon: "", active: true },
+        { id: "mfa", name: "MFA Configuration", description: "Multi-factor authentication policies", icon: "", active: false },
+        { id: "provisioning", name: "User Provisioning", description: "Automated user lifecycle management", icon: "", active: false },
+        { id: "sso-config", name: "SSO Setup", description: "Single sign-on for applications", icon: "", active: false },
+        { id: "policies", name: "Access Policies", description: "Define fine-grained access control", icon: "", active: false },
+        { id: "risk-mgmt", name: "Risk Management", description: "Adaptive authentication and risk scoring", icon: "", active: false },
+        { id: "connectors", name: "App Connectors", description: "Integrate with SaaS applications", icon: "", active: false },
+        { id: "workflows", name: "Workflow Automation", description: "Build identity governance workflows", icon: "", active: false }
       ]
     }
   };
@@ -125,8 +160,8 @@ const AgentTypeSelection: React.FC = () => {
   const currentIntegration: IntegrationData =
     agentTypesData[integrationId] || agentTypesData.pingfederate;
 
-  const activeCount  = currentIntegration.agents.filter(a => a.active).length;
-  const totalCount   = currentIntegration.agents.length;
+  const activeCount = currentIntegration.agents.filter(a => a.active).length;
+  const totalCount = currentIntegration.agents.length;
 
   return (
     <>
@@ -362,13 +397,14 @@ const AgentTypeSelection: React.FC = () => {
 
         {/* ── Grid ── */}
         <div className="ats-page-wrapper">
-          <div
-            className="ats-card-grid grid gap-5"
-          >
+          <div className="ats-card-grid grid gap-5">
             {currentIntegration.agents.map((agent) => {
               const isHovered = hoveredId === agent.id;
-              const accent    = AGENT_ACCENTS[agent.id];
-              const isActive  = agent.active;
+              const accent = AGENT_ACCENTS[agent.id];
+              const isActive = agent.active;
+
+              // ── CHANGED: resolve lucide icon component for this agent ──
+              const IconComponent = AGENT_ICONS[agent.id];
 
               const cardStyle: React.CSSProperties = isHovered && accent && isActive ? {
                 borderColor: accent.border,
@@ -397,7 +433,7 @@ const AgentTypeSelection: React.FC = () => {
                   {/* Accent bar */}
                   <div className="ats-accent-bar" style={accentBarStyle} />
 
-                  {/* Icon zone */}
+                  {/* Icon zone — CHANGED: renders lucide icon instead of emoji */}
                   <div
                     className="flex items-center justify-center border-b border-gray-100 min-h-[140px] px-7 py-8 transition-colors duration-200"
                     style={{ background: isHovered && accent && isActive ? accent.headerBg : '#FAFAFA' }}
@@ -410,7 +446,16 @@ const AgentTypeSelection: React.FC = () => {
                           : { background: '#fff' }
                       }
                     >
-                      <span className="text-4xl select-none">{agent.icon}</span>
+                      {IconComponent && (
+                        <IconComponent
+                          size={32}
+                          strokeWidth={1.5}
+                          style={{
+                            color: accent ? accent.border : '#9CA3AF',
+                            transition: 'color 0.2s ease',
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -421,12 +466,12 @@ const AgentTypeSelection: React.FC = () => {
                         <span className="text-[15px] font-semibold text-[#0A0A0A] tracking-tight leading-tight">
                           {agent.name}
                         </span>
-                        {isActive && (
+                        {/* {isActive && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[10.5px] font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                             <span className="ats-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                             Available
                           </span>
-                        )}
+                        )} */}
                       </div>
                       <p className="text-[12.5px] text-gray-500 leading-relaxed font-normal m-0">
                         {agent.description}

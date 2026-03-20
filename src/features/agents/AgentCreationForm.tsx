@@ -30,10 +30,10 @@ function friendlyName(id: string): string {
 }
 
 const COLORS = [
-  '#6366f1','#818cf8','#10b981','#34d399','#f59e0b','#fbbf24',
-  '#ef4444','#fca5a5','#8b5cf6','#a78bfa','#06b6d4','#67e8f9',
-  '#ec4899','#f9a8d4','#84cc16','#bef264','#f97316','#fdba74',
-  '#14b8a6','#5eead4',
+  '#6366f1', '#818cf8', '#10b981', '#34d399', '#f59e0b', '#fbbf24',
+  '#ef4444', '#fca5a5', '#8b5cf6', '#a78bfa', '#06b6d4', '#67e8f9',
+  '#ec4899', '#f9a8d4', '#84cc16', '#bef264', '#f97316', '#fdba74',
+  '#14b8a6', '#5eead4',
 ];
 
 interface AvatarOption {
@@ -58,14 +58,14 @@ function buildAvatarListFromManifest(): AvatarOption[] {
 
   const byName = new Map<string, { id: string; img: string }>();
   for (const id of formal) {
-    const img   = avatarManifest[id];
+    const img = avatarManifest[id];
     const first = extractFirstName(id);
     const existing = byName.get(first);
     if (!existing) {
       byName.set(first, { id, img });
     } else {
       const existingLocal = existing.img.startsWith('/avatars/');
-      const newLocal      = img.startsWith('/avatars/');
+      const newLocal = img.startsWith('/avatars/');
       if (newLocal && !existingLocal) byName.set(first, { id, img });
     }
   }
@@ -76,7 +76,7 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     .slice(0, 20)
     .map(([, { id, img }], i) => ({
       id, img,
-      name:  friendlyName(id),
+      name: friendlyName(id),
       color: COLORS[i % COLORS.length],
     }));
 }
@@ -99,8 +99,8 @@ if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
     const existing = document.head.querySelector(`link[rel="preload"][href="${avatar.img}"]`);
     if (!existing) {
       const link = document.createElement('link');
-      link.rel  = 'preload';
-      link.as   = 'image';
+      link.rel = 'preload';
+      link.as = 'image';
       link.href = avatar.img;
       // fetchpriority attribute on the link element (Chromium 101+)
       (link as any).fetchPriority = 'high';
@@ -115,15 +115,15 @@ if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
 }
 
 const HARDCODED_FALLBACKS: AvatarOption[] = [
-  { id: 'Marianne_ProfessionalLook_public',   name: 'Marianne',   img: '', color: '#6366f1' },
-  { id: 'Katya_ProfessionalLook_public',      name: 'Katya',      img: '', color: '#10b981' },
+  { id: 'Marianne_ProfessionalLook_public', name: 'Marianne', img: '', color: '#6366f1' },
+  { id: 'Katya_ProfessionalLook_public', name: 'Katya', img: '', color: '#10b981' },
   { id: 'Alessandra_ProfessionalLook_public', name: 'Alessandra', img: '', color: '#f59e0b' },
-  { id: 'Tyler_ProfessionalLook_public',      name: 'Tyler',      img: '', color: '#fca5a5' },
-  { id: 'Anna_public_3_20240108',             name: 'Anna',       img: '', color: '#8b5cf6' },
-  { id: 'Eric_public_pro1_20230608',          name: 'Eric',       img: '', color: '#06b6d4' },
-  { id: 'Susan_public_2_20240328',            name: 'Susan',      img: '', color: '#ec4899' },
-  { id: 'Shelly_public_20240408',             name: 'Shelly',     img: '', color: '#f97316' },
-  { id: 'Wayne_20240711_public',              name: 'Wayne',      img: '', color: '#14b8a6' },
+  { id: 'Tyler_ProfessionalLook_public', name: 'Tyler', img: '', color: '#fca5a5' },
+  { id: 'Anna_public_3_20240108', name: 'Anna', img: '', color: '#8b5cf6' },
+  { id: 'Eric_public_pro1_20230608', name: 'Eric', img: '', color: '#06b6d4' },
+  { id: 'Susan_public_2_20240328', name: 'Susan', img: '', color: '#ec4899' },
+  { id: 'Shelly_public_20240408', name: 'Shelly', img: '', color: '#f97316' },
+  { id: 'Wayne_20240711_public', name: 'Wayne', img: '', color: '#14b8a6' },
 ];
 
 interface TargetSystem {
@@ -419,9 +419,8 @@ const AvatarCircleImage: React.FC<{
           // @ts-ignore — fetchPriority is valid HTML but TS types lag
           fetchPriority="high"
           decoding="sync"
-          className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${
-            state === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${state === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
           onLoad={onLoad}
           onError={onError}
         />
@@ -465,9 +464,8 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
           <img src={avatar.img} alt={avatar.name} loading="eager"
             // @ts-ignore
             fetchPriority="high"
-            className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-all duration-400 ${
-              state === 'loaded' ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-            }`}
+            className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-all duration-400 ${state === 'loaded' ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+              }`}
             onLoad={onLoad} onError={onError}
           />
         </>
@@ -476,12 +474,12 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
         style={{ background: `linear-gradient(to top, ${avatar.color}f0 0%, ${avatar.color}88 60%, transparent 100%)` }}>
         <p className="text-white font-bold text-xl leading-tight drop-shadow-sm">{avatar.name}</p>
         {/* 👔 emoji removed per user's modification */}
-        <p className="text-white/80 text-sm mt-0.5"> Formal look</p>
+        {/* <p className="text-white/80 text-sm mt-0.5"> Formal look</p> */}
       </div>
-      <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
+      {/* <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
         style={{ background: '#6366f1dd', backdropFilter: 'blur(8px)' }}>
         Formal
-      </div>
+      </div> */}
       {/* Cached/CDN badge removed per user's modification */}
     </div>
   );
@@ -493,8 +491,8 @@ const AvatarCarousel: React.FC<{
   onSelect: (id: string, name: string, img: string) => void;
 }> = ({ avatars, selectedId, onSelect }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const rafRef    = React.useRef<number>(0);
-  const [canLeft,  setCanLeft]  = React.useState(false);
+  const rafRef = React.useRef<number>(0);
+  const [canLeft, setCanLeft] = React.useState(false);
   const [canRight, setCanRight] = React.useState(true);
 
   // ── Force-preload every avatar image via JS Image() objects ──────────────
@@ -516,7 +514,7 @@ const AvatarCarousel: React.FC<{
     rafRef.current = requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setCanLeft(p  => { const n = el.scrollLeft > 2;                                   return p !== n ? n : p; });
+      setCanLeft(p => { const n = el.scrollLeft > 2; return p !== n ? n : p; });
       setCanRight(p => { const n = el.scrollLeft < el.scrollWidth - el.clientWidth - 2; return p !== n ? n : p; });
     });
   }, []);
@@ -571,9 +569,8 @@ const AvatarCarousel: React.FC<{
                   className="flex flex-col items-center gap-1.5 flex-shrink-0 group transition-all duration-200"
                   style={{ minWidth: 84 }}>
                   <div
-                    className={`relative w-[68px] h-[68px] rounded-full overflow-hidden transition-all duration-300 ${
-                      isSelected ? 'scale-110' : 'hover:scale-105'
-                    }`}
+                    className={`relative w-[68px] h-[68px] rounded-full overflow-hidden transition-all duration-300 ${isSelected ? 'scale-110' : 'hover:scale-105'
+                      }`}
                     style={isSelected
                       ? { boxShadow: `0 0 0 3px white, 0 0 0 5px ${avatar.color}, 0 6px 20px ${avatar.color}44` }
                       : { border: '2px solid #e5e7eb', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
@@ -581,9 +578,8 @@ const AvatarCarousel: React.FC<{
                     <div className="absolute top-0 left-0 text-white text-[8px] font-black px-1 py-0.5 rounded-br-md z-30 leading-none"
                       style={{ background: '#6366f1' }}>F</div>
                   </div>
-                  <span className={`text-[10px] font-medium leading-tight text-center w-[80px] truncate transition-colors ${
-                    isSelected ? 'text-indigo-600 font-semibold' : 'text-gray-500 group-hover:text-gray-800'
-                  }`}>
+                  <span className={`text-[10px] font-medium leading-tight text-center w-[80px] truncate transition-colors ${isSelected ? 'text-indigo-600 font-semibold' : 'text-gray-500 group-hover:text-gray-800'
+                    }`}>
                     {avatar.name}
                   </span>
                 </button>
@@ -611,19 +607,19 @@ const AgentCreationForm: React.FC = () => {
   const integrationIdForFilter = locState?.integrationId;
   const integrationTypeFromNav = locState?.integrationType ?? '';
 
-  const [showSuccess,            setShowSuccess]            = React.useState(false);
-  const [submitting,             setSubmitting]             = React.useState(false);
-  const [error,                  setError]                  = React.useState('');
+  const [showSuccess, setShowSuccess] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
   const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
-  const [loadingTargetSystems,   setLoadingTargetSystems]   = React.useState(false);
+  const [loadingTargetSystems, setLoadingTargetSystems] = React.useState(false);
 
   const hasManifest = MANIFEST_AVATARS.length > 0;
 
-  const [avatars,        setAvatars]        = React.useState<AvatarOption[]>(
+  const [avatars, setAvatars] = React.useState<AvatarOption[]>(
     hasManifest ? MANIFEST_AVATARS : []
   );
   const [loadingAvatars, setLoadingAvatars] = React.useState(!hasManifest);
-  const [avatarSource,   setAvatarSource]   = React.useState<'local' | 'cdn' | 'fallback'>(() => {
+  const [avatarSource, setAvatarSource] = React.useState<'local' | 'cdn' | 'fallback'>(() => {
     if (!hasManifest) return 'fallback';
     return MANIFEST_AVATARS.some(a => a.img.startsWith('/avatars/')) ? 'local' : 'cdn';
   });
@@ -646,9 +642,9 @@ const AgentCreationForm: React.FC = () => {
         if (!res.ok) throw new Error(`HeyGen ${res.status}`);
         const data = await res.json();
         const raw: any[] =
-          Array.isArray(data?.data)          ? data.data :
-          Array.isArray(data?.data?.avatars) ? data.data.avatars :
-          Array.isArray(data?.avatars)       ? data.avatars : [];
+          Array.isArray(data?.data) ? data.data :
+            Array.isArray(data?.data?.avatars) ? data.data.avatars :
+              Array.isArray(data?.avatars) ? data.avatars : [];
         if (!raw.length) throw new Error('empty');
         const byName = new Map<string, AvatarOption>();
         raw.forEach((a: any, i: number) => {
@@ -705,15 +701,15 @@ const AgentCreationForm: React.FC = () => {
       ...prev,
       selectedAvatarId: id, selectedAvatarImg: img, selectedAvatarName: name,
       agentName:
-        prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`)
-          ? `${name} Agent` : prev.agentName,
+        prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`) || avatars.some(a => prev.agentName === a.name)
+          ? name : prev.agentName,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.selectedTargetSystem) { setError('Please select a target system'); return; }
-    if (!formData.selectedAvatarId)     { setError('Please select an avatar');       return; }
+    if (!formData.selectedAvatarId) { setError('Please select an avatar'); return; }
     setSubmitting(true); setError('');
     try {
       const resolvedIntegrationType =
@@ -745,8 +741,8 @@ const AgentCreationForm: React.FC = () => {
 
   // Environment options for CustomDropdown
   const ENV_OPTIONS: DropdownOption[] = [
-    { value: 'production',  label: 'Production'  },
-    { value: 'staging',     label: 'Staging'     },
+    { value: 'production', label: 'Production' },
+    { value: 'staging', label: 'Staging' },
     { value: 'development', label: 'Development' },
   ];
 
@@ -1072,9 +1068,9 @@ const AgentCreationForm: React.FC = () => {
               <p className="text-[13.5px] text-gray-500 mb-6">Your agent is now active and monitoring.</p>
               <div className="bg-[#FAFAFA] rounded-xl border border-gray-200 p-4 mb-6 text-left space-y-3">
                 {([
-                  ['Avatar',        selectedAvatarObj?.name ?? ''],
-                  ['Agent Name',    formData.agentName],
-                  ['Environment',   formData.environment],
+                  ['Avatar', selectedAvatarObj?.name ?? ''],
+                  ['Agent Name', formData.agentName],
+                  ['Environment', formData.environment],
                   ['Target System', formData.selectedTargetSystem?.name ?? ''],
                   ...(agentTypeId !== 'connection' ? [['Notification Window', `${formData.notificationWindow} days`]] : []),
                 ] as [string, string][]).map(([label, value], i) => (
@@ -1165,7 +1161,7 @@ const AgentCreationForm: React.FC = () => {
                     className="acf-input"
                   />
                   <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
-                    <span>💡</span><span>Auto-filled from avatar — edit anytime</span>
+                    <span>💡</span><span>Taken from your avatar — change it anytime</span>
                   </p>
                 </div>
 

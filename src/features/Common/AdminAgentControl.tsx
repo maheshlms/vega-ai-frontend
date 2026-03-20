@@ -1572,15 +1572,20 @@ const AdminAgentControl: React.FC = () => {
     const dateMap = new Map<string, { total_tasks: number; successful_tasks: number; failed_tasks: number }>();
 
     if (telemetryData?.daily_metrics_past_7_days?.length) {
-      telemetryData.daily_metrics_past_7_days.forEach(metric => {
-        if (!dateMap.has(metric.date)) {
-          dateMap.set(metric.date, { total_tasks: 0, successful_tasks: 0, failed_tasks: 0 });
-        }
-        const entry = dateMap.get(metric.date)!;
-        entry.total_tasks      += metric.total_tasks;
-        entry.successful_tasks += metric.successful_tasks;
-        entry.failed_tasks     += metric.failed_tasks;
-      });
+      telemetryData.daily_metrics_past_7_days
+        // ── FIX: filter daily metrics to only THIS user's agents ──
+        // Without this filter, a regular user sees the admin's chart data
+        // because the telemetry endpoint returns ALL agents from the system.
+        .filter(metric => agentIdSet.has(metric.agent_id))
+        .forEach(metric => {
+          if (!dateMap.has(metric.date)) {
+            dateMap.set(metric.date, { total_tasks: 0, successful_tasks: 0, failed_tasks: 0 });
+          }
+          const entry = dateMap.get(metric.date)!;
+          entry.total_tasks      += metric.total_tasks;
+          entry.successful_tasks += metric.successful_tasks;
+          entry.failed_tasks     += metric.failed_tasks;
+        });
     }
 
     // Build complete 7-day dataset with zeros for missing days
@@ -1597,7 +1602,7 @@ const AdminAgentControl: React.FC = () => {
         tasksFailed:    metrics.failed_tasks,
       };
     });
-  }, [telemetryData]);
+  }, [telemetryData, agents]);
 
   const getFilteredDetailAgents = (): Agent[] => {
     let list = [...agents];
@@ -1771,13 +1776,32 @@ const AdminAgentControl: React.FC = () => {
               </div>
             </div>
 
-            {/* ── Show error OR empty state (mahesh), but chart fills all 7 days with zeros (HeyGen) ── */}
-            {telemetryError || activityData.every(d => d.tasksGiven === 0 && d.tasksFailed === 0) ? (
-              <div className="flex-1 flex items-center justify-center min-h-[260px] bg-red-50 border border-red-200 rounded-lg">
+            {/* ── FIX: Show error OR empty state correctly ──
+                Scenario 1: telemetry API error → show error state
+                Scenario 2: user has NO agents at all → show "no agents" empty state
+                            (previously showed admin's data here — the core bug)
+                Scenario 3: user has agents but zero activity this week → show "no activity"
+                Scenario 4: user has agents with data → show the chart (unchanged) */}
+            {telemetryError || agents.length === 0 || activityData.every(d => d.tasksGiven === 0 && d.tasksFailed === 0) ? (
+              <div className={`flex-1 flex items-center justify-center min-h-[260px] rounded-lg border ${
+                telemetryError ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+              }`}>
                 <div className="text-center">
-                  <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-3" />
-                  <p className="text-red-700 font-medium">Telemetry Data Unavailable</p>
-                  <p className="text-red-600 text-sm mt-1">{telemetryError || 'No telemetry data available for this period'}</p>
+                  <FaExclamationTriangle className={`text-4xl mx-auto mb-3 ${telemetryError ? 'text-red-500' : 'text-gray-300'}`} />
+                  <p className={`font-medium ${telemetryError ? 'text-red-700' : 'text-gray-500'}`}>
+                    {telemetryError
+                      ? 'Telemetry Data Unavailable'
+                      : agents.length === 0
+                      ? 'No Agents Configured'
+                      : 'No Activity This Week'}
+                  </p>
+                  <p className={`text-sm mt-1 ${telemetryError ? 'text-red-600' : 'text-gray-400'}`}>
+                    {telemetryError
+                      ? telemetryError
+                      : agents.length === 0
+                      ? 'No agents configured yet. Add an agent to start tracking task metrics.'
+                      : 'No telemetry data available for this period'}
+                  </p>
                 </div>
               </div>
             ) : (

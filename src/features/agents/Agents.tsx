@@ -25,6 +25,10 @@ function resolveAvatarImg(avatarId: string, storedImg: string): string {
   return '';
 }
 
+// ─── Capitalize first letter of each word ─────────────────────────────────────
+const toTitleCase = (str: string): string =>
+  str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+
 interface Agent {
   id: string;
   name: string;
@@ -101,6 +105,19 @@ const resolveCategory = (input: string): string => {
   if (t.includes('ping_one') || t.includes('pingone')) return 'ping_one';
   return 'unknown';
 };
+
+// ─── Environment badge styles ─────────────────────────────────────────────────
+const ENV_STYLES: Record<string, { bg: string; color: string; dot: string; border: string }> = {
+  production:  { bg: '#FFF0F0', color: '#C0392B', dot: '#E74C3C', border: '#FCCAC7' },
+  prod:        { bg: '#FFF0F0', color: '#C0392B', dot: '#E74C3C', border: '#FCCAC7' },
+  staging:     { bg: '#FFF8EC', color: '#B45309', dot: '#F59E0B', border: '#FDE68A' },
+  stage:       { bg: '#FFF8EC', color: '#B45309', dot: '#F59E0B', border: '#FDE68A' },
+  development: { bg: '#EDFBF4', color: '#15803D', dot: '#22C55E', border: '#BBF7D0' },
+  dev:         { bg: '#EDFBF4', color: '#15803D', dot: '#22C55E', border: '#BBF7D0' },
+};
+
+const getEnvStyle = (env: string) =>
+  ENV_STYLES[env.toLowerCase()] ?? { bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF', border: '#E5E7EB' };
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
 interface ToggleSwitchProps {
@@ -357,17 +374,33 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, accent, category, metrics,
           <p className="text-[12.5px] text-gray-500 leading-relaxed font-normal m-0">{agent.role}</p>
         </div>
 
+        {/* ── Tags row ── */}
         <div className="flex flex-wrap gap-1.5 mt-auto">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap" style={{ background: `${accent}18`, color: accent }}>
+          {/* Agent type badge — capitalized */}
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap"
+            style={{ background: `${accent}18`, color: accent }}
+          >
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: accent }} />
-            {agent.type}
+            {toTitleCase(agent.type)}
           </span>
-          {agent.environment && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap bg-gray-100 text-gray-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-              {agent.environment}
-            </span>
-          )}
+
+          {/* Environment badge — bold, color-coded & capitalized */}
+          {agent.environment && (() => {
+            const s = getEnvStyle(agent.environment);
+            return (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap"
+                style={{ background: s.bg, color: s.color, border: `1.5px solid ${s.border}` }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: s.dot, boxShadow: `0 0 4px ${s.dot}99` }}
+                />
+                {toTitleCase(agent.environment)}
+              </span>
+            );
+          })()}
         </div>
       </div>
 

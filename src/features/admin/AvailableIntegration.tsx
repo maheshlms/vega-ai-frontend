@@ -708,12 +708,12 @@ const AvailableIntegration: React.FC = () => {
                             <span className="avint-name font-semibold text-[#0A0A0A] tracking-tight leading-tight">
                               {item.name}
                             </span>
-                            {item.verified && (
+                            {/* {item.verified && (
                               <span className="avint-verified flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                                 <span className="avint-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                                 Verified
                               </span>
-                            )}
+                            )} */}
                           </div>
                           <p className="avint-desc text-gray-500 leading-relaxed font-normal m-0">
                             {item.description}

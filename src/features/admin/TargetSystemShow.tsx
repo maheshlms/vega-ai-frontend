@@ -5,6 +5,10 @@ import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 import TargetSystemForm from './TargetSystemForm';
 import { toast } from 'react-toastify';
+// ── CHANGED: import the background service instead of managing timers locally
+import healthCheckService, { HealthCheckState } from '../../utils/healthCheckService';
+
+healthCheckService.init();
 
 /* ─────────────────────────────── interfaces ─────────────────────────────── */
 interface LocationState { integrationName?: string; integrationValue?: string; authMethods?: string[]; }
@@ -117,7 +121,10 @@ const DropdownFilter = ({
   );
 };
 
-/* ── NEW: Polished Live health indicator shown in the filter bar ── */
+/* ── CHANGED: LiveHealthIndicator now receives countdown from the service (0–300s)
+      and formats it as minutes when >= 60s.
+      Only other change: progress formula updated from /30 to /300.
+      Everything else — JSX, styles, animations — is identical to original. ── */
 const LiveHealthIndicator = ({
   countdown,
   isChecking,
@@ -133,8 +140,8 @@ const LiveHealthIndicator = ({
     ? lastChecked.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null;
 
-  // Progress: countdown counts DOWN from 10→1, so progress fills as we approach next check
-  const progress = ((30 - countdown) / 30) * 100;
+  // ── CHANGED: was ((30 - countdown) / 30) * 100, now uses 300s total
+  const progress = ((300 - countdown) / 300) * 100;
 
   return (
     <div
@@ -180,12 +187,13 @@ const LiveHealthIndicator = ({
               ? <span style={{ color: '#94a3b8' }}>· {timeStr}</span>
               : <span style={{ color: '#94a3b8' }}>· waiting…</span>
             }
+            {/* ── CHANGED: show minutes when >= 60s, seconds when < 60s ── */}
             <span
-              className="inline-flex items-center justify-center rounded-md px-1.5"
-              style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
-            >
-              {countdown}s
-            </span>
+  className="inline-flex items-center justify-center rounded-md px-1.5"
+  style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
+>
+  {`${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`}
+</span>
           </span>
         )}
       </span>
@@ -210,6 +218,7 @@ export default function TargetSystemShow() {
   const integrationValue     = ls?.integrationValue;
   const authMethodsFromState = ls?.authMethods || [];
 
+  // ── UNCHANGED state ──
   const [systems,     setSystems]     = useState<System[]>([]);
   const [stats,       setStats]       = useState<Stats | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -227,15 +236,15 @@ export default function TargetSystemShow() {
   const [delText,     setDelText]     = useState('');
   const [filters,     setFilters]     = useState<Filters>({ environment: '', status: '' });
 
-  /* ── NEW: auto health-check state ── */
-  const [healthCheckingIds, setHealthCheckingIds] = useState<Set<string>>(new Set());
-  const [countdown,         setCountdown]         = useState(30);
-  const [lastChecked,       setLastChecked]       = useState<Date | null>(null);
-  const [isRunningCheck,    setIsRunningCheck]    = useState(false);
-  // Stable ref so interval always sees latest systems without re-registering
+  // ── CHANGED: removed healthCheckingIds, countdown, lastChecked, isRunningCheck.
+  //    Replaced with a single hcState from the background service. ──
+  const [hcState, setHcState] = useState<HealthCheckState>(healthCheckService.getState());
+
+  // ── UNCHANGED: stable ref so the service getter always sees latest systems ──
   const systemsRef = useRef<System[]>([]);
   systemsRef.current = systems;
 
+  // ── UNCHANGED useEffect ──
   useEffect(() => {
     const user: User | null = auth.getCurrentUser();
     const isAdmin = auth.isAdmin();
@@ -246,70 +255,45 @@ export default function TargetSystemShow() {
     fetchData();
   }, [filters]);
 
+  // ── UNCHANGED useEffect ──
   useEffect(() => { if (authMethodsFromState.length) setAuthMethods(authMethodsFromState); }, []);
 
-  /* ── NEW: countdown ticker — ticks every second ── */
+  // ── CHANGED: replaces the two timer useEffects (countdown ticker + 30s interval).
+  //    Registers this page's systems getter with the background service.
+  //    Subscribes to state changes and applies bg-check results locally.
+  //    Cleans up on unmount — service skips checks when page is gone. ──
   useEffect(() => {
-    const ticker = setInterval(() => {
-      setCountdown(prev => (prev <= 1 ? 30 : prev - 1));
-    }, 1000);
-    return () => clearInterval(ticker);
-  }, []);
+    healthCheckService.registerSystemsGetter(() => systemsRef.current.map(s => s._id));
 
-  /* ── NEW: silent auto health-check every 10 seconds ── */
-  useEffect(() => {
-    const doHealthCheck = async () => {
-      const current = systemsRef.current;
-      if (!current.length) return;
+    const unsub = healthCheckService.subscribe(state => {
+      setHcState(state);
 
-      setIsRunningCheck(true);
-      setCountdown(30);
-      setHealthCheckingIds(new Set(current.map(s => s._id)));
+      // When a bg check completes, apply the new statuses to local systems list
+      if (!state.isRunning && state.results.length > 0) {
+        const statusMap: Record<string, string> = {};
+        for (const r of state.results) statusMap[r.id] = r.newStatus;
 
-      const results = await Promise.allSettled(
-        current.map(async sys => {
-          try {
-            const r: TestResult = await api.targetSystems.testConnection(sys._id);
-            const isFailure =
-              r.success === false ||
-              r.connected === false ||
-              r.status === 'error' ||
-              r.status === 'failed' ||
-              /fail|error|unable|cannot|unreachable|connection failed/i.test(r.message || r.detail || '');
-            return { id: sys._id, newStatus: isFailure ? 'disconnected' : 'connected' };
-          } catch {
-            return { id: sys._id, newStatus: 'error' };
-          }
-        })
-      );
-
-      const statusMap: Record<string, string> = {};
-      for (const r of results) {
-        if (r.status === 'fulfilled') statusMap[r.value.id] = r.value.newStatus;
-      }
-
-      // Update systems + recompute stats in a single setState call
-      setSystems(prev => {
-        const updated = prev.map(s => (statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s));
-        setStats({
-          total_systems: updated.length,
-          connected:     updated.filter(s => s.status === 'connected').length,
-          disconnected:  updated.filter(s => s.status === 'disconnected').length,
-          error:         updated.filter(s => s.status === 'error').length,
-          pending:       updated.filter(s => s.status === 'pending').length,
+        setSystems(prev => {
+          const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
+          setStats({
+            total_systems: updated.length,
+            connected:     updated.filter(s => s.status === 'connected').length,
+            disconnected:  updated.filter(s => s.status === 'disconnected').length,
+            error:         updated.filter(s => s.status === 'error').length,
+            pending:       updated.filter(s => s.status === 'pending').length,
+          });
+          return updated;
         });
-        return updated;
-      });
+      }
+    });
 
-      setHealthCheckingIds(new Set());
-      setLastChecked(new Date());
-      setIsRunningCheck(false);
+    return () => {
+      healthCheckService.registerSystemsGetter(null);
+      unsub();
     };
-
-    const interval = setInterval(doHealthCheck, 30_000);
-    return () => clearInterval(interval);
   }, []); // empty deps — reads systems via ref
 
+  // ── UNCHANGED ──
   async function fetchData() {
     setLoading(true); setError(null);
     try {
@@ -334,18 +318,11 @@ export default function TargetSystemShow() {
     } finally { setLoading(false); }
   }
 
-  // CHANGE: return the created system so TargetSystemForm can show the
-  // connection test result in its success modal. DO NOT close the form here —
-  // the form's "Done" button calls onCancel which closes it.
-  // No toast.success here — the form modal communicates the real outcome to the user.
-  // Re-throw on error so the form shows the error instead of a false success modal.
+  // ── UNCHANGED ──
   async function handleCreate(data: any): Promise<any> {
     try {
-      // api.targetSystems.create() now auto-tests the connection internally.
-      // It returns the created system with a _connectionTest: { success, message } field.
       const created = await api.targetSystems.create(data);
-      fetchData(); // refresh the list in background
-
+      fetchData();
       const test = created?._connectionTest;
       if (test) {
         if (test.success) {
@@ -354,7 +331,6 @@ export default function TargetSystemShow() {
           toast.error(`System created but connection failed: ${test.message}`);
         }
       }
-
       return created;
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Failed to create');
@@ -362,20 +338,11 @@ export default function TargetSystemShow() {
     }
   }
 
-  // CHANGE: return the updated system so TargetSystemForm can show the
-  // connection test result in its success modal. DO NOT close the form here —
-  // the form's "Done" button calls onCancel which closes it.
-  // api.targetSystems.update() now auto-tests and embeds _connectionTest.
-  // Re-throw on error so the form shows the error instead of a false success modal.
+  // ── UNCHANGED ──
   async function handleUpdate(id: string, data: any): Promise<any> {
-    // try {
-    //   await api.targetSystems.update(id, data);
-    //   toast.success('Target system updated successfully');
-    //   setShowForm(false); setEditingSys(null); fetchData();
-    // } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to update'); }
     try {
       const updated = await api.targetSystems.update(id, data);
-      fetchData(); // refresh list in background
+      fetchData();
       return updated ?? { _id: id, id };
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Failed to update');
@@ -383,9 +350,11 @@ export default function TargetSystemShow() {
     }
   }
 
+  // ── UNCHANGED ──
   const openDelete  = useCallback((s: System) => { setDelTarget(s); setDelModal(true); }, []);
   const closeDelete = useCallback(() => { setDelModal(false); setDelTarget(null); setDelText(''); }, []);
 
+  // ── UNCHANGED ──
   const confirmDelete = useCallback(async () => {
     if (!delTarget) return;
     try {
@@ -395,6 +364,7 @@ export default function TargetSystemShow() {
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
   }, [delTarget]);
 
+  // ── UNCHANGED ──
   async function testConn(id: string) {
     setTestingId(id);
     try {
@@ -411,7 +381,6 @@ export default function TargetSystemShow() {
       } else {
         toast.success(msg || 'Connection successful');
       }
-      // Only update this specific card's status — no full page refresh
       const newStatus = isFailure ? 'disconnected' : 'connected';
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: newStatus } : s);
@@ -426,7 +395,6 @@ export default function TargetSystemShow() {
       });
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
-      // Mark just this card as error
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: 'error' } : s);
         setStats({
@@ -441,7 +409,7 @@ export default function TargetSystemShow() {
     } finally { setTestingId(null); }
   }
 
-  /* filter options */
+  /* ── UNCHANGED filter options ── */
   const ENV_OPTIONS: DDOption[] = [
     { key: '',            label: 'All Environments' },
     { key: 'development', label: 'Development' },
@@ -473,6 +441,13 @@ export default function TargetSystemShow() {
     };
     return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
   };
+
+  // ── CHANGED: overlay visibility logic.
+  //    Old: systems.length > 0 && (isRunningCheck || countdown <= 5)
+  //    New: only show when the service is running AND no page action is in progress
+  //         (prevents the overlay popping up mid-delete / mid-edit / mid-manual-test) ──
+  const isPageBusy = delModal || showForm || testingId !== null;
+  const showHealthOverlay = (hcState.isRunning || hcState.countdown <= 5) && !isPageBusy && systems.length > 0;
 
   return (
     <>
@@ -724,7 +699,7 @@ export default function TargetSystemShow() {
           justify-content: space-between;
           gap: clamp(6px, 0.8vw, 16px);
           flex-wrap: nowrap;
-          overflow-x: auto;
+          // overflow-x: auto;
           scrollbar-width: none;
         }
         .ts-filter-inner::-webkit-scrollbar { display: none; }
@@ -988,8 +963,11 @@ export default function TargetSystemShow() {
 
       <div className="ts min-h-screen bg-white">
 
-        {/* ════════════════════ HEALTH-CHECK OVERLAY ════════════════════ */}
-        {systems.length > 0 && (isRunningCheck || countdown <= 5) && (
+        {/* ════════════════════ HEALTH-CHECK OVERLAY
+            ── CHANGED: was (isRunningCheck || countdown <= 5) && systems.length > 0
+               Now:      showHealthOverlay = hcState.isRunning && !isPageBusy && systems.length > 0
+               Suppressed during delete modal, form modal, and manual test. ── */}
+        {showHealthOverlay && (
           <>
             <div className="hc-overlay" />
             <div className="hc-card">
@@ -1139,13 +1117,14 @@ export default function TargetSystemShow() {
                   </button>
                 )}
               </div>
-              {/* ── right side of filter bar — polished live indicator + count ── */}
+              {/* ── CHANGED: hcState.countdown / hcState.isRunning / hcState.lastChecked
+                  instead of local countdown / isRunningCheck / lastChecked ── */}
               <div className="flex items-center gap-3 shrink-0">
                 {systems.length > 0 && (
                   <LiveHealthIndicator
-                    countdown={countdown}
-                    isChecking={isRunningCheck}
-                    lastChecked={lastChecked}
+                    countdown={hcState.countdown}
+                    isChecking={hcState.isRunning}
+                    lastChecked={hcState.lastChecked}
                     systemCount={systems.length}
                   />
                 )}
@@ -1279,12 +1258,12 @@ export default function TargetSystemShow() {
                             </button>
                           )}
 
-                          {/* Test — green glow on this card only, no page overlay */}
+                          {/* Test — ── CHANGED: disabled uses hcState.isRunning instead of isRunningCheck ── */}
                           <button
                             onClick={() => testConn(sys._id)}
-                            disabled={isManualTesting || isRunningCheck}
+                            disabled={isManualTesting || hcState.isRunning}
                             className="ts-card-action-btn flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0f0f0f] hover:bg-[#2a2a2a] font-semibold text-white transition-colors disabled:opacity-50"
-                            title={isRunningCheck ? 'Auto health-check in progress…' : undefined}
+                            title={hcState.isRunning ? 'Auto health-check in progress…' : undefined}
                           >
                             {/* FIX: replaced rotating FaCheckCircle with a proper ring spinner */}
                             {isManualTesting ? (

@@ -435,6 +435,13 @@ const AuditLogs: React.FC = () => {
   };
   const formatTimestamp = (ts: string): string => { try { return new Date(ts).toLocaleString(); } catch { return String(ts); } };
 
+  // Extract display name from email — show "john.doe" from "john.doe@company.com"
+  const getDisplayName = (email: string): string => {
+    if (!email || email === '-') return '?';
+    const local = email.split('@')[0] || email;
+    return local.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const severityBadge = (log: AuditLog) => {
     const val = log.status || log.severity || '';
     const isSuccess = val === 'success' || val === 'info';
@@ -478,11 +485,94 @@ const AuditLogs: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#111]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen al-bg text-[#111]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
+        @keyframes al-fade-up { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
         .al-spin { animation: spin 1s linear infinite; }
+
+        /* ── Page background — clean white ── */
+        .al-bg { background: #ffffff; }
+
+        /* ── Header — original white design ── */
+        .al-header-band {
+          background: #ffffff;
+          border-bottom: 1px solid #E8E8F0;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* ── Stat cards: visible borders only ── */
+        .al-stat-card {
+          position: relative;
+          overflow: hidden;
+          border-radius: 14px;
+          padding: 16px 18px;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+          animation: al-fade-up 0.4s ease both;
+        }
+        .al-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.07);
+        }
+        .al-stat-success { border: 1.5px solid #D1D5DB; }
+        .al-stat-error   { border: 1.5px solid #D1D5DB; }
+        .al-stat-warning { border: 1.5px solid #D1D5DB; }
+        .al-stat-total   { border: 1.5px solid #D1D5DB; }
+
+        /* ── Table card ── */
+        .al-table-card-wrap {
+          background: #ffffff;
+          border: 1px solid #E8E8F0;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+        }
+
+        /* ── Table row hover: left accent flash ── */
+        .al-table-row {
+          cursor: pointer;
+          border-left: 3px solid transparent;
+          transition: background 0.13s ease, border-color 0.13s ease;
+        }
+        .al-table-row:hover {
+          background: #FAFBFF;
+          border-left-color: #6366F1;
+        }
+
+        /* ── User cell: name + email sub-line ── */
+        .al-user-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: #0A0A0A;
+          line-height: 1.3;
+        }
+        .al-user-email {
+          font-size: 11px;
+          color: #9CA3AF;
+          font-weight: 400;
+          line-height: 1.3;
+          margin-top: 1px;
+        }
+
+        /* ── Avatar gradient palette ── */
+        .al-avatar {
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 700; color: #fff;
+          flex-shrink: 0;
+          letter-spacing: 0.02em;
+        }
+
+        /* ── Filters row ── */
+        .al-filters-band {
+          background: #ffffff;
+          border-bottom: 1px solid #EFEFF5;
+        }
 
         /* ═══════════════════════════════════════════════════════
            RESPONSIVE RULES — AuditLogs.tsx
@@ -526,7 +616,7 @@ const AuditLogs: React.FC = () => {
         .al-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 12px;
+          gap: 14px;
         }
 
         /* ── H1 ── */
@@ -641,7 +731,7 @@ const AuditLogs: React.FC = () => {
           .al-band-px        { padding-left: 48px; padding-right: 48px; }
           .al-header-inner   { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
           .al-page-wrapper   { max-width: 1400px; padding-left: 48px; padding-right: 48px; }
-          .al-stats-grid     { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+          .al-stats-grid     { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
           .al-h1             { font-size: 2.25rem !important; }
         }
 
@@ -656,7 +746,7 @@ const AuditLogs: React.FC = () => {
           .al-table-scroll table td,
           .al-table-scroll table th { padding-left: 28px; padding-right: 28px; font-size: 14px; }
           /* Stats cards: more padding */
-          .al-stats-grid > div { padding: 20px; }
+          .al-stat-card { padding: 20px 24px; }
           /* Filters: slightly larger selects */
           .al-filters-row { gap: 16px; }
           /* Modal: wider */
@@ -675,9 +765,8 @@ const AuditLogs: React.FC = () => {
           .al-table-scroll table td,
           .al-table-scroll table th { padding-left: 36px; padding-right: 36px; font-size: 16px; }
           /* Stats cards */
-          .al-stats-grid > div { padding: 28px; }
-          .al-stats-grid > div .text-xl { font-size: 2rem; }
-          .al-stats-grid > div .text-\[11px\] { font-size: 14px; }
+          .al-stat-card { padding: 28px 32px; }
+          .al-stat-card .text-xl { font-size: 2rem; }
           /* Filters */
           .al-filters-row { gap: 20px; }
           /* Modal: wider */
@@ -687,7 +776,7 @@ const AuditLogs: React.FC = () => {
       `}</style>
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 al-band-px">
+      <div className="al-header-band al-band-px">
         <div className="al-header-inner">
           <div>
             <h1 className="al-h1 text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
@@ -719,20 +808,22 @@ const AuditLogs: React.FC = () => {
           <div className="py-5 border-b border-gray-100">
             <div className="al-stats-grid">
               {[
-                { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, bg: '#F0FDF4', color: '#22C55E' },
-                { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, bg: '#FEF2F2', color: '#EF4444' },
-                { icon: FaExclamationTriangle, label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, bg: '#FFFBEB', color: '#F59E0B' },
-                { icon: FaClock,              label: 'Total Events', value: stats.total_events                ?? 0, bg: '#FAF5FF', color: '#A855F7' },
+                { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, cardCls: 'al-stat-success', iconBg: '#F0FDF4', iconColor: '#22C55E', valueColor: '#16A34A' },
+                { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, cardCls: 'al-stat-error',   iconBg: '#FEF2F2', iconColor: '#EF4444', valueColor: '#DC2626' },
+                { icon: FaExclamationTriangle, label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, cardCls: 'al-stat-warning', iconBg: '#FFFBEB', iconColor: '#F59E0B', valueColor: '#D97706' },
+                { icon: FaClock,              label: 'Total Events', value: stats.total_events                ?? 0, cardCls: 'al-stat-total',   iconBg: '#FAF5FF', iconColor: '#A855F7', valueColor: '#7C3AED' },
               ].map((s, i) => {
                 const Icon = s.icon as React.ElementType;
                 return (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
-                      <Icon style={{ color: s.color }} size={16} />
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-[#0A0A0A]">{s.value.toLocaleString()}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
+                  <div key={i} className={`al-stat-card ${s.cardCls}`} style={{ animationDelay: `${i * 0.07}s` }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.iconBg }}>
+                        <Icon style={{ color: s.iconColor }} size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xl font-bold text-[#0A0A0A]">{s.value.toLocaleString()}</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -742,7 +833,7 @@ const AuditLogs: React.FC = () => {
         )}
 
         {/* ── Filters toolbar ── */}
-        <div className="py-4 border-b border-gray-100">
+        <div className="al-filters-band rounded-xl mb-5 px-4 py-4 border border-gray-100 shadow-sm">
           <div className="flex items-end gap-3 flex-wrap">
 
             {/* Time range */}
@@ -824,7 +915,7 @@ const AuditLogs: React.FC = () => {
 
         {/* ── Notices ── */}
         {!hasAuditReadPermission && (
-          <div className="mt-4 flex items-start gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+          <div className="mb-4 flex items-start gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
             <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" size={15} />
             <div>
               <p className="text-[13px] text-green-800 font-medium m-0">Restricted Access</p>
@@ -833,7 +924,7 @@ const AuditLogs: React.FC = () => {
           </div>
         )}
         {error && (
-          <div className="mt-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" size={15} />
             <div>
               <p className="text-[13px] text-amber-800 font-semibold m-0">Note</p>
@@ -843,11 +934,11 @@ const AuditLogs: React.FC = () => {
         )}
 
         {/* ── Table ── */}
-        <div className="mt-6 mb-10 bg-white border border-gray-200 rounded-2xl overflow-hidden al-table-card">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="mb-10 al-table-card-wrap">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #fafafa 0%, #f8f7ff 100%)' }}>
             <h2 className="text-[15px] font-bold text-[#0A0A0A] tracking-tight">Activity Log</h2>
             {totalLogs > 0 && !loading && (
-              <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">
+              <span className="text-[11px] font-semibold text-gray-400 bg-white border border-gray-100 px-2.5 py-1 rounded-md shadow-sm">
                 Page {currentPage} of {getTotalPages()}
               </span>
             )}
@@ -855,7 +946,7 @@ const AuditLogs: React.FC = () => {
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-10 h-10 border-2 border-gray-200 border-t-[#111] rounded-full al-spin" />
+              <div className="w-10 h-10 border-2 border-gray-200 border-t-[#6366F1] rounded-full al-spin" />
               <p className="text-[13px] text-gray-400">Loading audit logs…</p>
             </div>
           ) : logs.length === 0 ? (
@@ -869,7 +960,7 @@ const AuditLogs: React.FC = () => {
           ) : (
             <div className="overflow-x-auto al-table-scroll">
               <table className="w-full">
-                <thead className="bg-[#FAFAFA]">
+                <thead style={{ background: '#FAFBFF' }}>
                   <tr>
                     <th
                       className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] cursor-pointer select-none hover:text-gray-600 transition-colors"
@@ -884,25 +975,48 @@ const AuditLogs: React.FC = () => {
                     <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {logs.map((log, idx) => (
-                    <tr key={log.id || idx} onClick={() => setSelectedLog(log)} className="hover:bg-[#FAFAFA] transition-colors cursor-pointer">
-                      <td className="px-6 py-3 text-[13px] text-gray-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                            {formatValue(log.user_email)?.[0]?.toUpperCase() || '?'}
+                <tbody className="divide-y divide-gray-50">
+                  {logs.map((log, idx) => {
+                    const email = formatValue(log.user_email);
+                    const displayName = getDisplayName(email);
+                    const initial = (email !== '-' ? email[0] : '?').toUpperCase();
+                    // Pick avatar color — use email charcode + index so same-user rows still vary
+                    const avatarColors = [
+                      '#3B82F6', // blue
+                      '#10B981', // emerald
+                      '#F59E0B', // amber
+                      '#EF4444', // red
+                      '#8B5CF6', // violet
+                      '#EC4899', // pink
+                      '#0EA5E9', // sky
+                      '#14B8A6', // teal
+                      '#F97316', // orange
+                      '#6366F1', // indigo
+                    ];
+                    const avatarColor = avatarColors[((email.charCodeAt(0) || 0) + (email.charCodeAt(1) || 0)) % avatarColors.length];
+
+                    return (
+                      <tr key={log.id || idx} onClick={() => setSelectedLog(log)} className="al-table-row">
+                        <td className="px-6 py-3 text-[13px] text-gray-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="al-avatar flex-shrink-0" style={{ background: avatarColor }}>
+                              {initial}
+                            </div>
+                            <div>
+                              <div className="al-user-name">{displayName}</div>
+                              <div className="al-user-email">{email}</div>
+                            </div>
                           </div>
-                          <span className="text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.user_email)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.event_type || log.action)}</td>
-                      <td className="px-6 py-3">{severityBadge(log)}</td>
-                      <td className="px-6 py-3 text-[13px] text-gray-500 max-w-[280px] truncate" title={formatValue(log.details)}>
-                        {formatValue(log.details || log.description)}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-3 text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.event_type || log.action)}</td>
+                        <td className="px-6 py-3">{severityBadge(log)}</td>
+                        <td className="px-6 py-3 text-[13px] text-gray-500 max-w-[280px] truncate" title={formatValue(log.details)}>
+                          {formatValue(log.details || log.description)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -910,7 +1024,7 @@ const AuditLogs: React.FC = () => {
 
           {/* Pagination */}
           {totalLogs > 0 && !loading && (
-            <div className="bg-[#FAFAFA] border-t border-gray-100 px-6 py-3 flex items-center justify-between flex-wrap gap-3">
+            <div className="border-t border-gray-100 px-6 py-3 flex items-center justify-between flex-wrap gap-3" style={{ background: '#FAFBFF' }}>
               <span className="text-[12.5px] text-gray-400">
                 Page {currentPage} of {getTotalPages()} · {totalLogs.toLocaleString()} total
               </span>

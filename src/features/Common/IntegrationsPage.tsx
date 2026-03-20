@@ -14,13 +14,13 @@ interface IntegrationItem {
 }
 
 const STATIC_INTEGRATIONS: IntegrationItem[] = [
-  { id: '1',  value: 'pingfederate',    name: 'Ping Federate',         description: 'Enterprise federation & SSO server',         logo: '/logos/pingfederate.png',    verified: true, status: 'connected',   badges: ['SSO', 'Enterprise'],  auth_methods: ['basic_auth', 'bearer_token'] },
+  { id: '1',  value: 'pingfederate',    name: 'Ping Federate',         description: 'Enterprise federation & SSO server',         logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',    verified: true, status: 'connected',   badges: ['SSO', 'Enterprise'],  auth_methods: ['basic_auth', 'bearer_token'] },
   { id: '2',  value: 'okta',            name: 'Okta',                  description: 'Identity management & SSO platform',         logo: '/logos/okta.png',            verified: true, status: 'Coming Soon', badges: ['Cloud', 'Auth'],       auth_methods: ['oauth2'] },
   { id: '3',  value: 'keycloak',        name: 'Keycloak',              description: 'Open source identity & access management',   logo: '/logos/keycloak.png',        verified: true, status: 'Coming Soon', badges: ['IAM', 'Open Source'],  auth_methods: ['oauth2', 'bearer_token'] },
-  { id: '4',  value: 'pingdirectory',   name: 'Ping Directory',        description: 'High-performance directory server',          logo: '/logos/pingdirectory.png',   verified: true, status: 'connected',   badges: ['LDAP', 'Directory'],   auth_methods: ['basic_auth'] },
+  { id: '4',  value: 'pingdirectory',   name: 'Ping Directory',        description: 'High-performance directory server',          logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',   verified: true, status: 'connected',   badges: ['LDAP', 'Directory'],   auth_methods: ['basic_auth'] },
   { id: '5',  value: 'activedirectory', name: 'Active Directory',      description: 'Microsoft domain & identity services',       logo: '/logos/activedirectory.png', verified: true, status: 'Coming Soon', badges: ['Domain', 'Microsoft'], auth_methods: ['basic_auth'] },
   { id: '6',  value: 'aws',             name: 'AWS Directory',         description: 'Amazon Web Services directory services',     logo: '/logos/aws.png',             verified: true, status: 'Coming Soon', badges: ['AWS', 'Cloud'],        auth_methods: ['bearer_token'] },
-  { id: '7',  value: 'pingone',         name: 'Ping One',              description: 'Cloud identity-as-a-service platform',      logo: '/logos/pingone.png',         verified: true, status: 'connected',   badges: ['SaaS', 'IDaaS'],       auth_methods: ['oauth2'] },
+  { id: '7',  value: 'pingone',         name: 'Ping One',              description: 'Cloud identity-as-a-service platform',      logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',         verified: true, status: 'connected',   badges: ['SaaS', 'IDaaS'],       auth_methods: ['oauth2'] },
   { id: '8',  value: 'azure',           name: 'Azure AD',              description: 'Microsoft cloud identity & access',         logo: '/logos/azure.png',           verified: true, status: 'Coming Soon', badges: ['Cloud', 'Microsoft'],  auth_methods: ['oauth2'] },
   { id: '9',  value: 'googlecloud',     name: 'Google Cloud Identity', description: 'Google cloud identity platform',            logo: '/logos/googlecloud.png',     verified: true, status: 'Coming Soon', badges: ['IDaaS', 'Google'],     auth_methods: ['oauth2'] },
   { id: '10', value: 'britive',         name: 'Britive',               description: 'Cloud privilege access management',         logo: '/logos/britive.png',         verified: true, status: 'Coming Soon', badges: ['Cloud', 'Auth'],       auth_methods: ['oauth2', 'api_key'] },
@@ -430,12 +430,12 @@ const IntegrationsPage: React.FC = () => {
                         <span className="text-[15px] font-semibold text-[#0A0A0A] tracking-tight leading-tight">
                           {item.name}
                         </span>
-                        {item.verified && (
+                        {/* {item.verified && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[10.5px] font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                             <span className="int-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                             Certified
                           </span>
-                        )}
+                        )} */}
                       </div>
                       <p className="text-[12.5px] text-gray-500 leading-relaxed font-normal m-0">
                         {item.description}
