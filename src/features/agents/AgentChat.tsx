@@ -15,6 +15,16 @@ import { useTheme } from '../../state/ThemeContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Strip HTML tags and entities to produce plain speakable text. */
+const stripHtmlForSpeech = (html: string): string => html
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&#x?[0-9a-fA-F]+;/g, '')
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+  .replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&lsquo;/g, "'").replace(/&rsquo;/g, "'")
+  .replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  .replace(/["""'']/g, '')   // strip all quote chars — TTS reads them as "double quote"
+  .replace(/\s+/g, ' ').trim();
+
 interface Message {
   id: number;
   text: string;
@@ -894,7 +904,6 @@ const AgentChat: React.FC = () => {
       const failText = isSSL ? '✗ SSL certificate update failed'
         : isPDReset ? '✗ Password reset failed'
         : '✗ License installation failed';
-      const stripHtmlForSpeech = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
       if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
       if (action === 'approve') {
@@ -904,12 +913,12 @@ const AgentChat: React.FC = () => {
             const executeData = await executeResponse.json();
             const resultText = executeData.message || successText;
             setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success }]);
-            if (isAvatarActive) await speakMessage(stripHtmlForSpeech(resultText));
+            if (isAvatarActive) await speakMessage(executeData.speech_text || stripHtmlForSpeech(resultText));
           } else {
             const errorData = await executeResponse.json();
             const errText = errorData.message || failText;
             setMessages(prev => [...prev, { id: Date.now() + 1, text: errText, sender: 'ai', timestamp: new Date(), isError: true }]);
-            if (isAvatarActive) await speakMessage(stripHtmlForSpeech(errText));
+            if (isAvatarActive) await speakMessage(errorData.speech_text || stripHtmlForSpeech(errText));
           }
         } catch (executeError: any) {
           setMessages(prev => [...prev, { id: Date.now() + 1, text: `Error during update: ${executeError.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
@@ -981,7 +990,7 @@ const AgentChat: React.FC = () => {
       setMessages(prev => [...prev, aiMessage]);
       setChatHistory({ ...updatedHistory, [agentKey]: aiResponseText });
       latestAIResponseRef.current = aiResponseText;
-      await speakMessage(data.speech_text ?? '');
+      await speakMessage(data.speech_text || stripHtmlForSpeech(aiResponseText));
     } catch (error: any) {
       setIsTyping(false);
       const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Something went wrong. Please try again.');
