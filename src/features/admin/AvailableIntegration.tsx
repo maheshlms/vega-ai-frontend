@@ -364,6 +364,94 @@ const AvailableIntegration: React.FC = () => {
           }
         }
 
+        /* ── QHD : 2560–3839px ───────────────────────────────────────────────
+           clamp() ceilings all hit at 1920px; the >1920px block fires from
+           1921px but 1800px max-width starts to feel narrow by 2560px.
+           Override here for intentionally spacious QHD layout.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          :root {
+            --avint-page-max-w:      2200px;
+            --avint-page-px:         96px;
+            --avint-header-pt:       72px;
+            --avint-header-pb:       56px;
+            --avint-h1-fs:           68px;
+            --avint-subtitle-fs:     24px;
+            --avint-subtitle-max-w:  760px;
+            --avint-toolbar-h:       80px;
+            --avint-toolbar-fs:      20px;
+            --avint-grid-pt:         72px;
+            --avint-grid-pb:         128px;
+            --avint-grid-gap:        36px;
+            --avint-card-min-w:      400px;
+            --avint-logo-zone-minh:  260px;
+            --avint-logo-zone-px:    48px;
+            --avint-logo-zone-py:    52px;
+            --avint-logo-w:          230px;
+            --avint-logo-h:          168px;
+            --avint-logo-br:         26px;
+            --avint-body-px:         40px;
+            --avint-body-pt:         34px;
+            --avint-body-pb:         40px;
+            --avint-body-gap:        20px;
+            --avint-name-fs:         24px;
+            --avint-desc-fs:         19px;
+            --avint-badge-px:        18px;
+            --avint-badge-py:        8px;
+            --avint-badge-fs:        17px;
+            --avint-footer-px:       40px;
+            --avint-footer-py:       20px;
+            --avint-footer-fs:       17px;
+            --avint-arrow-sz:        48px;
+            --avint-verified-fs:     17px;
+            --avint-back-fs:         20px;
+            --avint-back-mb:         28px;
+          }
+        }
+
+        /* ── 4K+ : ≥3840px ───────────────────────────────────────────────────
+           Maximum layout expansion — intentionally spacious, not a narrow strip.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          :root {
+            --avint-page-max-w:      3200px;
+            --avint-page-px:         128px;
+            --avint-header-pt:       96px;
+            --avint-header-pb:       72px;
+            --avint-h1-fs:           88px;
+            --avint-subtitle-fs:     32px;
+            --avint-subtitle-max-w:  1000px;
+            --avint-toolbar-h:       104px;
+            --avint-toolbar-fs:      26px;
+            --avint-grid-pt:         96px;
+            --avint-grid-pb:         160px;
+            --avint-grid-gap:        48px;
+            --avint-card-min-w:      520px;
+            --avint-logo-zone-minh:  340px;
+            --avint-logo-zone-px:    64px;
+            --avint-logo-zone-py:    68px;
+            --avint-logo-w:          300px;
+            --avint-logo-h:          220px;
+            --avint-logo-br:         32px;
+            --avint-body-px:         52px;
+            --avint-body-pt:         44px;
+            --avint-body-pb:         52px;
+            --avint-body-gap:        26px;
+            --avint-name-fs:         30px;
+            --avint-desc-fs:         24px;
+            --avint-badge-px:        24px;
+            --avint-badge-py:        10px;
+            --avint-badge-fs:        22px;
+            --avint-footer-px:       52px;
+            --avint-footer-py:       26px;
+            --avint-footer-fs:       22px;
+            --avint-arrow-sz:        62px;
+            --avint-verified-fs:     22px;
+            --avint-back-fs:         26px;
+            --avint-back-mb:         36px;
+          }
+        }
+
         /* =====================================================================
            COMPONENT STYLES — all sizing via CSS vars, structure unchanged
            ===================================================================== */
@@ -373,6 +461,7 @@ const AvailableIntegration: React.FC = () => {
           margin: 0 auto;
           padding-left: var(--avint-page-px);
           padding-right: var(--avint-page-px);
+          box-sizing: border-box;
         }
 
         .avint-header-inner {
@@ -387,11 +476,15 @@ const AvailableIntegration: React.FC = () => {
 
         .avint-h1 {
           font-size: var(--avint-h1-fs);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          line-height: 1.15;
         }
 
         .avint-subtitle {
           font-size: var(--avint-subtitle-fs);
           max-width: var(--avint-subtitle-max-w);
+          line-height: 1.6;
         }
 
         .avint-toolbar-inner {
@@ -422,6 +515,12 @@ const AvailableIntegration: React.FC = () => {
           width: var(--avint-logo-w);
           height: var(--avint-logo-h);
           border-radius: var(--avint-logo-br);
+          max-width: 100%;
+        }
+
+        .avint-logo-box img {
+          max-width: 100%;
+          height: auto;
         }
 
         .avint-card-body {
@@ -431,15 +530,23 @@ const AvailableIntegration: React.FC = () => {
 
         .avint-name {
           font-size: var(--avint-name-fs);
+          line-height: 1.3;
+          min-width: 0;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .avint-desc {
           font-size: var(--avint-desc-fs);
+          line-height: 1.6;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .avint-badge {
           padding: var(--avint-badge-py) var(--avint-badge-px);
           font-size: var(--avint-badge-fs);
+          line-height: 1.4;
         }
 
         .avint-card-footer {
@@ -448,15 +555,44 @@ const AvailableIntegration: React.FC = () => {
 
         .avint-footer-status {
           font-size: var(--avint-footer-fs);
+          line-height: 1.4;
         }
 
         .avint-arrow {
           width: var(--avint-arrow-sz);
           height: var(--avint-arrow-sz);
+          flex-shrink: 0;
         }
 
         .avint-verified {
           font-size: var(--avint-verified-fs);
+          line-height: 1.4;
+          flex-shrink: 0;
+        }
+
+        /* ── Touch targets at tablet ─────────────────────────────────────── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .avint-back-btn {
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            box-sizing: border-box;
+          }
+          .avint-card {
+            min-height: 44px;
+          }
+        }
+
+        /* ── Global safety ───────────────────────────────────────────────── */
+        .avint-card {
+          box-sizing: border-box;
+          min-width: 0;
+        }
+        .avint-card-body {
+          min-width: 0;
+        }
+        .avint-logo-zone {
+          overflow: hidden;
         }
       `}</style>
 

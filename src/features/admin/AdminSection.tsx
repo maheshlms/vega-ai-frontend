@@ -148,94 +148,268 @@ const STYLES = `
 
   @keyframes asFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* ─── Responsive breakpoints ───
-     Baseline: 1920×1080 — all original values preserved exactly
-     1600px–1919px : large desktops, near-baseline
-     1366px–1599px : medium desktops
-     768px–1365px  : laptops (MacBook 13"/14"/15" and similar)
-     ≤640px        : original mobile blocker styles kept
-  ─────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════
+     GLOBAL GUARDS
+  ══════════════════════════════════════════════════════════════════ */
 
-  /* 1920px+ — exact baseline, no overrides needed */
-
-  /* 1600px–1919px — large desktops */
-  @media (min-width: 1600px) and (max-width: 1919px) {
-    .as-nav { padding: 0 34px; height: 60px; }
-    .as-body { max-width: 920px; padding: 42px 34px; }
-    .as-header { margin-bottom: 34px; }
-    .as-header h1 { font-size: 32px; }
-    .as-header p { font-size: 13.5px; }
-    .as-cards { gap: 18px; margin-bottom: 34px; }
-    .as-card { padding: 24px; border-radius: 16px; }
-    .as-card h2 { font-size: 15px; }
-    .as-card p { font-size: 12.5px; margin-bottom: 20px; }
-    .as-card-icon-wrap { width: 44px; height: 44px; font-size: 18px; margin-bottom: 18px; }
-    .as-card-stat-val { font-size: 24px; }
-    .as-logout-box { padding: 22px 24px; border-radius: 16px; }
-    .as-logout-icon { width: 40px; height: 40px; font-size: 16px; }
-    .as-logout-text h3 { font-size: 13.5px; }
-    .as-logout-text p { font-size: 12px; }
-    .as-logout-cta { padding: 10px 20px; font-size: 12.5px; }
+  .as-root *, .as-root *::before, .as-root *::after {
+    box-sizing: border-box;
   }
 
-  /* 1366px–1599px — medium desktops */
-  @media (min-width: 1366px) and (max-width: 1599px) {
-    .as-nav { padding: 0 28px; height: 58px; }
-    .as-nav-title { font-size: 14px; }
-    .as-nav-logo { width: 30px; height: 30px; font-size: 13px; border-radius: 8px; }
-    .as-user-name { font-size: 12.5px; }
-    .as-nav-logout { padding: 6px 12px; font-size: 12.5px; }
-    .as-body { max-width: 840px; padding: 36px 28px; }
-    .as-header { margin-bottom: 28px; }
-    .as-header h1 { font-size: 28px; }
-    .as-header p { font-size: 13px; }
-    .as-label { font-size: 10.5px; margin-bottom: 14px; }
-    .as-cards { gap: 16px; margin-bottom: 28px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    .as-card { padding: 22px; border-radius: 14px; }
-    .as-card h2 { font-size: 14.5px; }
-    .as-card p { font-size: 12px; margin-bottom: 18px; }
-    .as-card-icon-wrap { width: 40px; height: 40px; font-size: 17px; margin-bottom: 16px; border-radius: 11px; }
-    .as-card-stat-val { font-size: 22px; }
-    .as-card-stat-lbl { font-size: 10.5px; }
-    .as-card-btn { padding: 8px 14px; font-size: 11.5px; border-radius: 8px; }
-    .as-logout-box { padding: 18px 22px; border-radius: 14px; gap: 18px; }
-    .as-logout-icon { width: 38px; height: 38px; font-size: 15px; border-radius: 10px; }
-    .as-logout-left { gap: 14px; }
-    .as-logout-text h3 { font-size: 13px; }
-    .as-logout-text p { font-size: 11.5px; }
-    .as-logout-cta { padding: 9px 18px; font-size: 12px; border-radius: 10px; }
+  /* Font smoothing on headings — critical at QHD/4K */
+  .as-root .as-header h1,
+  .as-root .as-card h2,
+  .as-root .as-logout-text h3 {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.25;
   }
 
-  /* 768px–1365px — laptops (MacBook 13"/14"/15" and similar) */
-  @media (min-width: 768px) and (max-width: 1365px) {
-    .as-nav { padding: 0 20px; height: 54px; }
-    .as-nav-title { font-size: 13.5px; }
-    .as-nav-logo { width: 28px; height: 28px; font-size: 12px; border-radius: 7px; }
-    .as-nav-right { gap: 8px; }
-    .as-user-chip { padding: 4px 10px 4px 5px; gap: 7px; }
-    .as-user-avatar { width: 22px; height: 22px; font-size: 10px; }
-    .as-user-name { font-size: 12px; }
-    .as-nav-logout { padding: 5px 10px; font-size: 12px; border-radius: 7px; gap: 5px; }
-    .as-body { max-width: 740px; padding: 28px 20px; }
-    .as-header { margin-bottom: 22px; }
-    .as-header h1 { font-size: 24px; }
-    .as-header p { font-size: 12.5px; }
-    .as-label { font-size: 10px; margin-bottom: 12px; }
-    .as-cards { gap: 14px; margin-bottom: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-    .as-card { padding: 18px; border-radius: 13px; }
-    .as-card h2 { font-size: 14px; margin-bottom: 5px; }
-    .as-card p { font-size: 11.5px; margin-bottom: 16px; line-height: 1.55; }
-    .as-card-icon-wrap { width: 36px; height: 36px; font-size: 15px; margin-bottom: 14px; border-radius: 9px; }
-    .as-card-stat-val { font-size: 20px; }
-    .as-card-stat-lbl { font-size: 10px; }
-    .as-card-btn { padding: 7px 12px; font-size: 11px; border-radius: 7px; gap: 4px; }
-    .as-logout-box { padding: 15px 18px; border-radius: 13px; gap: 14px; }
-    .as-logout-icon { width: 34px; height: 34px; font-size: 14px; border-radius: 9px; }
-    .as-logout-left { gap: 12px; }
-    .as-logout-text h3 { font-size: 12.5px; }
-    .as-logout-text p { font-size: 11px; }
-    .as-persist-badge { font-size: 10px; padding: 2px 6px; }
-    .as-logout-cta { padding: 8px 14px; font-size: 11.5px; border-radius: 9px; gap: 6px; }
+  /* Unitless line-heights so they scale with font size */
+  .as-root .as-header p  { line-height: 1.6; }
+  .as-root .as-card p    { line-height: 1.6; }
+  .as-root .as-logout-text p { line-height: 1.5; }
+
+  /* Overflow protection for user-provided text (name, email) */
+  .as-root .as-user-name,
+  .as-root .as-header h1 {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* min-width: 0 on flex children that hold text (edge cases 6 & 7) */
+  .as-root .as-logout-text { min-width: 0; }
+  .as-root .as-logout-left { min-width: 0; overflow: hidden; }
+  .as-root .as-nav-brand   { min-width: 0; }
+
+  /* ══════════════════════════════════════════════════════════════════
+     FLUID SCALING VIA clamp()
+     Handles all 768px → 1920px range smoothly without breakpoints.
+     Breakpoints are only used for structural shifts and ceilings above 1920px.
+  ══════════════════════════════════════════════════════════════════ */
+
+  /* Nav: fluid padding and height */
+  .as-nav {
+    padding-left:  clamp(16px, 2.5vw, 40px);
+    padding-right: clamp(16px, 2.5vw, 40px);
+    height: clamp(52px, 4vw, 64px);
+  }
+
+  /* Nav elements: fluid font sizes */
+  .as-nav-title { font-size: clamp(13px, 0.9vw, 15px); }
+  .as-nav-logo  { width: clamp(26px, 2vw, 34px); height: clamp(26px, 2vw, 34px); font-size: clamp(11px, 0.9vw, 15px); }
+  .as-nav-right { gap: clamp(6px, 0.8vw, 12px); }
+  .as-user-name { font-size: clamp(11px, 0.8vw, 13px); }
+  .as-nav-logout { font-size: clamp(11px, 0.8vw, 13px); padding: clamp(5px, 0.4vw, 7px) clamp(10px, 0.9vw, 14px); }
+
+  /* Body: fluid max-width and padding */
+  .as-body {
+    max-width: clamp(560px, 70vw, 1000px);
+    padding: clamp(24px, 3vw, 48px) clamp(16px, 2.5vw, 40px);
+  }
+
+  /* Header: fluid heading and subtitle */
+  .as-header { margin-bottom: clamp(20px, 2.5vw, 40px); }
+  .as-header h1 { font-size: clamp(22px, 2.5vw, 36px); margin-bottom: clamp(4px, 0.4vw, 6px); }
+  .as-header p  { font-size: clamp(12px, 0.85vw, 14px); }
+
+  /* Label */
+  .as-label { font-size: clamp(10px, 0.65vw, 11px); margin-bottom: clamp(10px, 1vw, 16px); }
+
+  /* Cards grid: fluid gap and min column width */
+  .as-cards {
+    gap: clamp(12px, 1.2vw, 20px);
+    margin-bottom: clamp(20px, 2.5vw, 40px);
+    grid-template-columns: repeat(auto-fit, minmax(clamp(200px, 18vw, 280px), 1fr));
+  }
+
+  /* Card internals: fluid padding, font sizes, icon */
+  .as-card { padding: clamp(16px, 1.8vw, 28px); border-radius: clamp(12px, 1.2vw, 18px); }
+  .as-card h2 { font-size: clamp(13px, 1vw, 16px); }
+  .as-card p  { font-size: clamp(11px, 0.8vw, 13px); margin-bottom: clamp(14px, 1.5vw, 24px); }
+  .as-card-icon-wrap {
+    width: clamp(32px, 3vw, 48px); height: clamp(32px, 3vw, 48px);
+    font-size: clamp(14px, 1.3vw, 20px); margin-bottom: clamp(12px, 1.3vw, 20px);
+    border-radius: clamp(8px, 0.9vw, 13px);
+  }
+  .as-card-stat-val { font-size: clamp(18px, 1.8vw, 26px); }
+  .as-card-stat-lbl { font-size: clamp(10px, 0.65vw, 11px); }
+  .as-card-btn {
+    font-size: clamp(10px, 0.75vw, 12px);
+    padding: clamp(6px, 0.6vw, 9px) clamp(10px, 1vw, 16px);
+    border-radius: clamp(6px, 0.6vw, 9px);
+  }
+
+  /* Logout box: fluid padding, gap, font sizes */
+  .as-logout-box {
+    padding: clamp(14px, 1.5vw, 24px) clamp(16px, 1.8vw, 28px);
+    border-radius: clamp(12px, 1.2vw, 18px);
+    gap: clamp(12px, 1.5vw, 24px);
+  }
+  .as-logout-left { gap: clamp(10px, 1vw, 16px); }
+  .as-logout-icon {
+    width: clamp(34px, 3vw, 44px); height: clamp(34px, 3vw, 44px);
+    font-size: clamp(14px, 1.2vw, 18px); border-radius: clamp(8px, 0.9vw, 12px);
+  }
+  .as-logout-text h3 { font-size: clamp(12px, 0.9vw, 14px); }
+  .as-logout-text p  { font-size: clamp(11px, 0.8vw, 12.5px); }
+  .as-persist-badge  { font-size: clamp(10px, 0.65vw, 11px); }
+  .as-logout-cta {
+    font-size: clamp(11px, 0.8vw, 13px);
+    padding: clamp(8px, 0.8vw, 11px) clamp(14px, 1.3vw, 22px);
+    border-radius: clamp(8px, 0.8vw, 11px);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: Large tablet 768–1023px
+     Structural: touch targets 44px min, logout box stacks on very narrow
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .as-body { max-width: 100%; }
+
+    /* Touch targets — min 44px on interactive elements */
+    .as-card-btn    { min-height: 44px; }
+    .as-nav-logout  { min-height: 44px; }
+    .as-logout-cta  { min-height: 44px; }
+
+    /* Cards: keep 2 columns minimum at tablet */
+    .as-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: Small laptop 1024–1279px
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .as-body { max-width: 100%; }
+    .as-cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: Medium laptop 1280–1439px
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1280px) and (max-width: 1439px) {
+    .as-body  { max-width: 840px; }
+    .as-cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: Large laptop 1440–1919px
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1440px) and (max-width: 1919px) {
+    .as-body  { max-width: 920px; }
+    .as-cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: 1920px BASELINE LOCK
+     Pixel-perfect match to original — nothing shifts here
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1920px) and (max-width: 2559px) {
+    .as-nav   { padding: 0 40px; height: 64px; }
+    .as-body  { max-width: 1000px; padding: 48px 40px; }
+    .as-header { margin-bottom: 40px; }
+    .as-header h1 { font-size: 36px; }
+    .as-header p  { font-size: 14px; }
+    .as-label { font-size: 11px; margin-bottom: 16px; }
+    .as-cards { gap: 20px; margin-bottom: 40px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; }
+    .as-card  { padding: 28px; border-radius: 18px; }
+    .as-card h2 { font-size: 16px; }
+    .as-card p  { font-size: 13px; margin-bottom: 24px; }
+    .as-card-icon-wrap { width: 48px; height: 48px; font-size: 20px; margin-bottom: 20px; border-radius: 13px; }
+    .as-card-stat-val { font-size: 26px; }
+    .as-card-stat-lbl { font-size: 11px; }
+    .as-card-btn { font-size: 12px; padding: 9px 16px; border-radius: 9px; }
+    .as-nav-title { font-size: 15px; }
+    .as-nav-logo  { width: 34px; height: 34px; font-size: 15px; }
+    .as-nav-right { gap: 12px; }
+    .as-user-name { font-size: 13px; }
+    .as-nav-logout { font-size: 13px; padding: 7px 14px; }
+    .as-logout-box { padding: 24px 28px; border-radius: 18px; gap: 24px; }
+    .as-logout-left { gap: 16px; }
+    .as-logout-icon { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+    .as-logout-text h3 { font-size: 14px; }
+    .as-logout-text p  { font-size: 12.5px; }
+    .as-persist-badge  { font-size: 11px; }
+    .as-logout-cta { font-size: 13px; padding: 11px 22px; border-radius: 11px; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: QHD 2560–3839px
+     clamp() values all hit ceiling at 1920px — must explicitly expand.
+     Body widens to 1400px so content doesn't feel like a narrow column.
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .as-nav   { padding: 0 64px; height: 80px; }
+    .as-nav-title { font-size: 18px; }
+    .as-nav-logo  { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+    .as-nav-right { gap: 16px; }
+    .as-user-chip { padding: 6px 18px 6px 8px; gap: 11px; }
+    .as-user-avatar { width: 34px; height: 34px; font-size: 13px; }
+    .as-user-name  { font-size: 15px; }
+    .as-nav-logout { font-size: 15px; padding: 9px 18px; border-radius: 12px; }
+
+    .as-body  { max-width: 1400px; padding: 64px 64px; }
+    .as-header { margin-bottom: 52px; }
+    .as-header h1 { font-size: 52px; }
+    .as-header p  { font-size: 17px; }
+    .as-label { font-size: 13px; margin-bottom: 20px; }
+
+    .as-cards { gap: 28px; margin-bottom: 52px; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important; }
+    .as-card  { padding: 38px; border-radius: 24px; }
+    .as-card h2 { font-size: 20px; }
+    .as-card p  { font-size: 15.5px; margin-bottom: 32px; }
+    .as-card-icon-wrap { width: 64px; height: 64px; font-size: 26px; margin-bottom: 28px; border-radius: 17px; }
+    .as-card-stat-val { font-size: 36px; }
+    .as-card-stat-lbl { font-size: 13px; }
+    .as-card-btn { font-size: 14px; padding: 12px 22px; border-radius: 12px; }
+
+    .as-logout-box { padding: 32px 38px; border-radius: 24px; gap: 32px; }
+    .as-logout-left { gap: 22px; }
+    .as-logout-icon { width: 60px; height: 60px; font-size: 24px; border-radius: 16px; }
+    .as-logout-text h3 { font-size: 17px; }
+    .as-logout-text p  { font-size: 15px; }
+    .as-persist-badge  { font-size: 13px; padding: 3px 10px; }
+    .as-logout-cta { font-size: 15px; padding: 14px 30px; border-radius: 15px; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     BREAKPOINT: 4K / Ultrawide 3840px+
+     Intentionally spacious — body widens to 1920px, large type,
+     card layout feels designed for the display not accidental.
+  ══════════════════════════════════════════════════════════════════ */
+  @media (min-width: 3840px) {
+    .as-nav   { padding: 0 80px; height: 96px; }
+    .as-nav-title { font-size: 22px; }
+    .as-nav-logo  { width: 54px; height: 54px; font-size: 22px; border-radius: 14px; }
+    .as-nav-right { gap: 20px; }
+    .as-user-chip { padding: 8px 22px 8px 10px; gap: 14px; }
+    .as-user-avatar { width: 42px; height: 42px; font-size: 16px; }
+    .as-user-name  { font-size: 18px; }
+    .as-nav-logout { font-size: 18px; padding: 11px 22px; border-radius: 14px; }
+
+    .as-body  { max-width: 1920px; padding: 80px 80px; }
+    .as-header { margin-bottom: 64px; }
+    .as-header h1 { font-size: 68px; }
+    .as-header p  { font-size: 22px; }
+    .as-label { font-size: 16px; margin-bottom: 24px; }
+
+    .as-cards { gap: 36px; margin-bottom: 64px; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)) !important; }
+    .as-card  { padding: 52px; border-radius: 32px; }
+    .as-card h2 { font-size: 26px; }
+    .as-card p  { font-size: 20px; margin-bottom: 44px; }
+    .as-card-icon-wrap { width: 84px; height: 84px; font-size: 34px; margin-bottom: 36px; border-radius: 22px; }
+    .as-card-stat-val { font-size: 48px; }
+    .as-card-stat-lbl { font-size: 16px; }
+    .as-card-btn { font-size: 18px; padding: 16px 30px; border-radius: 16px; }
+
+    .as-logout-box { padding: 44px 52px; border-radius: 32px; gap: 44px; }
+    .as-logout-left { gap: 28px; }
+    .as-logout-icon { width: 78px; height: 78px; font-size: 32px; border-radius: 22px; }
+    .as-logout-text h3 { font-size: 22px; }
+    .as-logout-text p  { font-size: 19px; }
+    .as-persist-badge  { font-size: 16px; padding: 4px 14px; }
+    .as-logout-cta { font-size: 20px; padding: 18px 40px; border-radius: 20px; }
   }
 
   /* original mobile breakpoint — kept exactly as-is */
@@ -322,4 +496,4 @@ const AdminSection: React.FC = () => {
   );
 };
 
-export default AdminSection;  
+export default AdminSection;

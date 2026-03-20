@@ -601,177 +601,299 @@ export default function TargetSystemShow() {
            BASELINE  : 1920×1080  — exact current design, no changes
            Large     : 1440–1919px (large laptops, 1440p screens)
            Laptop    : 1024–1439px (MacBook 13/14/15", Windows 13–15")
-           Small     : 768–1023px  (small laptops, large tablets in landscape)
-           4K+       : 2560px+     (ultrawide / 4K monitors)
-
-           Strategy  : clamp() for fluid scaling where possible, explicit
-                       breakpoints only when layout must structurally shift.
+           Tablet    : 768–1023px  (large tablets in landscape)
+           QHD+      : 2560–3839px (ultrawide / QHD monitors)
+           4K+       : 3840px+     (4K TVs, ultrawide)
         ══════════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .ts {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after {
+          box-sizing: inherit;
+        }
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-base:     1;
+          --z-sticky:   10;
+          --z-dropdown: 30;
+          --z-overlay:  40;
+          --z-modal:    50;
+          --z-toast:    100;
+        }
 
         /* ── Outer page wrapper — controls max content width & gutters ── */
         .ts-page-wrapper {
-          /* BASELINE 1920: max-w-7xl (1280px) with px-8 (32px) gutters */
           max-width: 1280px;
           margin-left: auto;
           margin-right: auto;
-          /* Fluid horizontal padding: 32px at 1920, scales down for smaller */
           padding-left:  clamp(16px, 2.5vw, 32px);
           padding-right: clamp(16px, 2.5vw, 32px);
+          width: 100%;
         }
 
         /* ── Header section ── */
         .ts-header-section {
-          padding-top:    clamp(20px, 2.5vw, 36px);
-          padding-bottom: clamp(16px, 1.5vw, 24px);
+          padding-top:    clamp(16px, 2vw, 36px);
+          padding-bottom: clamp(12px, 1.2vw, 24px);
         }
 
-        /* ── H1 — fluid from 26px (laptop) to 34px (1920) ── */
+        /* ── H1 — fluid from 22px (tablet) to 34px (1920) ── */
         .ts-h1 {
-          font-size: clamp(22px, 2vw, 34px);
+          font-size: clamp(22px, 1.8vw, 34px);
           font-weight: 800;
           letter-spacing: -0.025em;
           line-height: 1.15;
           color: #030712;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         /* ── Header subtitle ── */
         .ts-h1-sub {
-          font-size: clamp(12px, 0.85vw, 14px);
+          font-size: clamp(11px, 0.75vw, 14px);
           color: #9ca3af;
-          margin-top: clamp(4px, 0.4vw, 6px);
+          margin-top: clamp(3px, 0.3vw, 6px);
+          overflow-wrap: break-word;
         }
 
-        /* ── Header action buttons — fluid height ── */
+        /* ── Header action buttons ── */
         .ts-header-btn {
-          height: clamp(34px, 2.4vw, 40px);
-          padding-left:  clamp(10px, 1vw, 16px);
-          padding-right: clamp(10px, 1vw, 16px);
-          font-size: clamp(11px, 0.75vw, 13px);
+          height: clamp(32px, 2.1vw, 40px);
+          padding-left:  clamp(10px, 0.85vw, 16px);
+          padding-right: clamp(10px, 0.85vw, 16px);
+          font-size: clamp(11px, 0.68vw, 13px);
+          white-space: nowrap;
+        }
+
+        /* Header inner flex — allow wrap on smaller sizes */
+        .ts-header-inner {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: clamp(8px, 1vw, 24px);
+          flex-wrap: wrap;
+        }
+        .ts-header-actions {
+          display: flex;
+          align-items: center;
+          gap: clamp(6px, 0.6vw, 10px);
+          flex-wrap: nowrap;
+          flex-shrink: 0;
         }
 
         /* ── Stat cards row ── */
         .ts-stats-section {
-          padding-bottom: clamp(16px, 1.5vw, 24px);
+          padding-bottom: clamp(12px, 1.2vw, 24px);
         }
         .ts-stats-row {
           display: flex;
-          gap: clamp(8px, 1vw, 16px);
+          gap: clamp(8px, 0.85vw, 16px);
+        }
+        .ts-stats-row > * {
+          flex: 1 1 0;
+          min-width: 0;
         }
 
         /* ── Stat card internals ── */
         .stat-card {
-          padding: clamp(12px, 1.2vw, 20px) clamp(14px, 1.5vw, 20px);
-          border-radius: 16px;
+          padding: clamp(10px, 1vw, 20px) clamp(12px, 1.2vw, 20px);
+          border-radius: clamp(12px, 1vw, 16px);
         }
         .ts-stat-value {
-          /* Fluid: 28px on small laptops → 42px at 1920 baseline */
-          font-size: clamp(26px, 2.5vw, 42px) !important;
+          font-size: clamp(24px, 2.2vw, 42px) !important;
+          line-height: 1;
         }
-        .ts-stat-label {
-          font-size: clamp(9px, 0.65vw, 11px);
+        .stat-card .text-\[11px\] {
+          font-size: clamp(9px, 0.6vw, 11px);
         }
 
         /* ── Filter bar ── */
         .ts-filter-section {
-          padding-top:    clamp(6px, 0.6vw, 12px);
-          padding-bottom: clamp(6px, 0.6vw, 12px);
+          padding-top:    clamp(5px, 0.5vw, 10px);
+          padding-bottom: clamp(5px, 0.5vw, 10px);
         }
+        .ts-filter-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: clamp(6px, 0.8vw, 16px);
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .ts-filter-inner::-webkit-scrollbar { display: none; }
+
         .ts-filter-btn {
-          height: clamp(34px, 2.2vw, 40px) !important;
-          font-size: clamp(11px, 0.75vw, 13px) !important;
-          padding-left:  clamp(10px, 1vw, 16px) !important;
-          padding-right: clamp(10px, 1vw, 16px) !important;
+          height: clamp(32px, 2vw, 40px) !important;
+          font-size: clamp(11px, 0.68vw, 13px) !important;
+          padding-left:  clamp(8px, 0.85vw, 16px) !important;
+          padding-right: clamp(8px, 0.85vw, 16px) !important;
+          white-space: nowrap;
         }
         .ts-count-label {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(11px, 0.68vw, 13px);
+          white-space: nowrap;
         }
 
         /* ── Card grid ── */
         .ts-grid-section {
-          padding-top:    clamp(16px, 1.5vw, 28px);
-          padding-bottom: clamp(40px, 4vw, 80px);
+          padding-top:    clamp(12px, 1.2vw, 28px);
+          padding-bottom: clamp(32px, 4vw, 80px);
         }
         .ts-card-grid {
           display: grid;
-          gap: clamp(12px, 1.2vw, 20px);
-          /* Fluid min card width: 260px on laptop → 340px at 1920 */
-          grid-template-columns: repeat(auto-fill, minmax(clamp(260px, 20vw, 340px), 1fr));
+          gap: clamp(10px, 1vw, 20px);
+          grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 18vw, 340px), 1fr));
         }
 
         /* ── System card internals ── */
         .sys-card {
-          border-radius: clamp(12px, 1vw, 16px);
+          border-radius: clamp(10px, 0.85vw, 16px);
+          min-width: 0;
         }
         .ts-card-body {
-          padding: clamp(14px, 1.4vw, 24px);
+          padding: clamp(12px, 1.2vw, 24px);
         }
         .ts-card-name {
-          font-size: clamp(13px, 0.95vw, 16px);
+          font-size: clamp(12px, 0.85vw, 16px);
+          min-width: 0;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
         .ts-card-type {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(10px, 0.68vw, 13px);
         }
         .ts-card-detail-label {
-          font-size: clamp(11px, 0.75vw, 13px);
-          width: clamp(72px, 5.5vw, 96px);
+          font-size: clamp(10px, 0.68vw, 13px);
+          width: clamp(68px, 5vw, 96px);
+          flex-shrink: 0;
         }
         .ts-card-detail-value {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(10px, 0.68vw, 13px);
+          min-width: 0;
+          overflow-wrap: break-word;
+          word-break: break-all;
         }
         .ts-card-actions {
-          padding-top: clamp(10px, 1vw, 20px);
-          margin-top:  clamp(10px, 1vw, 24px);
+          padding-top: clamp(8px, 0.85vw, 20px);
+          margin-top:  clamp(8px, 0.85vw, 24px);
         }
         .ts-card-action-btn {
-          height: clamp(30px, 2vw, 36px);
-          font-size: clamp(10px, 0.7vw, 12px);
-          border-radius: clamp(8px, 0.6vw, 12px);
+          height: clamp(28px, 1.9vw, 36px);
+          font-size: clamp(10px, 0.63vw, 12px);
+          border-radius: clamp(6px, 0.5vw, 10px);
         }
         .ts-card-trash-btn {
-          width:  clamp(30px, 2vw, 36px);
-          height: clamp(30px, 2vw, 36px);
-          border-radius: clamp(8px, 0.6vw, 12px);
+          width:  clamp(28px, 1.9vw, 36px);
+          height: clamp(28px, 1.9vw, 36px);
+          border-radius: clamp(6px, 0.5vw, 10px);
+          flex-shrink: 0;
         }
         .ts-status-badge {
-          font-size: clamp(10px, 0.7vw, 12px);
-          padding: clamp(2px, 0.2vw, 4px) clamp(8px, 0.7vw, 12px);
+          font-size: clamp(10px, 0.63vw, 12px) !important;
+          padding: clamp(2px, 0.15vw, 4px) clamp(6px, 0.6vw, 12px) !important;
+          white-space: nowrap;
         }
 
         /* ══════════════════════════════════════════════════════════════════
-           BREAKPOINT OVERRIDES
-           These kick in only when clamp() fluid scaling isn't enough and
-           a structural change is needed.
+           BREAKPOINT OVERRIDES — structural shifts only
         ══════════════════════════════════════════════════════════════════ */
 
-        /* ── Laptop: 1024–1439px (MacBook 13/14/15", Windows laptops) ──
-           Most scaling is already handled by clamp(). These rules handle
-           layout shifts that clamp alone can't — e.g. stat cards wrapping.
-        ── */
-        @media (min-width: 1024px) and (max-width: 1439px) {
+        /* ── Tablet: 768–1023px ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
           .ts-page-wrapper {
             max-width: 100%;
+            padding-left: 16px;
+            padding-right: 16px;
           }
 
-          /* Stat cards: keep all 5 in a row but allow natural compression */
+          /* Stats: 2-column grid at tablet */
+          .ts-stats-row {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          }
+          .ts-stats-row > * {
+            flex: none;
+            min-width: 0;
+          }
+
+          /* Card grid: 2 columns at tablet */
+          .ts-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          }
+
+          /* Header buttons wrap on tablet */
+          .ts-header-actions {
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+
+          /* Touch targets — min 44px */
+          .ts-header-btn,
+          .ts-filter-btn,
+          .ts-card-action-btn {
+            min-height: 44px !important;
+          }
+          .ts-card-trash-btn {
+            min-width: 44px !important;
+            min-height: 44px !important;
+          }
+
+          /* Delete modal: full width on tablet */
+          .modal-box {
+            width: calc(100vw - 32px);
+            max-width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+
+          /* Filter bar: allow wrapping on tablet */
+          .ts-filter-inner {
+            flex-wrap: wrap;
+            gap: 8px;
+            overflow-x: visible;
+          }
+
+          /* Live health indicator: allow shrink */
+          .ts-filter-inner > div:last-child {
+            flex-shrink: 1;
+          }
+        }
+
+        /* ── Small laptop: 1024–1279px ── */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .ts-page-wrapper {
+            max-width: 100%;
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+
+          /* Stat cards: keep in single row, allow natural compression */
           .ts-stats-row {
             flex-wrap: nowrap;
             overflow-x: auto;
-            /* Subtle scrollbar for extreme cases */
             scrollbar-width: none;
           }
           .ts-stats-row::-webkit-scrollbar { display: none; }
           .ts-stats-row > * {
-            flex: 1 1 0;
-            min-width: 120px;
+            min-width: 110px;
           }
+        }
 
-          /* Header: stack on very narrow laptop if needed */
-          .ts-header-inner {
-            flex-wrap: wrap;
-            gap: 12px;
-          }
-          .ts-header-actions {
-            flex-wrap: wrap;
+        /* ── Medium laptop: 1280–1439px ── */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .ts-page-wrapper {
+            max-width: 1100px;
+            padding-left: 28px;
+            padding-right: 28px;
           }
         }
 
@@ -779,17 +901,18 @@ export default function TargetSystemShow() {
         @media (min-width: 1440px) and (max-width: 1919px) {
           .ts-page-wrapper {
             max-width: 1280px;
+            padding-left: 36px;
+            padding-right: 36px;
           }
         }
 
-        /* ── 1920px BASELINE — explicit lock so nothing shifts ── */
+        /* ── 1920px BASELINE — explicit lock ── */
         @media (min-width: 1920px) and (max-width: 2559px) {
           .ts-page-wrapper    { max-width: 1280px; padding-left: 32px; padding-right: 32px; }
           .ts-h1              { font-size: 34px; }
           .ts-h1-sub          { font-size: 14px; }
           .ts-header-btn      { height: 40px; font-size: 13px; padding-left: 16px; padding-right: 16px; }
           .ts-stat-value      { font-size: 42px !important; }
-          .ts-stat-label      { font-size: 11px; }
           .ts-filter-btn      { height: 40px !important; font-size: 13px !important; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
           .ts-card-body       { padding: 24px; }
@@ -799,64 +922,74 @@ export default function TargetSystemShow() {
           .ts-card-detail-value { font-size: 13px; }
           .ts-card-action-btn { height: 36px; font-size: 12px; }
           .ts-card-trash-btn  { width: 36px; height: 36px; }
+          .ts-status-badge    { font-size: 12px !important; }
         }
 
-        /* ── 4K / ultrawide: 2560px+ ── */
-        @media (min-width: 2560px) {
+        /* ── QHD: 2560–3839px ── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
           .ts-page-wrapper {
-            max-width: 1920px;
-            padding-left:  clamp(32px, 3vw, 80px);
-            padding-right: clamp(32px, 3vw, 80px);
+            max-width: 1600px;
+            padding-left: 48px;
+            padding-right: 48px;
           }
-          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px); }
+          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           .ts-header-section  { padding-top: clamp(36px, 2.5vw, 56px); padding-bottom: clamp(24px, 1.5vw, 36px); }
           .ts-stat-value      { font-size: clamp(42px, 3vw, 60px) !important; }
+          .ts-stats-row       { gap: 20px; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; }
           .ts-card-body       { padding: 28px; }
           .ts-card-name       { font-size: 18px; }
-          .stat-card          { border-radius: 20px; }
+          .ts-card-type       { font-size: 14px; }
+          .ts-card-detail-label { font-size: 14px; width: 108px; }
+          .ts-card-detail-value { font-size: 14px; }
+          .ts-card-action-btn { height: 40px; font-size: 13px; }
+          .ts-card-trash-btn  { width: 40px; height: 40px; }
+          .stat-card          { border-radius: 20px; padding: 24px; }
           .sys-card           { border-radius: 20px; }
+          .ts-header-btn      { height: 44px; font-size: 14px; padding-left: 20px; padding-right: 20px; }
+          .ts-filter-btn      { height: 44px !important; font-size: 14px !important; }
+          .ts-status-badge    { font-size: 13px !important; }
+          .modal-box          { max-width: 560px; max-height: 90vh; overflow-y: auto; }
         }
 
-        /* ── Small laptop / large tablet landscape: 768–1023px ── */
-        @media (min-width: 768px) and (max-width: 1023px) {
+        /* ── 4K+: 3840px+ ── */
+        @media (min-width: 3840px) {
           .ts-page-wrapper {
-            max-width: 100%;
-            padding-left: 16px;
-            padding-right: 16px;
+            max-width: 2200px;
+            padding-left: 64px;
+            padding-right: 64px;
           }
-          .ts-h1         { font-size: 22px; }
-          .ts-h1-sub     { font-size: 12px; }
-          .ts-header-section { padding-top: 16px; padding-bottom: 14px; }
-          .ts-header-inner { flex-wrap: wrap; gap: 10px; }
-          .ts-header-actions { flex-wrap: wrap; gap: 6px; }
-
-          /* Stats: 2×3 grid instead of single row */
-          .ts-stats-row {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-          }
-          .ts-stats-row > * { flex: none; }
-
-          /* Slightly smaller stat numbers */
-          .ts-stat-value { font-size: 28px !important; }
-
-          /* Card grid: 2 columns */
-          .ts-card-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-          }
-
-          /* Filter bar: allow wrapping */
-          .ts-filter-inner { flex-wrap: wrap; gap: 8px; }
+          .ts-h1              { font-size: 64px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ts-h1-sub          { font-size: 22px; }
+          .ts-header-section  { padding-top: 64px; padding-bottom: 48px; }
+          .ts-stat-value      { font-size: 72px !important; }
+          .ts-stats-row       { gap: 28px; }
+          .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 32px; }
+          .ts-card-body       { padding: 40px; }
+          .ts-card-name       { font-size: 24px; }
+          .ts-card-type       { font-size: 18px; }
+          .ts-card-detail-label { font-size: 18px; width: 140px; }
+          .ts-card-detail-value { font-size: 18px; }
+          .ts-card-action-btn { height: 52px; font-size: 16px; border-radius: 14px; }
+          .ts-card-trash-btn  { width: 52px; height: 52px; border-radius: 14px; }
+          .stat-card          { border-radius: 24px; padding: 32px; }
+          .sys-card           { border-radius: 24px; }
+          .ts-header-btn      { height: 56px; font-size: 18px; padding-left: 28px; padding-right: 28px; }
+          .ts-filter-btn      { height: 52px !important; font-size: 18px !important; }
+          .ts-filter-section  { padding-top: 12px; padding-bottom: 12px; }
+          .ts-status-badge    { font-size: 16px !important; padding: 6px 18px !important; }
+          .modal-box          { max-width: 800px; max-height: 90vh; overflow-y: auto; }
+          .hc-card            { border-radius: 28px; padding: 40px 56px; min-width: 360px; }
+          .hc-ring            { width: 64px; height: 64px; border-width: 4px; }
+          .hc-label           { font-size: 20px; }
+          .hc-sub             { font-size: 16px; }
         }
       `}</style>
 
       <div className="ts min-h-screen bg-white">
 
         {/* ════════════════════ HEALTH-CHECK OVERLAY ════════════════════ */}
-        {(isRunningCheck || countdown <= 5) && (
+        {systems.length > 0 && (isRunningCheck || countdown <= 5) && (
           <>
             <div className="hc-overlay" />
             <div className="hc-card">

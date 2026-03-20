@@ -826,15 +826,28 @@ const AgentCreationForm: React.FC = () => {
 
         /* ═══════════════════════════════════════════════════════════════
            RESPONSIVE RULES — AgentCreationForm
-           Follows the identical pattern used in AdminAgentControl
-           (aad-header-wrapper / aad-page-wrapper) and Agents
-           (ag-header-inner / ag-page-wrapper / ag-band-px).
-
            Baseline 1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .acf-font {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-dropdown: 50;
+          --z-modal:    100;
+        }
+
+        /* ── Success modal: scales at all breakpoints ── */
+        .acf-modal-in > div {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
 
         /* ── Header band inner wrapper ──────────────────────────────── */
         .acf-header-wrapper {
@@ -849,6 +862,8 @@ const AgentCreationForm: React.FC = () => {
           align-items: flex-start;
           justify-content: space-between;
           gap: 16px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Page content wrapper ────────────────────────────────────── */
@@ -860,96 +875,187 @@ const AgentCreationForm: React.FC = () => {
           padding-right: 48px;
           padding-top: 40px;
           padding-bottom: 80px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── H1 size ─────────────────────────────────────────────────── */
-        .acf-h1 { font-size: 2.25rem; }
+        .acf-h1 {
+          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
 
         /* ── Preview column width ────────────────────────────────────── */
-        /* Baseline 1920: 272px (matches Tailwind w-68) */
-        .acf-preview-col { width: 272px; flex-shrink: 0; }
+        .acf-preview-col {
+          width: clamp(200px, 18vw, 272px);
+          flex-shrink: 0;
+        }
 
         /* ── Layout row gap ──────────────────────────────────────────── */
-        .acf-form-row { display: flex; gap: 24px; align-items: flex-start; }
+        .acf-form-row {
+          display: flex;
+          gap: clamp(14px, 1.5vw, 24px);
+          align-items: flex-start;
+        }
 
-        /* Tablet: 768–1023 */
+        /* ── Form card inner padding ─────────────────────────────────── */
+        .acf-card form {
+          padding-left: clamp(16px, 2.5vw, 32px);
+          padding-right: clamp(16px, 2.5vw, 32px);
+        }
+
+        /* ── Input/dropdown font scales smoothly ─────────────────────── */
+        .acf-input,
+        .acf-dropdown-trigger {
+          font-size: clamp(12px, 0.85vw, 13.5px);
+        }
+
+        /* ── Label scales smoothly ───────────────────────────────────── */
+        .acf-label {
+          font-size: clamp(11px, 0.75vw, 12.5px);
+        }
+
+        /* ── Tablet: 768–1023px ──────────────────────────────────────── */
         @media (min-width: 768px) and (max-width: 1023px) {
           .acf-header-wrapper {
             max-width: 100%;
-            padding-left: 20px; padding-right: 20px;
-            padding-top: 20px; padding-bottom: 16px;
+            padding-left: 16px; padding-right: 16px;
+            padding-top: 18px; padding-bottom: 14px;
           }
           .acf-page-wrapper {
             max-width: 100%;
-            padding-left: 20px; padding-right: 20px;
-            padding-top: 24px; padding-bottom: 48px;
+            padding-left: 16px; padding-right: 16px;
+            padding-top: 20px; padding-bottom: 40px;
           }
-          .acf-h1           { font-size: 1.75rem; }
-          .acf-preview-col  { width: 200px; }
-          .acf-form-row     { gap: 16px; }
+          .acf-h1         { font-size: 1.5rem; }
+          /* Stack preview below form on tablet — hidden lg:flex handles this via Tailwind */
+          .acf-preview-col { width: 180px; }
+          .acf-form-row   { gap: 12px; }
+
+          /* Touch targets */
+          .acf-dropdown-trigger,
+          .acf-input { min-height: 44px; }
+
+          /* Success modal full-width on tablet */
+          .acf-modal-in > div {
+            width: calc(100vw - 32px);
+            max-width: 100%;
+          }
         }
 
-        /* Small laptop: 1024–1279 (MacBook 13") */
+        /* ── Small laptop: 1024–1279px ───────────────────────────────── */
         @media (min-width: 1024px) and (max-width: 1279px) {
           .acf-header-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 28px; padding-bottom: 22px;
+            max-width: 100%;
+            padding-left: 24px; padding-right: 24px;
+            padding-top: 24px; padding-bottom: 20px;
           }
           .acf-page-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 32px; padding-bottom: 60px;
+            max-width: 100%;
+            padding-left: 24px; padding-right: 24px;
+            padding-top: 28px; padding-bottom: 56px;
           }
-          .acf-h1           { font-size: 1.875rem; }
-          .acf-preview-col  { width: 220px; }
-          .acf-form-row     { gap: 16px; }
+          .acf-h1          { font-size: 1.75rem; }
+          .acf-preview-col { width: 210px; }
+          .acf-form-row    { gap: 16px; }
         }
 
-        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        /* ── Medium laptop: 1280–1439px ──────────────────────────────── */
         @media (min-width: 1280px) and (max-width: 1439px) {
           .acf-header-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 32px; padding-bottom: 26px;
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 30px; padding-bottom: 24px;
           }
           .acf-page-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 36px;
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 32px; padding-bottom: 64px;
           }
-          .acf-h1           { font-size: 2rem; }
-          .acf-preview-col  { width: 240px; }
+          .acf-h1          { font-size: 1.875rem; }
+          .acf-preview-col { width: 232px; }
+          .acf-form-row    { gap: 18px; }
         }
 
-        /* Large laptop / small desktop: 1440–1919 */
+        /* ── Large laptop: 1440–1919px ───────────────────────────────── */
         @media (min-width: 1440px) and (max-width: 1919px) {
           .acf-header-wrapper {
-            max-width: 1400px;
-            padding-left: 44px; padding-right: 44px;
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 36px; padding-bottom: 28px;
           }
           .acf-page-wrapper {
-            max-width: 1400px;
-            padding-left: 44px; padding-right: 44px;
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 36px; padding-bottom: 72px;
           }
+          .acf-h1          { font-size: 2rem; }
+          .acf-preview-col { width: 252px; }
+          .acf-form-row    { gap: 22px; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
-
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
+        /* ── 1920px BASELINE LOCK ─────────────────────────────────────── */
+        @media (min-width: 1920px) and (max-width: 2559px) {
           .acf-header-wrapper {
-            max-width: 1920px;
-            padding-left: 80px; padding-right: 80px;
-            padding-top: 56px; padding-bottom: 44px;
+            max-width: 1400px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 40px; padding-bottom: 32px;
           }
           .acf-page-wrapper {
-            max-width: 1920px;
-            padding-left: 80px; padding-right: 80px;
-            padding-top: 56px;
+            max-width: 1400px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 40px; padding-bottom: 80px;
           }
-          .acf-h1           { font-size: 3rem; }
-          .acf-preview-col  { width: 320px; }
+          .acf-h1          { font-size: 2.25rem; }
+          .acf-preview-col { width: 272px; }
+          .acf-form-row    { gap: 24px; }
+        }
+
+        /* ── QHD: 2560–3839px ────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .acf-header-wrapper {
+            max-width: 1600px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 52px; padding-bottom: 42px;
+          }
+          .acf-page-wrapper {
+            max-width: 1600px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 52px; padding-bottom: 100px;
+          }
+          .acf-h1          { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-preview-col { width: 320px; }
+          .acf-form-row    { gap: 32px; }
+          .acf-input,
+          .acf-dropdown-trigger { font-size: 15px; padding: 12px 16px; }
+          .acf-label       { font-size: 13.5px; }
+        }
+
+        /* ── 4K+: 3840px+ ────────────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          .acf-header-wrapper {
+            max-width: 2200px;
+            padding-left: 64px; padding-right: 64px;
+            padding-top: 72px; padding-bottom: 56px;
+          }
+          .acf-page-wrapper {
+            max-width: 2200px;
+            padding-left: 64px; padding-right: 64px;
+            padding-top: 72px; padding-bottom: 140px;
+          }
+          .acf-h1          { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-preview-col { width: 420px; }
+          .acf-form-row    { gap: 48px; }
+          .acf-input,
+          .acf-dropdown-trigger { font-size: 18px; padding: 14px 20px; border-radius: 14px; }
+          .acf-label       { font-size: 16px; margin-bottom: 10px; }
+          .acf-card form   { padding-left: 48px; padding-right: 48px; }
+
+          /* Success modal: scale up at 4K */
+          .acf-modal-in > div { max-width: 680px; }
         }
       `}</style>
 

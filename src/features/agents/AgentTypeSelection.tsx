@@ -160,15 +160,27 @@ const AgentTypeSelection: React.FC = () => {
 
         /* ═══════════════════════════════════════════════════════════════
            RESPONSIVE RULES — AgentTypeSelection
-           Follows the identical pattern used in AdminAgentControl
-           (aad-header-wrapper / aad-page-wrapper) and Agents
-           (ag-header-inner / ag-page-wrapper / ag-band-px).
-
            Baseline 1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .ats-font {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        /* ── Card body text: long strings won't overflow ── */
+        .ats-card p {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* ── Card name: flex child truncation guard ── */
+        .ats-card .flex.items-center.justify-between.gap-2 > span:first-child {
+          min-width: 0;
+        }
 
         /* ── Header band inner wrapper ──────────────────────────────── */
         .ats-header-wrapper {
@@ -177,6 +189,8 @@ const AgentTypeSelection: React.FC = () => {
           margin-right: auto;
           padding-top: 40px;
           padding-bottom: 32px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Toolbar band inner wrapper ─────────────────────────────── */
@@ -188,6 +202,8 @@ const AgentTypeSelection: React.FC = () => {
           align-items: center;
           justify-content: flex-end;
           height: 48px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Page content wrapper ────────────────────────────────────── */
@@ -199,69 +215,112 @@ const AgentTypeSelection: React.FC = () => {
           padding-right: 48px;
           padding-top: 40px;
           padding-bottom: 80px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Outer band horizontal padding ─────────────────────────── */
         .ats-band-px {
-          padding-left: 48px;
-          padding-right: 48px;
+          padding-left: clamp(16px, 3.33vw, 48px);
+          padding-right: clamp(16px, 3.33vw, 48px);
         }
 
-        /* ── H1 size ─────────────────────────────────────────────────── */
-        .ats-h1 { font-size: 2.25rem; }
+        /* ── H1 size — fluid ─────────────────────────────────────────── */
+        .ats-h1 {
+          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
 
-        /* ── Card grid min column width ──────────────────────────────── */
+        /* ── Card grid ── */
         .ats-card-grid {
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 18vw, 260px), 1fr));
         }
 
-        /* Tablet: 768–1023px */
+        /* ════════════════════════════
+           TABLET: 768–1023px
+        ════════════════════════════ */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .ats-band-px         { padding-left: 20px; padding-right: 20px; }
-          .ats-header-wrapper  { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
-          .ats-toolbar-wrapper { max-width: 100%; }
-          .ats-page-wrapper    { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 24px; padding-bottom: 48px; }
-          .ats-h1              { font-size: 1.75rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+          .ats-band-px         { padding-left: 16px; padding-right: 16px; }
+          .ats-header-wrapper  { max-width: 100%; padding-top: 16px; padding-bottom: 14px; }
+          .ats-toolbar-wrapper { max-width: 100%; height: 44px; }
+          .ats-page-wrapper    { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+          .ats-h1              { font-size: 1.5rem; }
+          .ats-card-grid       { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+
+          /* Touch targets */
+          .ats-band-px button  { min-height: 44px; }
         }
 
-        /* Small laptop: 1024–1279px (MacBook 13") */
+        /* ════════════════════════════
+           SMALL LAPTOP: 1024–1279px
+        ════════════════════════════ */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .ats-band-px         { padding-left: 28px; padding-right: 28px; }
-          .ats-header-wrapper  { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
-          .ats-toolbar-wrapper { max-width: 1100px; }
-          .ats-page-wrapper    { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 60px; }
-          .ats-h1              { font-size: 1.875rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
+          .ats-band-px         { padding-left: 24px; padding-right: 24px; }
+          .ats-header-wrapper  { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
+          .ats-toolbar-wrapper { max-width: 100%; }
+          .ats-page-wrapper    { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; padding-bottom: 56px; }
+          .ats-h1              { font-size: 1.75rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important; }
         }
 
-        /* Laptop: 1280–1439px (MacBook 14/15", typical 1366/1440) */
+        /* ════════════════════════════
+           MEDIUM LAPTOP: 1280–1439px
+        ════════════════════════════ */
         @media (min-width: 1280px) and (max-width: 1439px) {
+          .ats-band-px         { padding-left: 28px; padding-right: 28px; }
+          .ats-header-wrapper  { max-width: 1100px; padding-top: 28px; padding-bottom: 24px; }
+          .ats-toolbar-wrapper { max-width: 1100px; }
+          .ats-page-wrapper    { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 64px; }
+          .ats-h1              { font-size: 1.875rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)) !important; }
+        }
+
+        /* ════════════════════════════
+           LARGE LAPTOP: 1440–1919px
+        ════════════════════════════ */
+        @media (min-width: 1440px) and (max-width: 1919px) {
           .ats-band-px         { padding-left: 36px; padding-right: 36px; }
-          .ats-header-wrapper  { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
+          .ats-header-wrapper  { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
           .ats-toolbar-wrapper { max-width: 1280px; }
-          .ats-page-wrapper    { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
+          .ats-page-wrapper    { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 72px; }
           .ats-h1              { font-size: 2rem; }
         }
 
-        /* Large laptop / small desktop: 1440–1919px */
-        @media (min-width: 1440px) and (max-width: 1919px) {
-          .ats-band-px         { padding-left: 44px; padding-right: 44px; }
-          .ats-header-wrapper  { max-width: 1400px; }
-          .ats-toolbar-wrapper { max-width: 1400px; }
-          .ats-page-wrapper    { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+        /* ════════════════════════════
+           1920px BASELINE LOCK
+        ════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .ats-band-px         { padding-left: 48px; padding-right: 48px; }
+          .ats-header-wrapper  { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
+          .ats-toolbar-wrapper { max-width: 1400px; height: 48px; }
+          .ats-page-wrapper    { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          .ats-h1              { font-size: 2.25rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* ════════════════════════════
+           QHD: 2560–3839px
+        ════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .ats-band-px         { padding-left: 48px; padding-right: 48px; }
+          .ats-header-wrapper  { max-width: 1600px; padding-top: 52px; padding-bottom: 40px; }
+          .ats-toolbar-wrapper { max-width: 1600px; height: 56px; }
+          .ats-page-wrapper    { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 100px; }
+          .ats-h1              { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; gap: 24px !important; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .ats-band-px         { padding-left: 80px; padding-right: 80px; }
-          .ats-header-wrapper  { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .ats-toolbar-wrapper { max-width: 1920px; }
-          .ats-page-wrapper    { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; }
-          .ats-h1              { font-size: 3rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
+        /* ════════════════════════════
+           4K+: 3840px+
+        ════════════════════════════ */
+        @media (min-width: 3840px) {
+          .ats-band-px         { padding-left: 64px; padding-right: 64px; }
+          .ats-header-wrapper  { max-width: 2200px; padding-top: 72px; padding-bottom: 56px; }
+          .ats-toolbar-wrapper { max-width: 2200px; height: 68px; }
+          .ats-page-wrapper    { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 140px; }
+          .ats-h1              { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important; gap: 32px !important; }
         }
       `}</style>
 

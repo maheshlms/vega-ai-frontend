@@ -25,6 +25,7 @@ const STYLES = `
     width: 100%; max-width: var(--fpc-card-max-w);
     padding: var(--fpc-card-p);
     animation: fpcFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    box-sizing: border-box;
   }
 
   .fpc-icon-wrap {
@@ -38,6 +39,7 @@ const STYLES = `
   .fpc-heading {
     font-size: var(--fpc-heading-fs); font-weight: 700; color: #0a0a0a;
     letter-spacing: -0.03em; margin: 0 0 var(--fpc-heading-mb); line-height: 1.15;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
 
   .fpc-sub {
@@ -53,6 +55,7 @@ const STYLES = `
     background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
     padding: var(--fpc-error-p); margin-bottom: var(--fpc-error-mb);
     font-size: var(--fpc-error-fs); color: #ef4444; font-weight: 400;
+    overflow-wrap: break-word; word-break: break-word;
   }
 
   .fpc-field { margin-bottom: var(--fpc-field-mb); }
@@ -131,6 +134,7 @@ const STYLES = `
     font-family: 'DM Sans', sans-serif; font-size: var(--fpc-submit-fs); font-weight: 600;
     color: #fff; cursor: pointer; transition: all 0.2s;
     display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; box-sizing: border-box;
   }
   .fpc-submit:hover:not(:disabled) { background: #333; }
   .fpc-submit:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -377,6 +381,105 @@ const STYLES = `
       --fpc-submit-fs:        12px;
       --fpc-submit-br:        9px;
       --fpc-submit-mt:        5px;
+    }
+  }
+
+  /* ── QHD : 2560–3839px ───────────────────────────────────────────────
+     The >1920px block fires from 1921px but its 600px card max-width
+     starts to feel small on a 2560px screen. Override here for spacious
+     QHD proportions where the card breathes against the large viewport.
+  ─────────────────────────────────────────────────────────────────────── */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    :root {
+      --fpc-root-p:           64px 40px;
+      --fpc-card-max-w:       780px;
+      --fpc-card-p:           80px 80px 72px;
+      --fpc-card-br:          40px;
+      --fpc-icon-sz:          92px;
+      --fpc-icon-br:          26px;
+      --fpc-icon-fs:          42px;
+      --fpc-icon-mb:          36px;
+      --fpc-heading-fs:       52px;
+      --fpc-heading-mb:       16px;
+      --fpc-sub-fs:           22px;
+      --fpc-sub-mb:           52px;
+      --fpc-sep-my:           10px 0 48px;
+      --fpc-error-p:          20px 26px;
+      --fpc-error-mb:         40px;
+      --fpc-error-fs:         20px;
+      --fpc-field-mb:         34px;
+      --fpc-label-fs:         19px;
+      --fpc-label-mb:         12px;
+      --fpc-input-p:          20px 26px;
+      --fpc-input-fs:         20px;
+      --fpc-input-br:         18px;
+      --fpc-field-err-fs:     17px;
+      --fpc-strength-mt:      16px;
+      --fpc-strength-gap:     10px;
+      --fpc-strength-h:       7px;
+      --fpc-strength-lbl-fs:  16px;
+      --fpc-reqs-mt:          16px;
+      --fpc-reqs-p:           20px 24px;
+      --fpc-reqs-br:          16px;
+      --fpc-reqs-title-fs:    16px;
+      --fpc-reqs-title-mb:    13px;
+      --fpc-req-fs:           19px;
+      --fpc-req-mb:           9px;
+      --fpc-match-fs:         19px;
+      --fpc-match-mt:         14px;
+      --fpc-submit-p:         22px 36px;
+      --fpc-submit-fs:        22px;
+      --fpc-submit-br:        20px;
+      --fpc-submit-mt:        16px;
+    }
+  }
+
+  /* ── 4K+ : ≥3840px ───────────────────────────────────────────────────
+     Maximum layout expansion — card is large and spacious, type is
+     readable at distance. The page feels intentionally designed.
+  ─────────────────────────────────────────────────────────────────────── */
+  @media (min-width: 3840px) {
+    :root {
+      --fpc-root-p:           80px 52px;
+      --fpc-card-max-w:       1040px;
+      --fpc-card-p:           104px 104px 96px;
+      --fpc-card-br:          52px;
+      --fpc-icon-sz:          120px;
+      --fpc-icon-br:          34px;
+      --fpc-icon-fs:          56px;
+      --fpc-icon-mb:          48px;
+      --fpc-heading-fs:       68px;
+      --fpc-heading-mb:       20px;
+      --fpc-sub-fs:           28px;
+      --fpc-sub-mb:           68px;
+      --fpc-sep-my:           14px 0 60px;
+      --fpc-error-p:          26px 34px;
+      --fpc-error-mb:         52px;
+      --fpc-error-fs:         26px;
+      --fpc-field-mb:         44px;
+      --fpc-label-fs:         24px;
+      --fpc-label-mb:         16px;
+      --fpc-input-p:          26px 34px;
+      --fpc-input-fs:         26px;
+      --fpc-input-br:         24px;
+      --fpc-field-err-fs:     22px;
+      --fpc-strength-mt:      22px;
+      --fpc-strength-gap:     14px;
+      --fpc-strength-h:       9px;
+      --fpc-strength-lbl-fs:  21px;
+      --fpc-reqs-mt:          22px;
+      --fpc-reqs-p:           26px 32px;
+      --fpc-reqs-br:          20px;
+      --fpc-reqs-title-fs:    21px;
+      --fpc-reqs-title-mb:    17px;
+      --fpc-req-fs:           24px;
+      --fpc-req-mb:           12px;
+      --fpc-match-fs:         24px;
+      --fpc-match-mt:         18px;
+      --fpc-submit-p:         28px 48px;
+      --fpc-submit-fs:        28px;
+      --fpc-submit-br:        26px;
+      --fpc-submit-mt:        22px;
     }
   }
 `;

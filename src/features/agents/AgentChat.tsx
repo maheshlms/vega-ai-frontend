@@ -30,6 +30,7 @@ interface Message {
     csr_content?: string;
     keypair_id?: string;
     filename?: string;
+    content?: string;
     [key: string]: any;
   };
 }
@@ -446,6 +447,9 @@ const AgentChat: React.FC = () => {
   const volumeRef = useRef(0.8);
   const latestAIResponseRef = useRef<string>('');
 
+  // ── NEW: text input ref for persistent focus ──────────────────────────────
+  const textInputRef = useRef<HTMLInputElement>(null);
+
   // Refs to track interaction state inside the timer callback
   const messagesRef = useRef<Message[]>(messages);
   const showWelcomeRef = useRef<boolean>(showWelcomeMessage);
@@ -454,6 +458,15 @@ const AgentChat: React.FC = () => {
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { showWelcomeRef.current = showWelcomeMessage; }, [showWelcomeMessage]);
   useEffect(() => { isTypingRef.current = isTyping; }, [isTyping]);
+
+  // ── NEW: refocus input whenever isTyping flips to false ──────────────────
+  useEffect(() => {
+    if (!isTyping) {
+      requestAnimationFrame(() => {
+        textInputRef.current?.focus();
+      });
+    }
+  }, [isTyping]);
 
   const avatarImg  = agent?.config?.selectedAvatarImg  || (agent as any)?.avatarImg  || '';
   const avatarName = agent?.config?.selectedAvatarName || (agent as any)?.avatarName || agent?.name || 'Agent';
@@ -841,7 +854,14 @@ const AgentChat: React.FC = () => {
 
   const handleDownloadFromMetadata = useCallback((content: string, filename: string, mimeType: string = 'application/octet-stream') => {
     try {
-      const blob = new Blob([content], { type: mimeType });
+      const unescaped = content
+        .replace(/&amp;/g,  '&')
+        .replace(/&lt;/g,   '<')
+        .replace(/&gt;/g,   '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g,  "'");
+      const isXml = unescaped.trimStart().startsWith('<?xml') || unescaped.trimStart().startsWith('<') || filename.toLowerCase().endsWith('.xml');
+      const blob = new Blob([unescaped], { type: isXml ? 'application/xml;charset=utf-8' : mimeType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url; link.download = filename;
@@ -1315,44 +1335,166 @@ const AgentChat: React.FC = () => {
            RESPONSIVE OVERRIDES
         ════════════════════════════════════════════════════════════ */
 
-        @media (min-width: 1920px) {
-          .agc-avatar-panel { width: clamp(320px, 22vw, 420px); }
-          .agc-agent-name   { font-size: 20px; }
-          .agc-welcome-title{ font-size: 40px; }
-          .agc-bubble       { font-size: 15px; }
+        /* ── 1920px BASELINE LOCK ── */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .agc-avatar-panel  { width: clamp(320px, 22vw, 420px); }
+          .agc-agent-name    { font-size: 20px; }
+          .agc-welcome-title { font-size: 40px; }
+          .agc-bubble        { font-size: 15px; }
         }
 
-        @media (min-width: 1280px) and (max-width: 1535px) {
-          .agc-avatar-panel { width: clamp(200px, 24vw, 300px); }
-          .agc-agent-name   { font-size: 16px; }
-          .agc-welcome-title{ font-size: 30px; }
-          .agc-welcome      { padding: 40px 16px; }
-          .agc-bubble       { max-width: 72%; font-size: 13.5px; }
-          .agc-send-btn     { padding: 8px 14px; }
+        /* ── QHD: 2560–3839px ── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .agc-avatar-panel       { width: clamp(360px, 24vw, 500px); }
+          .agc-header             { height: 62px; padding: 10px 32px; }
+          .agc-back-btn           { height: 38px; padding: 0 20px; font-size: 14px; }
+          .agc-agent-name         { font-size: 22px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .agc-agent-status       { font-size: 14px; }
+          .agc-hbtn               { padding: 8px 18px; font-size: 14px; }
+          .agc-avatar-top-bar     { height: 68px; padding: 0 12px; }
+          .agc-overlay-btn        { height: 32px; padding: 0 12px; font-size: 12.5px; }
+          .agc-status-pill-fixed  { width: 100px; min-width: 100px; max-width: 100px; font-size: 12px; padding: 5px 10px; }
+          .agc-avatar-idle-placeholder { width: 280px; height: 360px; font-size: 96px; }
+          .agc-avatar-info-bar    { min-height: 96px; padding: 14px 20px 16px; }
+          .agc-chat-header        { height: 68px; padding: 0 24px; }
+          .agc-avatar-ring-wrap   { width: 48px; height: 48px; }
+          .agc-welcome-title      { font-size: 52px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .agc-welcome-sub        { font-size: 18px; }
+          .agc-welcome            { padding: 80px 32px; }
+          .agc-messages           { padding: 36px 24px 24px; gap: 6px; }
+          .agc-bubble             { font-size: 16px; padding: 13px 18px; max-width: 62%; }
+          .agc-msg-avatar         { width: 36px; height: 36px; }
+          .agc-ts                 { font-size: 12px; }
+          .agc-ts.ai, .agc-ts.system { padding-left: 44px; }
+          .agc-input-zone         { padding: 14px 24px 16px; min-height: 92px; }
+          .agc-input-wrap         { padding: 10px 14px; border-radius: 18px; gap: 12px; }
+          .agc-text-input         { font-size: 16px; }
+          .agc-icon-btn           { font-size: 22px; padding: 7px; }
+          .agc-quick-actions-btn  { font-size: 13px; padding: 6px 13px; }
+          .agc-send-btn           { padding: 10px 24px; font-size: 15px; border-radius: 12px; }
+          .agc-guided-grid        { grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 20px 16px; }
+          .agc-guided-action      { padding: 11px 14px; border-radius: 14px; }
+          .agc-guided-action-label{ font-size: 13px; }
+          .agc-guided-title       { font-size: 15px; }
+          .agc-guided-subtitle    { font-size: 13px; }
+          .agc-guided-footer      { font-size: 12px; padding: 0 20px 14px; }
         }
 
+        /* ── 4K+: 3840px+ ── */
+        @media (min-width: 3840px) {
+          .agc-avatar-panel       { width: clamp(480px, 22vw, 640px); }
+          .agc-header             { height: 80px; padding: 14px 48px; }
+          .agc-back-btn           { height: 50px; padding: 0 28px; font-size: 18px; border-radius: 12px; }
+          .agc-agent-name         { font-size: 30px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .agc-agent-status       { font-size: 18px; }
+          .agc-status-dot         { width: 9px; height: 9px; }
+          .agc-hbtn               { padding: 12px 24px; font-size: 18px; border-radius: 12px; }
+          .agc-avatar-top-bar     { height: 88px; padding: 0 16px; }
+          .agc-overlay-btn        { height: 42px; padding: 0 16px; font-size: 15px; border-radius: 10px; }
+          .agc-status-pill-fixed  { width: 130px; min-width: 130px; max-width: 130px; font-size: 14px; padding: 7px 14px; }
+          .agc-avatar-idle-placeholder { width: 380px; height: 480px; font-size: 128px; border-radius: 32px; }
+          .agc-avatar-info-bar    { min-height: 120px; padding: 18px 28px 22px; }
+          .agc-chat-header        { height: 88px; padding: 0 36px; }
+          .agc-avatar-ring-wrap   { width: 64px; height: 64px; }
+          .agc-welcome-title      { font-size: 72px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .agc-welcome-sub        { font-size: 24px; }
+          .agc-welcome            { padding: 120px 48px; }
+          .agc-messages           { padding: 48px 36px 32px; gap: 8px; }
+          .agc-bubble             { font-size: 22px; padding: 18px 24px; max-width: 60%; line-height: 1.7; }
+          .agc-msg-avatar         { width: 48px; height: 48px; border-width: 2px; }
+          .agc-ts                 { font-size: 15px; }
+          .agc-ts.ai, .agc-ts.system { padding-left: 58px; }
+          .agc-typing             { padding: 18px 22px; }
+          .agc-dot                { width: 10px; height: 10px; }
+          .agc-input-zone         { padding: 20px 36px 24px; min-height: 120px; }
+          .agc-input-wrap         { padding: 14px 20px; border-radius: 22px; gap: 16px; border-width: 2px; }
+          .agc-text-input         { font-size: 22px; }
+          .agc-icon-btn           { font-size: 28px; padding: 10px; }
+          .agc-quick-actions-btn  { font-size: 17px; padding: 9px 18px; border-radius: 10px; }
+          .agc-divider            { height: 28px; }
+          .agc-send-btn           { padding: 14px 32px; font-size: 20px; border-radius: 14px; gap: 10px; }
+          .agc-guided-grid        { grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 20px 28px 22px; }
+          .agc-guided-action      { padding: 16px 18px; border-radius: 18px; }
+          .agc-guided-action-label{ font-size: 17px; }
+          .agc-guided-title       { font-size: 20px; }
+          .agc-guided-subtitle    { font-size: 16px; }
+          .agc-guided-footer      { font-size: 15px; padding: 0 28px 18px; }
+          .agc-guided-inner       { border-radius: 24px; }
+        }
+
+        /* ── Large laptop: 1440–1919px ── */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .agc-avatar-panel  { width: clamp(260px, 24vw, 340px); }
+          .agc-agent-name    { font-size: 17px; }
+          .agc-welcome-title { font-size: 34px; }
+          .agc-bubble        { font-size: 14px; }
+        }
+
+        /* ── Medium laptop: 1280–1439px ── */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .agc-avatar-panel  { width: clamp(200px, 24vw, 300px); }
+          .agc-agent-name    { font-size: 16px; }
+          .agc-welcome-title { font-size: 30px; }
+          .agc-welcome       { padding: 40px 16px; }
+          .agc-bubble        { max-width: 72%; font-size: 13.5px; }
+          .agc-send-btn      { padding: 8px 14px; }
+        }
+
+        /* ── Small laptop: 1024–1279px ── */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .agc-avatar-panel { width: clamp(180px, 22vw, 260px); }
-          .agc-header       { padding: 6px 14px; }
-          .agc-back-btn     { padding: 0 12px; font-size: 12px; }
-          .agc-agent-name   { font-size: 15px; }
-          .agc-agent-status { font-size: 12px; }
-          .agc-hbtn         { padding: 5px 10px; font-size: 12px; }
-          .agc-avatar-top-bar { height: 48px; padding: 0 6px; }
-          .agc-overlay-btn    { height: 24px; padding: 0 6px; font-size: 10.5px; }
-          .agc-status-pill-fixed { width: 74px; min-width: 74px; max-width: 74px; font-size: 10px; }
+          .agc-avatar-panel          { width: clamp(180px, 22vw, 260px); }
+          .agc-header                { padding: 6px 14px; }
+          .agc-back-btn              { padding: 0 12px; font-size: 12px; }
+          .agc-agent-name            { font-size: 15px; }
+          .agc-agent-status          { font-size: 12px; }
+          .agc-hbtn                  { padding: 5px 10px; font-size: 12px; }
+          .agc-avatar-top-bar        { height: 48px; padding: 0 6px; }
+          .agc-overlay-btn           { height: 24px; padding: 0 6px; font-size: 10.5px; }
+          .agc-status-pill-fixed     { width: 74px; min-width: 74px; max-width: 74px; font-size: 10px; }
           .agc-avatar-idle-placeholder { width: 160px; height: 210px; font-size: 56px; }
-          .agc-avatar-info-bar { min-height: 62px; padding: 8px 12px 10px; }
-          .agc-chat-header  { height: 50px; padding: 0 12px; }
-          .agc-welcome-title{ font-size: 26px; }
-          .agc-welcome-sub  { font-size: 13px; }
-          .agc-welcome      { padding: 32px 12px; }
-          .agc-messages     { padding: 22px 12px 12px; }
-          .agc-bubble       { max-width: 76%; font-size: 13px; padding: 9px 12px; }
-          .agc-input-zone   { padding: 8px 12px 10px; min-height: 66px; }
-          .agc-send-btn     { padding: 7px 12px; font-size: 12px; }
-          .agc-text-input   { font-size: 13px; }
-          .agc-guided-grid  { grid-template-columns: repeat(2, 1fr); }
+          .agc-avatar-info-bar       { min-height: 62px; padding: 8px 12px 10px; }
+          .agc-chat-header           { height: 50px; padding: 0 12px; }
+          .agc-welcome-title         { font-size: 26px; }
+          .agc-welcome-sub           { font-size: 13px; }
+          .agc-welcome               { padding: 32px 12px; }
+          .agc-messages              { padding: 22px 12px 12px; }
+          .agc-bubble                { max-width: 76%; font-size: 13px; padding: 9px 12px; }
+          .agc-input-zone            { padding: 8px 12px 10px; min-height: 66px; }
+          .agc-send-btn              { padding: 7px 12px; font-size: 12px; }
+          .agc-text-input            { font-size: 13px; }
+          .agc-guided-grid           { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ── Tablet: 768–1023px ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .agc-avatar-panel          { width: clamp(160px, 28vw, 220px); }
+          .agc-header                { padding: 6px 12px; height: 46px; }
+          .agc-back-btn              { padding: 0 10px; font-size: 11px; height: 30px; min-height: 44px; }
+          .agc-agent-name            { font-size: 14px; }
+          .agc-agent-status          { font-size: 11px; }
+          .agc-hbtn                  { padding: 4px 8px; font-size: 11px; min-height: 44px; }
+          .agc-avatar-top-bar        { height: 44px; padding: 0 4px; }
+          .agc-overlay-btn           { height: 22px; padding: 0 5px; font-size: 10px; min-height: 44px; }
+          .agc-status-pill-fixed     { width: 66px; min-width: 66px; max-width: 66px; font-size: 9.5px; padding: 3px 6px; }
+          .agc-avatar-idle-placeholder { width: 120px; height: 160px; font-size: 44px; border-radius: 14px; }
+          .agc-avatar-info-bar       { min-height: 56px; padding: 6px 10px 8px; }
+          .agc-chat-header           { height: 46px; padding: 0 10px; }
+          .agc-avatar-ring-wrap      { width: 32px; height: 32px; }
+          .agc-welcome-title         { font-size: 22px; }
+          .agc-welcome-sub           { font-size: 12px; }
+          .agc-welcome               { padding: 24px 10px; }
+          .agc-messages              { padding: 16px 10px 10px; }
+          .agc-bubble                { max-width: 82%; font-size: 12.5px; padding: 8px 11px; }
+          .agc-msg-avatar            { width: 24px; height: 24px; }
+          .agc-input-zone            { padding: 7px 10px 9px; min-height: 60px; }
+          .agc-input-wrap            { gap: 5px; padding: 5px 8px; }
+          .agc-send-btn              { padding: 7px 10px; font-size: 11px; min-height: 44px; }
+          .agc-icon-btn              { min-height: 44px; min-width: 44px; }
+          .agc-quick-actions-btn     { font-size: 10.5px; padding: 3px 7px; min-height: 44px; }
+          .agc-text-input            { font-size: 12px; }
+          .agc-guided-grid           { grid-template-columns: repeat(2, 1fr); gap: 5px; padding: 8px 12px 10px; }
+          .agc-guided-action         { padding: 7px 8px; }
+          .agc-guided-action-label   { font-size: 10.5px; }
         }
 
         @media (max-width: 600px) {
@@ -1502,7 +1644,12 @@ const AgentChat: React.FC = () => {
                             )}
                             {message.metadata?.type && message.metadata?.filename && (
                               <div style={{ marginTop: 8 }}>
-                                <button onClick={() => handleDownloadFromMetadata(message.metadata?.csr_content || '', message.metadata?.filename || 'file.txt', 'application/x-pem-file')}
+                                {/* ── FIX: use metadata.content as fallback when csr_content is absent (e.g. metadata_xml) ── */}
+                                <button onClick={() => handleDownloadFromMetadata(
+                                  message.metadata?.csr_content || message.metadata?.content || '',
+                                  message.metadata?.filename || 'file.txt',
+                                  message.metadata?.type === 'metadata_xml' ? 'application/xml' : 'application/x-pem-file'
+                                )}
                                   style={{ padding: '6px 12px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                   📥 Download {message.metadata.filename}
                                 </button>
@@ -1605,6 +1752,7 @@ const AgentChat: React.FC = () => {
               <div className="agc-input-wrap">
                 <button id="tour-attach-btn" className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
                 <input
+                  ref={textInputRef}
                   type="text"
                   className="agc-text-input"
                   value={inputValue}
@@ -1612,6 +1760,7 @@ const AgentChat: React.FC = () => {
                   onKeyDown={handleKeyPress}
                   placeholder={isAvatarActive ? `Ask ${agent?.name || avatarName} anything…` : 'Type your message…'}
                   disabled={isTyping}
+                  autoFocus
                 />
                 {/* ── FIX: id moved from input to this button so tour can target it ── */}
                 <button

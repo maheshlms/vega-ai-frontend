@@ -94,28 +94,11 @@ const injectStyles = () => {
 
     /* ═══════════════════════════════════════════════════════════════
        RESPONSIVE RULES — AgentToggleModal
-       This is a centered modal/dialog. The card already has
-       maxWidth: calc(100vw - 32px) so it never overflows.
-       We only adjust:
-         - card width          (atm-card-width)
-         - card padding        (atm-card-padding)
-         - max card height     (atm-card-maxh)
-         - avatar ring size    (handled via JS var --atm-avatar-ring)
-         - button height       (atm-btn-h)
-         - body font size      (atm-body-fs)
-         - title font size     (atm-title-fs)
-
-       1920×1080 → exact current design (no changes)
-       Laptop (1024–1919px) → slightly compact
-       Tablet (768–1023px)  → more compact
-       4K / ultrawide (2560px+) → slightly larger
+       Baseline 1920×1080 → exact current design (no changes).
+       All breakpoints scale proportionally from baseline.
     ═══════════════════════════════════════════════════════════════ */
 
-    /* ── CSS custom properties set per breakpoint ──────────────────
-       Consumed by the JS style objects via getComputedStyle or
-       directly applied via the .atm-responsive-* helper classes.    */
-
-    /* Baseline — 1920×1080 (no change from original inline values) */
+    /* ── BASELINE: 1920×1080 ── */
     [data-atm-root] {
       --atm-card-w:       460px;
       --atm-card-pad-v:   36px;
@@ -134,20 +117,20 @@ const injectStyles = () => {
       --atm-badge-fs:     12px;
     }
 
-    /* Tablet: 768–1023px */
+    /* ── TABLET: 768–1023px ── */
     @media (min-width: 768px) and (max-width: 1023px) {
       [data-atm-root] {
-        --atm-card-w:       420px;
-        --atm-card-pad-v:   24px;
-        --atm-card-pad-h:   24px;
+        --atm-card-w:       calc(100vw - 32px);
+        --atm-card-pad-v:   22px;
+        --atm-card-pad-h:   20px;
         --atm-card-maxh:    calc(100vh - 32px);
-        --atm-avatar-ring:  60px;
-        --atm-avatar-img:   36px;
+        --atm-avatar-ring:  58px;
+        --atm-avatar-img:   34px;
         --atm-title-fs:     17px;
         --atm-body-fs:      12px;
-        --atm-label-fs:     11.5px;
+        --atm-label-fs:     11px;
         --atm-ta-fs:        12px;
-        --atm-btn-h:        40px;
+        --atm-btn-h:        44px;
         --atm-btn-fs:       12.5px;
         --atm-warn-pad:     10px 12px;
         --atm-warn-fs:      11.5px;
@@ -155,15 +138,15 @@ const injectStyles = () => {
       }
     }
 
-    /* Small laptop: 1024–1279px (MacBook 13") */
+    /* ── SMALL LAPTOP: 1024–1279px ── */
     @media (min-width: 1024px) and (max-width: 1279px) {
       [data-atm-root] {
         --atm-card-w:       440px;
         --atm-card-pad-v:   28px;
         --atm-card-pad-h:   26px;
         --atm-card-maxh:    calc(100vh - 40px);
-        --atm-avatar-ring:  66px;
-        --atm-avatar-img:   40px;
+        --atm-avatar-ring:  64px;
+        --atm-avatar-img:   38px;
         --atm-title-fs:     18px;
         --atm-body-fs:      12.5px;
         --atm-label-fs:     11.5px;
@@ -176,7 +159,7 @@ const injectStyles = () => {
       }
     }
 
-    /* Laptop: 1280–1439px (MacBook 14/15", 1366/1440) */
+    /* ── MEDIUM LAPTOP: 1280–1439px ── */
     @media (min-width: 1280px) and (max-width: 1439px) {
       [data-atm-root] {
         --atm-card-w:       450px;
@@ -186,25 +169,61 @@ const injectStyles = () => {
         --atm-avatar-ring:  68px;
         --atm-avatar-img:   42px;
         --atm-title-fs:     19px;
+        --atm-body-fs:      12.5px;
+        --atm-label-fs:     12px;
+        --atm-ta-fs:        12.5px;
         --atm-btn-h:        43px;
+        --atm-btn-fs:       13px;
+        --atm-warn-pad:     11px 13px;
+        --atm-warn-fs:      12px;
+        --atm-badge-fs:     12px;
       }
     }
 
-    /* Large laptop / small desktop: 1440–1919px */
+    /* ── LARGE LAPTOP: 1440–1919px ── */
     @media (min-width: 1440px) and (max-width: 1919px) {
       [data-atm-root] {
         --atm-card-w:       456px;
+        --atm-card-pad-v:   34px;
+        --atm-card-pad-h:   30px;
+        --atm-card-maxh:    calc(100vh - 48px);
+        --atm-avatar-ring:  70px;
+        --atm-avatar-img:   43px;
+        --atm-title-fs:     19px;
+        --atm-body-fs:      13px;
+        --atm-btn-h:        44px;
+        --atm-btn-fs:       13px;
       }
     }
 
-    /* Exact target: 1920×1080 — baseline values above already match */
+    /* ── 1920px BASELINE LOCK ── */
+    @media (min-width: 1920px) and (max-width: 2559px) {
+      [data-atm-root] {
+        --atm-card-w:       460px;
+        --atm-card-pad-v:   36px;
+        --atm-card-pad-h:   32px;
+        --atm-card-maxh:    calc(100vh - 48px);
+        --atm-avatar-ring:  72px;
+        --atm-avatar-img:   44px;
+        --atm-title-fs:     20px;
+        --atm-body-fs:      13px;
+        --atm-label-fs:     12px;
+        --atm-ta-fs:        13px;
+        --atm-btn-h:        44px;
+        --atm-btn-fs:       13px;
+        --atm-warn-pad:     12px 14px;
+        --atm-warn-fs:      12.5px;
+        --atm-badge-fs:     12px;
+      }
+    }
 
-    /* 4K / ultrawide: 2560px+ */
-    @media (min-width: 2560px) {
+    /* ── QHD: 2560–3839px ── */
+    @media (min-width: 2560px) and (max-width: 3839px) {
       [data-atm-root] {
         --atm-card-w:       520px;
         --atm-card-pad-v:   44px;
         --atm-card-pad-h:   40px;
+        --atm-card-maxh:    calc(100vh - 56px);
         --atm-avatar-ring:  84px;
         --atm-avatar-img:   52px;
         --atm-title-fs:     23px;
@@ -213,8 +232,30 @@ const injectStyles = () => {
         --atm-ta-fs:        14px;
         --atm-btn-h:        50px;
         --atm-btn-fs:       14px;
+        --atm-warn-pad:     14px 16px;
         --atm-warn-fs:      14px;
         --atm-badge-fs:     13px;
+      }
+    }
+
+    /* ── 4K+: 3840px+ ── */
+    @media (min-width: 3840px) {
+      [data-atm-root] {
+        --atm-card-w:       640px;
+        --atm-card-pad-v:   56px;
+        --atm-card-pad-h:   52px;
+        --atm-card-maxh:    calc(100vh - 64px);
+        --atm-avatar-ring:  108px;
+        --atm-avatar-img:   68px;
+        --atm-title-fs:     30px;
+        --atm-body-fs:      18px;
+        --atm-label-fs:     16px;
+        --atm-ta-fs:        17px;
+        --atm-btn-h:        64px;
+        --atm-btn-fs:       18px;
+        --atm-warn-pad:     18px 22px;
+        --atm-warn-fs:      17px;
+        --atm-badge-fs:     16px;
       }
     }
   `;
@@ -329,7 +370,7 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
     setTimeout(() => { setMounted(false); onCancel(); }, 280);
   };
 
-  // ── Derived colours ── (unchanged)
+  // ── Derived colours ──
   const headerGrad  = isDisabling ? 'linear-gradient(90deg,#F87171,#EF4444)' : `linear-gradient(90deg,${accent}88,${accent})`;
   const iconBg      = isDisabling ? '#FEF2F2' : `${accent}12`;
   const iconShadow  = isDisabling
@@ -358,13 +399,16 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
     : 'atm-card-in 0.42s cubic-bezier(0.34,1.3,0.64,1) forwards';
 
   return (
-    /* ── Backdrop ── */
+    /* ── Backdrop ──
+       FIXED: zIndex bumped from 1000 → 10000 so this modal always renders
+       above the agent detail modal (z-[9999]) and details panel (z-[9999]).
+    */
     <div
       ref={rootRef}
       data-atm-root
       onClick={!loading ? handleCancel : undefined}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: 10000,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20,
         background: 'rgba(15,15,20,0.55)',
@@ -389,7 +433,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
         onClick={e => e.stopPropagation()}
         style={{
           display: 'flex', flexDirection: 'column',
-          /* Responsive width: CSS var falls back to 460px at baseline */
           width: 'var(--atm-card-w, 460px)',
           maxWidth: 'calc(100vw - 32px)',
           maxHeight: 'var(--atm-card-maxh, calc(100vh - 48px))',
@@ -431,7 +474,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
             overflowX: 'hidden',
             scrollbarWidth: 'thin',
             scrollbarColor: '#d1d5db #f3f4f6',
-            /* Responsive padding via CSS vars */
             padding: 'var(--atm-card-pad-v, 36px) var(--atm-card-pad-h, 32px) var(--atm-card-pad-v, 32px)',
           }}
         >
@@ -439,7 +481,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           {/* Avatar ring */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, marginTop: 4 }}>
             <div style={{
-              /* Responsive ring size */
               width:  'var(--atm-avatar-ring, 72px)',
               height: 'var(--atm-avatar-ring, 72px)',
               borderRadius: '50%',
@@ -451,7 +492,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               <InlineAvatar
                 src={agentAvatarSrc}
                 name={agentName}
-                /* Read responsive avatar image size from CSS var at render time */
                 size={parseInt(atmVar(rootRef.current, '--atm-avatar-img', '44')) || 44}
                 accent={accent}
                 dimmed={isDisabling}
@@ -462,7 +502,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           {/* Title */}
           <h2 style={{
             textAlign: 'center', margin: '0 0 8px',
-            /* Responsive font size */
             fontSize: 'var(--atm-title-fs, 20px)',
             fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em',
             animation: 'atm-slide-up 0.4s ease 0.15s both',
@@ -501,7 +540,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               marginBottom: 20,
               background: '#FEF2F2', border: '1px solid #FECACA',
               borderRadius: 14,
-              /* Responsive padding */
               padding: 'var(--atm-warn-pad, 12px 14px)',
               animation: 'atm-warning-in 0.4s ease 0.28s both',
             }}>
@@ -583,7 +621,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
               style={{
                 flex: 1,
-                /* Responsive button height */
                 height: 'var(--atm-btn-h, 44px)',
                 borderRadius: 12,
                 border: '1px solid #E5E7EB', background: '#F9FAFB',
@@ -606,7 +643,6 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               style={{
                 flex: 1,
-                /* Responsive button height */
                 height: 'var(--atm-btn-h, 44px)',
                 borderRadius: 12,
                 border: 'none', background: confirmBg,

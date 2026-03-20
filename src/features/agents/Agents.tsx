@@ -744,11 +744,26 @@ const Agents: React.FC = () => {
 
         /* ═══════════════════════════════════════════════════════
            RESPONSIVE RULES — Agents.tsx
-           1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
+           Baseline 1920×1080 → exact current design (no changes)
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .agents-font {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-base:     1;
+          --z-sticky:   10;
+          --z-dropdown: 30;
+          --z-overlay:  40;
+          --z-modal:    50;
+          --z-toast:    100;
+        }
 
         /* ── Outer page wrapper ── */
         .ag-page-wrapper {
@@ -759,6 +774,8 @@ const Agents: React.FC = () => {
           padding-right: 48px;
           padding-top: 40px;
           padding-bottom: 80px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Header band inner ── */
@@ -768,6 +785,8 @@ const Agents: React.FC = () => {
           margin-right: auto;
           padding-top: 40px;
           padding-bottom: 32px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Filter bar inner ── */
@@ -778,9 +797,15 @@ const Agents: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 24px;
+          gap: clamp(8px, 1.5vw, 24px);
           height: 56px;
+          box-sizing: border-box;
+          width: 100%;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
         }
+        .ag-filter-inner::-webkit-scrollbar { display: none; }
 
         /* ── Stats band inner ── */
         .ag-stats-inner {
@@ -789,79 +814,167 @@ const Agents: React.FC = () => {
           margin-right: auto;
           padding-top: 16px;
           padding-bottom: 16px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Outer band padding ── */
-        .ag-band-px { padding-left: 48px; padding-right: 48px; }
+        .ag-band-px {
+          padding-left: clamp(16px, 3.33vw, 48px);
+          padding-right: clamp(16px, 3.33vw, 48px);
+        }
 
         /* ── Stats grid ── */
         .ag-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
+          gap: clamp(10px, 1vw, 16px);
         }
 
-        /* ── Agent card grid min-width ── */
-        .ag-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        /* ── H1 size — fluid ── */
+        .ag-h1 {
+          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
 
-        /* ── H1 size ── */
-        .ag-h1 { font-size: 2.25rem; }
+        /* ── Agent card name — truncation guard ── */
+        .agent-card .flex.items-center.justify-between.gap-2 > span:first-child {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
 
-        /* Tablet: 768–1023 */
+        /* ── Long URL / host strings in cards ── */
+        .agent-card p {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* ── Filter pill buttons: touch target at tablet ── */
+        .ag-filter-inner button {
+          flex-shrink: 0;
+        }
+
+        /* ════════════════════════════════════════
+           TABLET: 768–1023px
+        ════════════════════════════════════════ */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .ag-band-px    { padding-left: 20px; padding-right: 20px; }
-          .ag-page-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 24px; padding-bottom: 48px; }
-          .ag-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
+          .ag-band-px      { padding-left: 16px; padding-right: 16px; }
+          .ag-page-wrapper { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+          .ag-header-inner { max-width: 100%; padding-top: 16px; padding-bottom: 14px; }
+          .ag-filter-inner { max-width: 100%; height: auto; min-height: 52px; padding-top: 6px; padding-bottom: 6px; }
+          .ag-stats-inner  { max-width: 100%; }
+
+          /* 2-column stats grid on tablet */
+          .ag-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+          /* 2-column card grid on tablet */
+          .ag-card-grid    { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+
+          .ag-h1           { font-size: 1.5rem; }
+
+          /* Touch targets */
+          .ag-filter-inner button { min-height: 44px; }
+          .ag-filter-inner > div:last-child > button { min-height: 44px; }
+        }
+
+        /* ════════════════════════════════════════
+           SMALL LAPTOP: 1024–1279px
+        ════════════════════════════════════════ */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .ag-band-px      { padding-left: 24px; padding-right: 24px; }
+          .ag-page-wrapper { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; padding-bottom: 56px; }
+          .ag-header-inner { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
           .ag-filter-inner { max-width: 100%; }
           .ag-stats-inner  { max-width: 100%; }
-          .ag-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-          .ag-h1           { font-size: 1.75rem !important; }
+          .ag-stats-grid   { gap: 12px; }
+          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important; gap: 14px !important; }
+          .ag-h1           { font-size: 1.75rem; }
         }
 
-        /* Small laptop: 1024–1279 (MacBook 13") */
-        @media (min-width: 1024px) and (max-width: 1279px) {
-          .ag-band-px    { padding-left: 28px; padding-right: 28px; }
-          .ag-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; }
-          .ag-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
+        /* ════════════════════════════════════════
+           MEDIUM LAPTOP: 1280–1439px
+        ════════════════════════════════════════ */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .ag-band-px      { padding-left: 28px; padding-right: 28px; }
+          .ag-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 64px; }
+          .ag-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 24px; }
           .ag-filter-inner { max-width: 1100px; }
           .ag-stats-inner  { max-width: 1100px; }
-          .ag-stats-grid   { gap: 12px; }
-          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
-          .ag-h1           { font-size: 1.875rem !important; }
+          .ag-stats-grid   { gap: 13px; }
+          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)) !important; }
+          .ag-h1           { font-size: 1.875rem; }
         }
 
-        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
-        @media (min-width: 1280px) and (max-width: 1439px) {
-          .ag-band-px    { padding-left: 36px; padding-right: 36px; }
-          .ag-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
-          .ag-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
+        /* ════════════════════════════════════════
+           LARGE LAPTOP: 1440–1919px
+        ════════════════════════════════════════ */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .ag-band-px      { padding-left: 36px; padding-right: 36px; }
+          .ag-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 72px; }
+          .ag-header-inner { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
           .ag-filter-inner { max-width: 1280px; }
           .ag-stats-inner  { max-width: 1280px; }
-          .ag-h1           { font-size: 2rem !important; }
+          .ag-stats-grid   { gap: 14px; }
+          .ag-h1           { font-size: 2rem; }
         }
 
-        /* Large laptop / small desktop: 1440–1919 */
-        @media (min-width: 1440px) and (max-width: 1919px) {
-          .ag-band-px    { padding-left: 44px; padding-right: 44px; }
-          .ag-page-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
-          .ag-header-inner { max-width: 1400px; }
+        /* ════════════════════════════════════════
+           1920px BASELINE LOCK
+        ════════════════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .ag-band-px      { padding-left: 48px; padding-right: 48px; }
+          .ag-page-wrapper { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          .ag-header-inner { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
           .ag-filter-inner { max-width: 1400px; }
           .ag-stats-inner  { max-width: 1400px; }
+          .ag-stats-grid   { gap: 16px; }
+          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; gap: 20px !important; }
+          .ag-h1           { font-size: 2.25rem; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
-
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .ag-band-px    { padding-left: 80px; padding-right: 80px; }
-          .ag-page-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; }
-          .ag-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .ag-filter-inner { max-width: 1920px; }
-          .ag-stats-inner  { max-width: 1920px; }
+        /* ════════════════════════════════════════
+           QHD: 2560–3839px
+        ════════════════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .ag-band-px      { padding-left: 48px; padding-right: 48px; }
+          .ag-page-wrapper { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 100px; }
+          .ag-header-inner { max-width: 1600px; padding-top: 52px; padding-bottom: 40px; }
+          .ag-filter-inner { max-width: 1600px; height: 64px; }
+          .ag-stats-inner  { max-width: 1600px; padding-top: 20px; padding-bottom: 20px; }
           .ag-stats-grid   { gap: 20px; }
-          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
-          .ag-h1           { font-size: 3rem !important; }
+          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; gap: 24px !important; }
+          .ag-h1           { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        }
+
+        /* ════════════════════════════════════════
+           4K+: 3840px+
+        ════════════════════════════════════════ */
+        @media (min-width: 3840px) {
+          .ag-band-px      { padding-left: 64px; padding-right: 64px; }
+          .ag-page-wrapper { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 140px; }
+          .ag-header-inner { max-width: 2200px; padding-top: 72px; padding-bottom: 56px; }
+          .ag-filter-inner { max-width: 2200px; height: 72px; }
+          .ag-stats-inner  { max-width: 2200px; padding-top: 28px; padding-bottom: 28px; }
+          .ag-stats-grid   { gap: 28px; }
+          .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important; gap: 32px !important; }
+          .ag-h1           { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+          /* Scale up filter buttons at 4K */
+          .ag-filter-inner button { font-size: 16px; padding: 10px 16px; }
+
+          /* Scale up stat cards at 4K */
+          .ag-stats-grid > div { padding: 20px 24px; border-radius: 16px; }
+
+          /* Scale up "New Agent" button */
+          .ag-filter-inner > div:last-child > button {
+            height: 44px;
+            font-size: 16px;
+            padding-left: 20px;
+            padding-right: 20px;
+          }
         }
       `}</style>
 
@@ -874,6 +987,7 @@ const Agents: React.FC = () => {
           agentAvatarSrc={resolveAvatarImg(confirmModal.agent.avatarId, confirmModal.agent.avatarImg)}
           accent={confirmModal.accent}
           loading={confirmModal.loading}
+          requireReasonOnEnable={true}
           onConfirm={handleConfirmToggle}
           onCancel={handleCancelToggle}
         />

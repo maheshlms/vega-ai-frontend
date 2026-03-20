@@ -683,59 +683,257 @@ const TargetSystems: React.FC = () => {
         /* ═══════════════════════════════════════════════════════
            RESPONSIVE RULES — TargetSystems.tsx
            1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → handled by existing 2xl: classes
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════ */
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-base:     1;
+          --z-sticky:   10;
+          --z-dropdown: 30;
+          --z-overlay:  40;
+          --z-modal:    50;
+          --z-toast:    100;
+        }
+
+        /* ── Global safety: no horizontal overflow ── */
+        .min-h-screen.bg-gray-50 {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+
+        /* ── Host/URL strings: break long unbreakable values ── */
+        .break-all {
+          overflow-wrap: break-word;
+          word-break: break-all;
+        }
 
         /* ── Section padding wrapper ── */
         .ts-px {
-          padding-left: 24px;
-          padding-right: 24px;
+          padding-left: clamp(16px, 3.125vw, 60px);
+          padding-right: clamp(16px, 3.125vw, 60px);
         }
 
-        /* ── Header inner padding ── */
+        /* ── Header inner wrapper ── */
         .ts-header-px {
-          padding-left: 24px;
-          padding-right: 24px;
-          padding-top: 24px;
-          padding-bottom: 24px;
+          padding-left: clamp(16px, 3.125vw, 60px);
+          padding-right: clamp(16px, 3.125vw, 60px);
+          padding-top: clamp(16px, 1.875vw, 36px);
+          padding-bottom: clamp(16px, 1.875vw, 36px);
+          box-sizing: border-box;
         }
 
-        /* ── System card min-width ── */
-        .ts-card { min-width: 400px; }
+        /* Header title+subtitle area must not overflow on narrow screens */
+        .ts-header-px .flex.justify-between.items-start {
+          flex-wrap: wrap;
+          gap: clamp(8px, 1vw, 16px);
+        }
 
-        /* Tablet: 768–1023 */
+        /* Header button group: wrap on tablet / small laptop */
+        .ts-header-px .flex.gap-2 {
+          flex-wrap: wrap;
+        }
+
+        /* Touch targets for header buttons at tablet */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .ts-px         { padding-left: 20px; padding-right: 20px; }
-          .ts-header-px  { padding-left: 20px; padding-right: 20px; padding-top: 18px; padding-bottom: 18px; }
-          .ts-card       { min-width: 340px; }
+          .ts-header-px .flex.gap-2 > button {
+            min-height: 44px;
+          }
         }
 
-        /* Small laptop: 1024–1279 (MacBook 13") */
+        /* ── System card ── */
+        .ts-card {
+          min-width: clamp(280px, 30vw, 400px);
+          max-width: 100%;
+          box-sizing: border-box;
+          /* flex children with truncated text */
+          overflow: hidden;
+        }
+
+        /* Card action buttons: stack label below icon on very tight widths */
+        .ts-card .border-t .flex.gap-2 {
+          flex-wrap: nowrap;
+        }
+
+        /* ════════════════════════════
+           TABLET  768–1023px
+        ════════════════════════════ */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .ts-px {
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+          .ts-header-px {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 16px;
+            padding-bottom: 16px;
+          }
+          /* Cards: full width on tablet, no awkward min-width */
+          .ts-card {
+            min-width: 100%;
+            width: 100%;
+          }
+          /* Card grid switches to single column so cards don't crush */
+          .flex.flex-wrap.items-center.gap-4 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+          }
+          /* Stats grid already uses md:grid-cols-3 → tablet shows 1 col via Tailwind */
+          /* Back button touch target */
+          .flex.items-center.gap-2.text-blue-600 {
+            min-height: 44px;
+          }
+          /* Delete modal: full width on tablet */
+          .bg-white.rounded-2xl.shadow-2xl {
+            width: calc(100vw - 32px);
+            max-width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+        }
+
+        /* ════════════════════════════
+           SMALL LAPTOP  1024–1279px
+        ════════════════════════════ */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .ts-px         { padding-left: 28px; padding-right: 28px; }
-          .ts-header-px  { padding-left: 28px; padding-right: 28px; padding-top: 22px; padding-bottom: 22px; }
-          .ts-card       { min-width: 360px; }
+          .ts-px {
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+          .ts-header-px {
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 20px;
+            padding-bottom: 20px;
+          }
+          .ts-card {
+            min-width: clamp(260px, 28vw, 360px);
+          }
+          .flex.flex-wrap.items-center.gap-4 {
+            gap: 14px;
+          }
         }
 
-        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        /* ════════════════════════════
+           MEDIUM LAPTOP  1280–1439px
+        ════════════════════════════ */
         @media (min-width: 1280px) and (max-width: 1439px) {
-          .ts-px         { padding-left: 32px; padding-right: 32px; }
-          .ts-header-px  { padding-left: 32px; padding-right: 32px; padding-top: 24px; padding-bottom: 24px; }
-          .ts-card       { min-width: 380px; }
+          .ts-px {
+            padding-left: 28px;
+            padding-right: 28px;
+          }
+          .ts-header-px {
+            padding-left: 28px;
+            padding-right: 28px;
+            padding-top: 22px;
+            padding-bottom: 22px;
+          }
+          .ts-card {
+            min-width: clamp(280px, 28vw, 380px);
+          }
         }
 
-        /* Large laptop / small desktop: 1440–1919 */
+        /* ════════════════════════════
+           LARGE LAPTOP  1440–1919px
+        ════════════════════════════ */
         @media (min-width: 1440px) and (max-width: 1919px) {
-          .ts-px         { padding-left: 40px; padding-right: 40px; }
-          .ts-header-px  { padding-left: 40px; padding-right: 40px; padding-top: 28px; padding-bottom: 28px; }
-          .ts-card       { min-width: 400px; }
+          .ts-px {
+            padding-left: 36px;
+            padding-right: 36px;
+          }
+          .ts-header-px {
+            padding-left: 36px;
+            padding-right: 36px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+          }
+          .ts-card {
+            min-width: clamp(340px, 28vw, 400px);
+          }
         }
 
-        /* Exact target: 1920×1080 — px-6 = 24px default above already matches */
+        /* ════════════════════════════
+           1920px BASELINE LOCK
+        ════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .ts-px {
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+          .ts-header-px {
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+          }
+          .ts-card {
+            min-width: 400px;
+          }
+        }
 
-        /* 4K / ultrawide: handled by existing 2xl: Tailwind classes */
+        /* ════════════════════════════
+           QHD  2560–3839px
+        ════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .ts-px {
+            padding-left: 48px;
+            padding-right: 48px;
+          }
+          .ts-header-px {
+            padding-left: 48px;
+            padding-right: 48px;
+            padding-top: 36px;
+            padding-bottom: 36px;
+          }
+          .ts-card {
+            min-width: 500px;
+          }
+          /* Delete modal: scale up for QHD */
+          .bg-white.rounded-2xl.shadow-2xl {
+            max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+          /* Font smoothing for large headings */
+          h1, h2, h3 {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+        }
+
+        /* ════════════════════════════
+           4K+  3840px+
+        ════════════════════════════ */
+        @media (min-width: 3840px) {
+          .ts-px {
+            padding-left: 64px;
+            padding-right: 64px;
+          }
+          .ts-header-px {
+            padding-left: 64px;
+            padding-right: 64px;
+            padding-top: 48px;
+            padding-bottom: 48px;
+          }
+          .ts-card {
+            min-width: 600px;
+          }
+          .flex.flex-wrap.items-center.gap-4 {
+            gap: 32px;
+          }
+          /* Delete modal: proportional at 4K */
+          .bg-white.rounded-2xl.shadow-2xl {
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+          h1, h2, h3 {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+        }
       `}</style>
     </div>
   );

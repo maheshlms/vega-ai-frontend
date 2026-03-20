@@ -175,7 +175,7 @@ function AppContent() {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-white dark:bg-[#0d1117]">
-      <MouseMove />
+      {/* <MouseMove /> */}
       <ToastContainer />
      
       {!hideLayout && <TopBar />}

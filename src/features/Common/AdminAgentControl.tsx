@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { 
   FaRobot, 
   FaCheckCircle, 
@@ -70,31 +71,75 @@ const customStyles = `
   .bar-fill { animation: bar-fill 1s cubic-bezier(0.4,0,0.2,1) forwards; }
 
   /* ═══════════════════════════════════════════════════════
-     RESPONSIVE RULES
-     1920×1080 → exact current design (no changes)
-     Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-     Tablet (768–1023px) → stacked, compressed
-     4K / ultrawide (2560px+) → expands gently
+     GLOBAL BOX-SIZING GUARD
   ═══════════════════════════════════════════════════════ */
+  .aad-font *, .aad-font *::before, .aad-font *::after {
+    box-sizing: border-box;
+  }
 
-  /* ── Outer page wrapper ── */
+  /* ═══════════════════════════════════════════════════════
+     FONT SMOOTHING FOR HEADINGS
+  ═══════════════════════════════════════════════════════ */
+  .aad-font h1, .aad-font h2, .aad-font h3 {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     OVERFLOW PROTECTION FOR DYNAMIC TEXT
+  ═══════════════════════════════════════════════════════ */
+  .aad-font td, .aad-font .aad-dynamic-text {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     IMAGES: ALWAYS FLUID
+  ═══════════════════════════════════════════════════════ */
+  .aad-font img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     Z-INDEX SCALE
+  ═══════════════════════════════════════════════════════ */
+  .aad-font .aad-z-sticky   { z-index: 10; }
+  .aad-font .aad-z-dropdown { z-index: 30; }
+  .aad-font .aad-z-overlay  { z-index: 40; }
+  .aad-font .aad-z-modal    { z-index: 50; }
+  .aad-font .aad-z-toast    { z-index: 100; }
+
+  /* ═══════════════════════════════════════════════════════
+     PREVENT HORIZONTAL SCROLLBAR AT 1920PX
+  ═══════════════════════════════════════════════════════ */
+  .aad-font.min-h-screen {
+    overflow-x: hidden;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     OUTER PAGE WRAPPER
+     1920px baseline: max-width 1400px, padding 48px
+  ═══════════════════════════════════════════════════════ */
   .aad-page-wrapper {
     max-width: 1400px;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 48px;
-    padding-right: 48px;
+    padding-left: clamp(16px, 3vw, 48px);
+    padding-right: clamp(16px, 3vw, 48px);
   }
 
-  /* ── Header inner wrapper ── */
+  /* ═══════════════════════════════════════════════════════
+     HEADER INNER WRAPPER
+  ═══════════════════════════════════════════════════════ */
   .aad-header-wrapper {
     max-width: 1400px;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 48px;
-    padding-right: 48px;
-    padding-top: 40px;
-    padding-bottom: 32px;
+    padding-left: clamp(16px, 3vw, 48px);
+    padding-right: clamp(16px, 3vw, 48px);
+    padding-top: clamp(20px, 2.5vw, 40px);
+    padding-bottom: clamp(16px, 2vw, 32px);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -102,89 +147,199 @@ const customStyles = `
     flex-wrap: wrap;
   }
 
-  /* Tablet: 768–1023 */
-  @media (min-width: 768px) and (max-width: 1023px) {
-    .aad-page-wrapper   { max-width: 100%; padding-left: 20px; padding-right: 20px; }
-    .aad-header-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 20px; padding-bottom: 16px; }
-    .aad-h1-resp        { font-size: 1.75rem !important; }
+  /* ── H1 fluid scaling ── */
+  .aad-h1-resp {
+    font-size: clamp(22px, 2.5vw, 36px) !important;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Small laptop: 1024–1279 (MacBook 13" at 1280 logical, etc.) */
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: Tablet 768–1023px
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .aad-page-wrapper   { max-width: 100%; padding-left: 16px; padding-right: 16px; }
+    .aad-header-wrapper { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 16px; padding-bottom: 14px; }
+    .aad-h1-resp        { font-size: 1.625rem !important; }
+
+    /* Stats: 3 cols at tablet */
+    .aad-stats-grid-override { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+    /* Charts shorter at tablet */
+    .aad-chart-h80 { height: 200px; }
+
+    /* List heights: shorter */
+    .aad-rt-maxh   { max-height: 180px; }
+    .aad-dist-maxh { max-height: 240px; }
+
+    /* Details modal: full width */
+    .aad-details-modal { max-width: calc(100vw - 32px); }
+
+    /* Stat cards: 2-col at tablet */
+    .aad-stat-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+    /* Stat card values: smaller */
+    .aad-stat-card-value { font-size: 1.125rem; }
+    .aad-stat-card-pad   { padding: 10px 12px; }
+
+    /* Grid gaps: tighter */
+    .aad-main-grid   { gap: 12px !important; }
+    .aad-charts-grid { gap: 12px !important; }
+
+    /* Touch targets: min 44px */
+    .aad-font button,
+    .aad-font a,
+    .aad-font [role="button"] {
+      min-height: 44px;
+    }
+    /* Exception: icon-only small utility buttons */
+    .aad-font .aad-icon-btn-sm {
+      min-height: unset;
+    }
+
+    /* Header action buttons: wrap at tablet */
+    .aad-header-wrapper > div:last-child {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: Small laptop 1024–1279px
+  ═══════════════════════════════════════════════════════ */
   @media (min-width: 1024px) and (max-width: 1279px) {
+    .aad-page-wrapper   { max-width: 100%; padding-left: 24px; padding-right: 24px; }
+    .aad-header-wrapper { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 24px; padding-bottom: 20px; }
+    .aad-h1-resp        { font-size: 1.875rem !important; }
+
+    .aad-chart-h80    { height: 220px; }
+    .aad-rt-maxh      { max-height: 210px; }
+    .aad-dist-maxh    { max-height: 280px; }
+    .aad-details-modal { max-width: 860px; }
+
+    .aad-stat-card-value { font-size: 1.25rem; }
+    .aad-stat-card-pad   { padding: 10px 12px; }
+
+    .aad-main-grid   { gap: 14px !important; }
+    .aad-charts-grid { gap: 14px !important; }
+
+    .aad-header-wrapper > div:last-child {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: Medium laptop 1280–1439px
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 1280px) and (max-width: 1439px) {
     .aad-page-wrapper   { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
     .aad-header-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 28px; padding-bottom: 22px; }
-    .aad-h1-resp        { font-size: 1.875rem !important; }
-  }
-
-  /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440 laptops) */
-  @media (min-width: 1280px) and (max-width: 1439px) {
-    .aad-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
-    .aad-header-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 32px; padding-bottom: 26px; }
     .aad-h1-resp        { font-size: 2rem !important; }
+
+    .aad-chart-h80     { height: 250px; }
+    .aad-details-modal { max-width: 1000px; }
+
+    .aad-stat-card-value { font-size: 1.375rem; }
+    .aad-stat-card-pad   { padding: 10px 14px; }
+
+    .aad-main-grid   { gap: 16px !important; }
+    .aad-charts-grid { gap: 16px !important; }
   }
 
-  /* Large laptop / small desktop: 1440–1919 */
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: Large laptop 1440–1919px
+  ═══════════════════════════════════════════════════════ */
   @media (min-width: 1440px) and (max-width: 1919px) {
-    .aad-page-wrapper   { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
-    .aad-header-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+    .aad-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
+    .aad-header-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
+
+    .aad-chart-h80     { height: 270px; }
+    .aad-details-modal { max-width: 1100px; }
   }
 
-  /* Exact target: 1920×1080 — unchanged (default values above already match) */
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: 1920px BASELINE — lock, nothing shifts
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 1920px) and (max-width: 2559px) {
+    .aad-page-wrapper   { max-width: 1400px; padding-left: 48px; padding-right: 48px; }
+    .aad-header-wrapper { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 32px; }
+    .aad-h1-resp        { font-size: 2.25rem !important; }
 
-  /* 4K / ultrawide: 2560px+ */
-  @media (min-width: 2560px) {
-    .aad-page-wrapper   { max-width: 1920px; padding-left: 80px; padding-right: 80px; }
-    .aad-header-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; padding-bottom: 44px; }
-    .aad-h1-resp        { font-size: 3rem !important; }
+    .aad-chart-h80     { height: 300px; }
+    .aad-rt-maxh       { max-height: 280px; }
+    .aad-dist-maxh     { max-height: 380px; }
+    .aad-details-modal { max-width: min(95vw, 1280px); }
+
+    .aad-stat-card-value { font-size: 1.5rem; }
+    .aad-stat-card-pad   { padding: 12px 16px; }
   }
 
-  /* ── Stats grid: fix column count per breakpoint ── */
-  /* Tailwind lg:grid-cols-3 xl:grid-cols-6 works fine for 1920;
-     but on 1024–1279 "lg" fires too early and gives 3 cols which is correct.
-     On tablet (768–1023) we want 3 cols too, but Tailwind's sm/md don't cover it cleanly.
-     Override with explicit media queries only where Tailwind falls short. */
-  @media (min-width: 768px) and (max-width: 1023px) {
-    .aad-stats-grid-override { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-  }
-  @media (min-width: 2560px) {
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: QHD 2560–3839px
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .aad-page-wrapper   { max-width: 1800px; padding-left: 64px; padding-right: 64px; }
+    .aad-header-wrapper { max-width: 1800px; padding-left: 64px; padding-right: 64px; padding-top: 52px; padding-bottom: 40px; }
+    .aad-h1-resp        { font-size: 2.75rem !important; }
+
     .aad-stats-grid-override { gap: 16px !important; }
+    .aad-chart-h80           { height: 380px; }
+    .aad-rt-maxh             { max-height: 360px; }
+    .aad-dist-maxh           { max-height: 500px; }
+    .aad-details-modal       { max-width: 1600px; }
+
+    .aad-stat-card-value { font-size: 1.75rem; }
+    .aad-stat-card-pad   { padding: 16px 20px; }
+
+    .aad-main-grid   { gap: 24px !important; }
+    .aad-charts-grid { gap: 24px !important; }
   }
 
-  /* ── Chart height per breakpoint ── */
-  /* 1920×1080 base: 300px keeps the chart well-proportioned with the stat cards below */
-  .aad-chart-h80 { height: 300px; }
-  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-chart-h80 { height: 200px; } }
-  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-chart-h80 { height: 220px; } }
-  @media (min-width: 1280px) and (max-width: 1439px)  { .aad-chart-h80 { height: 250px; } }
-  @media (min-width: 1440px) and (max-width: 1919px)  { .aad-chart-h80 { height: 270px; } }
-  @media (min-width: 1920px) and (max-width: 2559px)  { .aad-chart-h80 { height: 300px; } }
-  @media (min-width: 2560px)                           { .aad-chart-h80 { height: 380px; } }
+  /* ═══════════════════════════════════════════════════════
+     BREAKPOINT: 4K 3840px+
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 3840px) {
+    .aad-page-wrapper   { max-width: 2400px; padding-left: 80px; padding-right: 80px; }
+    .aad-header-wrapper { max-width: 2400px; padding-left: 80px; padding-right: 80px; padding-top: 64px; padding-bottom: 48px; }
+    .aad-h1-resp        { font-size: 3.5rem !important; }
 
-  /* ── Response-time list max-height ── */
-  .aad-rt-maxh { max-height: 280px; }
-  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-rt-maxh { max-height: 180px; } }
-  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-rt-maxh { max-height: 210px; } }
-  @media (min-width: 2560px)                           { .aad-rt-maxh { max-height: 360px; } }
+    .aad-stats-grid-override { gap: 20px !important; }
+    .aad-chart-h80           { height: 480px; }
+    .aad-rt-maxh             { max-height: 520px; }
+    .aad-dist-maxh           { max-height: 680px; }
+    .aad-details-modal       { max-width: 2200px; }
 
-  /* ── Distribution card list max-height ── */
-  .aad-dist-maxh { max-height: 380px; }
-  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-dist-maxh { max-height: 240px; } }
-  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-dist-maxh { max-height: 280px; } }
-  @media (min-width: 2560px)                           { .aad-dist-maxh { max-height: 500px; } }
+    .aad-stat-card-value { font-size: 2.25rem; }
+    .aad-stat-card-pad   { padding: 22px 28px; }
 
-  /* ── Details modal max-width ── */
-  .aad-details-modal { width: 100%; }
-  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-details-modal { max-width: 95vw; } }
-  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-details-modal { max-width: 860px; } }
-  @media (min-width: 1280px) and (max-width: 1439px)  { .aad-details-modal { max-width: 1000px; } }
-  @media (min-width: 1440px) and (max-width: 1919px)  { .aad-details-modal { max-width: 1100px; } }
-  @media (min-width: 1920px) and (max-width: 2559px)  { .aad-details-modal { max-width: min(95vw, 1280px); } }
-  @media (min-width: 2560px)                           { .aad-details-modal { max-width: 1600px; } }
+    .aad-main-grid   { gap: 32px !important; }
+    .aad-charts-grid { gap: 32px !important; }
+  }
 
-  /* ── Task Overview: flex column, full height to match Agent Distribution card.
-     The chart uses flex-grow:1 (see .aad-chart-flex) to consume all remaining
-     space after the header and stat cards — so there is never an empty gap,
-     regardless of screen size. ── */
+  /* ═══════════════════════════════════════════════════════
+     CHART HEIGHT — fluid default (clamp handles 768–1919)
+  ═══════════════════════════════════════════════════════ */
+  .aad-chart-h80 { height: clamp(200px, 20vw, 300px); }
+
+  /* ═══════════════════════════════════════════════════════
+     SCROLLABLE LIST MAX-HEIGHTS — fluid default
+  ═══════════════════════════════════════════════════════ */
+  .aad-rt-maxh   { max-height: clamp(180px, 18vw, 280px); }
+  .aad-dist-maxh { max-height: clamp(240px, 24vw, 380px); }
+
+  /* ═══════════════════════════════════════════════════════
+     DETAILS MODAL — safe at all sizes
+  ═══════════════════════════════════════════════════════ */
+  .aad-details-modal {
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     TASK OVERVIEW CARD — flex column, fills height
+  ═══════════════════════════════════════════════════════ */
   .aad-task-overview-card {
     display: flex;
     flex-direction: column;
@@ -192,38 +347,142 @@ const customStyles = `
     box-sizing: border-box;
   }
 
-  /* Chart wrapper: grows to fill whatever vertical space is left in the card */
+  /* Chart wrapper: grows to fill remaining vertical space */
   .aad-chart-flex {
     flex: 1 1 0%;
     min-height: 180px;
   }
 
-  /* ── Stat cards grid: collapse to 2-col on tablet ── */
+  /* ═══════════════════════════════════════════════════════
+     STATS STRIP GRID — fluid gap
+  ═══════════════════════════════════════════════════════ */
+  .aad-stats-grid-override {
+    gap: clamp(8px, 1vw, 12px) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     STAT CARD VALUE — fluid font
+  ═══════════════════════════════════════════════════════ */
+  .aad-stat-card-value {
+    font-size: clamp(1.125rem, 1.5vw, 1.5rem);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     STAT CARD PADDING — fluid
+  ═══════════════════════════════════════════════════════ */
+  .aad-stat-card-pad {
+    padding: clamp(10px, 1vw, 16px) clamp(12px, 1.2vw, 16px);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     MAIN CONTENT / CHARTS GRID GAPS — fluid
+  ═══════════════════════════════════════════════════════ */
+  .aad-main-grid   { gap: clamp(12px, 1.5vw, 20px) !important; }
+  .aad-charts-grid { gap: clamp(12px, 1.5vw, 20px) !important; }
+
+  /* ═══════════════════════════════════════════════════════
+     FLEX CHILDREN WITH TRUNCATED TEXT: min-width: 0
+  ═══════════════════════════════════════════════════════ */
+  .aad-font .aad-rt-maxh > div > div {
+    min-width: 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     TABLE: horizontal scroll wrapper
+  ═══════════════════════════════════════════════════════ */
+  .aad-font .overflow-x-auto {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f9fafb;
+    -webkit-overflow-scrolling: touch;
+  }
+  .aad-font table {
+    min-width: 600px;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     DROPDOWN / TOOLTIP Z-INDEX
+  ═══════════════════════════════════════════════════════ */
+  .aad-font .fixed.inset-0 { z-index: 40; }
+  .aad-font .absolute.right-0.top-full,
+  .aad-font .absolute.left-1\/2.top-full {
+    z-index: 50;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     AGENT DISTRIBUTION CARD — auto height on small screens
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .aad-font .h-150 {
+      height: auto !important;
+      min-height: 400px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     DETAILS PANEL HEADER — button row wraps at tablet
+  ═══════════════════════════════════════════════════════ */
   @media (min-width: 768px) and (max-width: 1023px) {
-    .aad-stat-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .aad-details-modal .sticky.top-0 > div:first-child > div:first-child {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .aad-details-modal .sticky.top-0 > div:first-child > div:first-child > div:last-child {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
   }
 
-  /* ── Stat card value font scaling per breakpoint ── */
-  .aad-stat-card-value { font-size: 1.5rem; }
-  @media (min-width: 1024px) and (max-width: 1279px) { .aad-stat-card-value { font-size: 1.25rem; } }
-  @media (min-width: 1280px) and (max-width: 1439px) { .aad-stat-card-value { font-size: 1.375rem; } }
-  @media (min-width: 2560px)                          { .aad-stat-card-value { font-size: 1.75rem; } }
-
-  /* ── Stat card padding scaling ── */
-  .aad-stat-card-pad { padding: 12px 16px; }
-  @media (min-width: 1024px) and (max-width: 1279px) { .aad-stat-card-pad { padding: 10px 12px; } }
-  @media (min-width: 1280px) and (max-width: 1439px) { .aad-stat-card-pad { padding: 10px 14px; } }
-  @media (min-width: 2560px)                          { .aad-stat-card-pad { padding: 16px 20px; } }
-
-  /* ── Main content grid: ensure side-by-side on laptop ── */
-  @media (min-width: 1024px) and (max-width: 1279px) {
-    .aad-main-grid { gap: 14px !important; }
-    .aad-charts-grid { gap: 14px !important; }
+  /* ═══════════════════════════════════════════════════════
+     AGENT DETAIL MODAL — safe max-height + scrolling
+     CRITICAL: The modal inner card must handle its own
+     scroll. The outer overlay must NOT scroll — that's
+     what causes the double-scrollbar in the screenshot.
+  ═══════════════════════════════════════════════════════ */
+  .aad-font .fixed.inset-0 > .bg-white.rounded-2xl,
+  .aad-font .fixed.inset-0 > .bg-white.max-w-2xl {
+    max-height: 90vh;
+    overflow-y: auto;
   }
-  @media (min-width: 1280px) and (max-width: 1439px) {
-    .aad-main-grid { gap: 16px !important; }
-    .aad-charts-grid { gap: 16px !important; }
+
+  /* Hide the outer overlay scrollbar — only inner card scrolls */
+  .aad-font .fixed.inset-0.overflow-y-auto {
+    scrollbar-width: none;
   }
+  .aad-font .fixed.inset-0.overflow-y-auto::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* QHD: agent detail modal wider */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .aad-font .fixed.inset-0 > .bg-white.max-w-2xl {
+      max-width: 860px;
+    }
+  }
+  @media (min-width: 3840px) {
+    .aad-font .fixed.inset-0 > .bg-white.max-w-2xl {
+      max-width: 1100px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     RESPONSE TIME CARD — name column fluid width
+  ═══════════════════════════════════════════════════════ */
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .aad-font .aad-rt-maxh .w-28 {
+      width: clamp(80px, 10vw, 112px);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     LINE HEIGHT: unitless everywhere
+  ═══════════════════════════════════════════════════════ */
+  .aad-font p, .aad-font span, .aad-font div {
+    line-height: inherit;
+  }
+  .aad-font h1 { line-height: 1.15; }
+  .aad-font h2 { line-height: 1.2;  }
+  .aad-font h3 { line-height: 1.25; }
 `;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -999,6 +1258,70 @@ const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, t
   );
 };
 
+// ─── Stat Card with fixed-position tooltip (escapes sidebar overflow:hidden) ──
+interface StatCardProps {
+  s: { label: string; value: string | number; bg: string; color: string; tooltip: { title: string; desc: string } };
+  Icon: React.ElementType;
+}
+const StatCard: React.FC<StatCardProps> = ({ s, Icon }) => {
+  const [visible, setVisible] = React.useState(false);
+  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const TOOLTIP_W = 240;
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    let x = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+    if (x < 8) x = 8;
+    if (x + TOOLTIP_W > window.innerWidth - 8) x = window.innerWidth - TOOLTIP_W - 8;
+    setPos({ x, y: rect.top - 8 });
+    setVisible(true);
+  };
+
+  return (
+    <div
+      className="relative flex items-center gap-3 bg-gray-100 rounded-xl p-4 border border-gray-100 cursor-default"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setVisible(false)}
+    >
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
+        <Icon style={{ color: s.color }} size={17} />
+      </div>
+      <div>
+        <div className="text-xl font-bold text-[#0A0A0A]">{s.value}</div>
+        <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
+      </div>
+      {visible && ReactDOM.createPortal(
+        <div
+          style={{
+            position: "fixed",
+            left: pos.x,
+            top: pos.y,
+            width: TOOLTIP_W,
+            zIndex: 99999,
+            transform: "translateY(-100%)",
+            pointerEvents: "none",
+          }}
+        >
+          <div className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="h-1 w-full" style={{ background: s.color }} />
+            <div className="px-3 py-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
+                <span className="text-[12px] font-bold text-gray-900">{s.tooltip.title}</span>
+              </div>
+              <p className="text-[11px] text-gray-500 leading-snug">{s.tooltip.desc}</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AdminAgentControl: React.FC = () => {
   const { isDark } = useTheme();
@@ -1373,18 +1696,22 @@ const AdminAgentControl: React.FC = () => {
     <div className="aad-font min-h-screen bg-[#FAFAFA] text-[#111] overflow-x-hidden">
       <style>{customStyles}</style>
 
-      {toggleModal && (
-        <AgentToggleModal
-          open={true}
-          mode={toggleModal.mode}
-          agentName={toggleModal.agent.name}
-          agentAvatarSrc={toggleModal.agent.avatarUrl}
-          accent={toggleModal.mode === 'disable' ? '#EF4444' : '#22C55E'}
-          loading={toggleModal.loading}
-          requireReasonOnEnable={true}
-          onConfirm={handleToggleConfirm}
-          onCancel={handleToggleCancel}
-        />
+      {/* ════════════ AGENT TOGGLE MODAL — portaled to document.body, z-[10000] wrapper guarantees it always wins ════════════ */}
+      {toggleModal && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, isolation: 'isolate' }}>
+          <AgentToggleModal
+            open={true}
+            mode={toggleModal.mode}
+            agentName={toggleModal.agent.name}
+            agentAvatarSrc={toggleModal.agent.avatarUrl}
+            accent={toggleModal.mode === 'disable' ? '#EF4444' : '#22C55E'}
+            loading={toggleModal.loading}
+            requireReasonOnEnable={true}
+            onConfirm={handleToggleConfirm}
+            onCancel={handleToggleCancel}
+          />
+        </div>,
+        document.body
       )}
 
       {/* ── Header ── */}
@@ -1421,30 +1748,7 @@ const AdminAgentControl: React.FC = () => {
             ].map((s, i) => {
               const Icon = s.icon as React.ElementType;
               return (
-                <div key={i} className="relative group flex items-center gap-3 bg-gray-100 rounded-xl p-4 border border-gray-100 cursor-default">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
-                    <Icon style={{ color: s.color }} size={17} />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-[#0A0A0A]">{s.value}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
-                  </div>
-                  <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                      <div className="h-1 w-full" style={{ background: s.color }} />
-                      <div className="px-3 py-2.5">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
-                          <span className="text-[12px] font-bold text-gray-900">{s.tooltip.title}</span>
-                        </div>
-                        <p className="text-[11px] text-gray-500 leading-snug">{s.tooltip.desc}</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
-                    </div>
-                  </div>
-                </div>
+                <StatCard key={i} s={s} Icon={Icon} />
               );
             })}
           </div>
@@ -1765,8 +2069,8 @@ const AdminAgentControl: React.FC = () => {
       </div>
 
       {/* ════════════ VIEW DETAILS PANEL ════════════ */}
-      {showDetailsPanel && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDetailsPanel(false)}>
+      {showDetailsPanel && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowDetailsPanel(false)}>
           <div className="aad-details-modal bg-white rounded-2xl shadow-2xl max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-2xl z-10">
               <div className="flex items-center justify-between mb-4">
@@ -1853,12 +2157,13 @@ const AdminAgentControl: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ════════════ AGENT DETAIL MODAL ════════════ */}
-      {showAgentModal && selectedAgent && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowAgentModal(false)}>
+      {showAgentModal && selectedAgent && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowAgentModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-2xl z-10">
               <div className="flex items-center justify-between">
@@ -2001,7 +2306,8 @@ const AdminAgentControl: React.FC = () => {
               <button onClick={() => setShowAgentModal(false)} className="w-full px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors">Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* <FloatingChat /> */}

@@ -492,6 +492,10 @@ const AuditLogs: React.FC = () => {
            4K / ultrawide (2560px+) → expands gently
         ═══════════════════════════════════════════════════════ */
 
+        /* ── Global box-sizing safety ── */
+        .al-root *, .al-root *::before, .al-root *::after { box-sizing: border-box; }
+        .min-h-screen { box-sizing: border-box; }
+
         /* ── Header band padding ── */
         .al-band-px { padding-left: 48px; padding-right: 48px; }
 
@@ -528,48 +532,157 @@ const AuditLogs: React.FC = () => {
         /* ── H1 ── */
         .al-h1 { font-size: 2.25rem; }
 
+        /* ── Filters toolbar: prevent overflow, allow wrap ── */
+        .al-filters-row {
+          display: flex;
+          align-items: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        /* ── Table wrapper: horizontal scroll on narrow screens ── */
+        .al-table-scroll {
+          overflow-x: auto;
+          scrollbar-width: thin;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Table: min column widths to stay readable ── */
+        .al-table-scroll table {
+          min-width: 680px;
+        }
+
+        /* ── Modals: max-height + overflow ── */
+        .al-modal-detail {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .al-modal-export {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+
+        /* ── Dropdown z-index safety ── */
+        .al-dropdown { z-index: 50; }
+
+        /* ── User email input: flex-shrink ── */
+        .al-email-input { min-width: 0; }
+
+        /* ── Touch targets ── */
+        .al-touch { min-height: 36px; }
+
         /* Tablet: 768–1023 */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .al-band-px      { padding-left: 20px; padding-right: 20px; }
-          .al-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
-          .al-page-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; }
-          .al-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-          .al-h1           { font-size: 1.75rem !important; }
+          .al-band-px        { padding-left: 16px; padding-right: 16px; }
+          .al-header-inner   { max-width: 100%; padding-top: 20px; padding-bottom: 16px; gap: 12px; }
+          .al-page-wrapper   { max-width: 100%; padding-left: 16px; padding-right: 16px; }
+          .al-stats-grid     { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          .al-h1             { font-size: 1.75rem !important; }
+
+          /* Header action buttons: wrap and touch-friendly */
+          .al-header-inner > div:last-child { flex-wrap: wrap; }
+          .al-header-inner > div:last-child button { min-height: 44px; min-width: 44px; }
+
+          /* Filters: stack more aggressively */
+          .al-filters-row    { gap: 8px; }
+
+          /* User email input: full width on tablet */
+          .al-filters-row .al-email-wrap { width: 100%; }
+          .al-filters-row .al-email-wrap input { width: 100%; min-width: 0; }
+
+          /* Table card: no horizontal padding on narrow */
+          .al-table-card { border-radius: 12px; }
+          .al-table-card .px-6 { padding-left: 14px; padding-right: 14px; }
+
+          /* Pagination buttons: touch-friendly */
+          .al-pagination-btn { min-height: 44px; }
+
+          /* Modal: near full-width */
+          .al-modal-detail-inner { width: calc(100vw - 32px); max-width: 100%; }
+          .al-modal-export-inner { width: calc(100vw - 32px); max-width: 100%; }
+
+          /* Notices: smaller text is fine, just ensure padding */
+          .al-notice { padding-left: 14px; padding-right: 14px; }
+
+          /* Divider in filters: hide on tablet to save space */
+          .al-filter-divider { display: none; }
+
+          /* Total logs count: full row */
+          .al-total-count { width: 100%; margin-left: 0; padding-bottom: 0; }
         }
 
         /* Small laptop: 1024–1279 (MacBook 13") */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .al-band-px      { padding-left: 28px; padding-right: 28px; }
-          .al-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
-          .al-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
-          .al-stats-grid   { gap: 10px; }
-          .al-h1           { font-size: 1.875rem !important; }
+          .al-band-px        { padding-left: 24px; padding-right: 24px; }
+          .al-header-inner   { max-width: 100%; padding-top: 28px; padding-bottom: 22px; }
+          .al-page-wrapper   { max-width: 100%; padding-left: 24px; padding-right: 24px; }
+          .al-stats-grid     { gap: 10px; }
+          .al-h1             { font-size: 1.875rem !important; }
+          .al-filters-row    { gap: 10px; }
         }
 
         /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
         @media (min-width: 1280px) and (max-width: 1439px) {
-          .al-band-px      { padding-left: 36px; padding-right: 36px; }
-          .al-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
-          .al-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
-          .al-h1           { font-size: 2rem !important; }
+          .al-band-px        { padding-left: 28px; padding-right: 28px; }
+          .al-header-inner   { max-width: 1100px; padding-top: 32px; padding-bottom: 26px; }
+          .al-page-wrapper   { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+          .al-h1             { font-size: 2rem !important; }
         }
 
         /* Large laptop / small desktop: 1440–1919 */
         @media (min-width: 1440px) and (max-width: 1919px) {
-          .al-band-px      { padding-left: 44px; padding-right: 44px; }
-          .al-header-inner { max-width: 1400px; }
-          .al-page-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+          .al-band-px        { padding-left: 36px; padding-right: 36px; }
+          .al-header-inner   { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
+          .al-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* Exact target: 1920×1080 — lock baseline */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .al-band-px        { padding-left: 48px; padding-right: 48px; }
+          .al-header-inner   { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
+          .al-page-wrapper   { max-width: 1400px; padding-left: 48px; padding-right: 48px; }
+          .al-stats-grid     { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+          .al-h1             { font-size: 2.25rem !important; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .al-band-px      { padding-left: 80px; padding-right: 80px; }
-          .al-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .al-page-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; }
-          .al-stats-grid   { gap: 16px; }
-          .al-h1           { font-size: 3rem !important; }
+        /* QHD: 2560–3839px */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .al-band-px        { padding-left: 64px; padding-right: 64px; }
+          .al-header-inner   { max-width: 1800px; padding-top: 56px; padding-bottom: 44px; }
+          .al-page-wrapper   { max-width: 1800px; padding-left: 64px; padding-right: 64px; }
+          .al-stats-grid     { gap: 16px; }
+          .al-h1             { font-size: 3rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* Table: more spacious */
+          .al-table-scroll table td,
+          .al-table-scroll table th { padding-left: 28px; padding-right: 28px; font-size: 14px; }
+          /* Stats cards: more padding */
+          .al-stats-grid > div { padding: 20px; }
+          /* Filters: slightly larger selects */
+          .al-filters-row { gap: 16px; }
+          /* Modal: wider */
+          .al-modal-detail-inner { max-width: 800px; }
+          .al-modal-export-inner { max-width: 560px; }
+        }
+
+        /* 4K+: 3840px+ */
+        @media (min-width: 3840px) {
+          .al-band-px        { padding-left: 96px; padding-right: 96px; }
+          .al-header-inner   { max-width: 2400px; padding-top: 72px; padding-bottom: 56px; }
+          .al-page-wrapper   { max-width: 2400px; padding-left: 96px; padding-right: 96px; }
+          .al-stats-grid     { gap: 20px; }
+          .al-h1             { font-size: 4rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* Table: much more spacious */
+          .al-table-scroll table td,
+          .al-table-scroll table th { padding-left: 36px; padding-right: 36px; font-size: 16px; }
+          /* Stats cards */
+          .al-stats-grid > div { padding: 28px; }
+          .al-stats-grid > div .text-xl { font-size: 2rem; }
+          .al-stats-grid > div .text-\[11px\] { font-size: 14px; }
+          /* Filters */
+          .al-filters-row { gap: 20px; }
+          /* Modal: wider */
+          .al-modal-detail-inner { max-width: 1000px; }
+          .al-modal-export-inner { max-width: 680px; }
         }
       `}</style>
 
@@ -640,7 +753,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {/* Divider */}
-            <div className="w-px h-8 bg-gray-200 self-end mb-1" />
+            <div className="al-filter-divider w-px h-8 bg-gray-200 self-end mb-1" />
 
             {/* Event type */}
             <CustomSelect
@@ -661,7 +774,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {/* User email */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 al-email-wrap">
               <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">User Email</label>
               <input
                 type="text"
@@ -686,7 +799,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {totalLogs > 0 && (
-              <div className="ml-auto text-[12.5px] text-gray-400 self-end pb-2">
+              <div className="ml-auto text-[12.5px] text-gray-400 self-end pb-2 al-total-count">
                 {totalLogs.toLocaleString()} total logs
               </div>
             )}
@@ -730,7 +843,7 @@ const AuditLogs: React.FC = () => {
         )}
 
         {/* ── Table ── */}
-        <div className="mt-6 mb-10 bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div className="mt-6 mb-10 bg-white border border-gray-200 rounded-2xl overflow-hidden al-table-card">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-[15px] font-bold text-[#0A0A0A] tracking-tight">Activity Log</h2>
             {totalLogs > 0 && !loading && (
@@ -754,7 +867,7 @@ const AuditLogs: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto al-table-scroll">
               <table className="w-full">
                 <thead className="bg-[#FAFAFA]">
                   <tr>
@@ -797,17 +910,17 @@ const AuditLogs: React.FC = () => {
 
           {/* Pagination */}
           {totalLogs > 0 && !loading && (
-            <div className="bg-[#FAFAFA] border-t border-gray-100 px-6 py-3 flex items-center justify-between">
+            <div className="bg-[#FAFAFA] border-t border-gray-100 px-6 py-3 flex items-center justify-between flex-wrap gap-3">
               <span className="text-[12.5px] text-gray-400">
                 Page {currentPage} of {getTotalPages()} · {totalLogs.toLocaleString()} total
               </span>
               <div className="flex gap-2">
                 <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
-                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed al-pagination-btn">
                   ← Previous
                 </button>
                 <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= getTotalPages()}
-                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed al-pagination-btn">
                   Next →
                 </button>
               </div>
@@ -823,7 +936,7 @@ const AuditLogs: React.FC = () => {
           onClick={() => { setSelectedLog(null); setCopied(false); }}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden al-modal-detail-inner"
             onClick={e => e.stopPropagation()}
           >
             {/* ── Header ── */}
@@ -1147,7 +1260,7 @@ const AuditLogs: React.FC = () => {
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setShowExportModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 al-modal-export-inner" onClick={e => e.stopPropagation()}>
             <h2 className="text-[20px] font-bold text-[#0A0A0A] mb-1">Export Audit Logs</h2>
             <p className="text-[13px] text-gray-500 mb-6">
               You have {getTotalPages()} pages of logs. What would you like to export?

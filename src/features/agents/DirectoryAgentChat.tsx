@@ -767,9 +767,10 @@ const DirectoryAgentChat: React.FC = () => {
         .dac-textinput {
           flex: 1; background: none; border: none; outline: none;
           color: #111827; font-size: 14px; font-family: inherit; padding: 4px 0;
+          min-width: 0;
         }
         .dac-textinput::placeholder { color: #d1d5db; }
-        .dac-divider { width: 1px; height: 20px; background: #e5e7eb; }
+        .dac-divider { width: 1px; height: 20px; background: #e5e7eb; flex-shrink: 0; }
         .dac-send {
           display: flex; align-items: center; gap: 7px;
           padding: 9px 20px; border-radius: 10px;
@@ -778,6 +779,7 @@ const DirectoryAgentChat: React.FC = () => {
           cursor: pointer; font-family: inherit;
           box-shadow: 0 4px 12px rgba(79,70,229,.3);
           transition: all .18s;
+          white-space: nowrap; flex-shrink: 0;
         }
         .dac-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(79,70,229,.38); }
         .dac-send:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
@@ -819,12 +821,14 @@ const DirectoryAgentChat: React.FC = () => {
           border: 1.5px solid #e0e0f0; border-radius: 8px;
           background: #fff; font-family: inherit; outline: none;
           transition: border-color .15s;
+          min-width: 0;
         }
         .dac-filter-select:focus, .dac-filter-input:focus { border-color: #7c3aed; }
         .dac-search-btn {
           padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
           background: #7c3aed; color: #fff; border: none; cursor: pointer;
           font-family: inherit; transition: .15s;
+          white-space: nowrap; flex-shrink: 0;
         }
         .dac-search-btn:hover { background: #6d28d9; }
 
@@ -839,6 +843,7 @@ const DirectoryAgentChat: React.FC = () => {
           padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600;
           background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
           cursor: pointer; font-family: inherit; transition: .15s;
+          white-space: nowrap; flex-shrink: 0;
         }
         .dac-errlogs-btn:hover { background: #fde68a; }
 
@@ -858,6 +863,7 @@ const DirectoryAgentChat: React.FC = () => {
         .dac-tbl-btn {
           padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 600;
           border: 1.5px solid; cursor: pointer; font-family: inherit; transition: .15s;
+          white-space: nowrap;
         }
         .dac-tbl-btn.update { border-color: #c7d2fe; color: #4f46e5; background: #eef2ff; }
         .dac-tbl-btn.update:hover { background: #e0e7ff; }
@@ -870,6 +876,7 @@ const DirectoryAgentChat: React.FC = () => {
           display: flex; align-items: center; gap: 6px;
           padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 600;
           cursor: pointer; font-family: inherit; transition: .15s; border: 1.5px solid;
+          white-space: nowrap;
         }
         .dac-bulk-import { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
         .dac-bulk-import:hover { background: #e0e7ff; }
@@ -889,6 +896,7 @@ const DirectoryAgentChat: React.FC = () => {
           background: #fff; border-radius: 20px;
           box-shadow: 0 20px 60px rgba(0,0,0,.15);
           width: 100%; max-width: 480px;
+          max-height: 90vh; overflow-y: auto;
           animation: dac-scale .2s ease;
         }
         @keyframes dac-scale {
@@ -963,66 +971,111 @@ const DirectoryAgentChat: React.FC = () => {
              - .dac-results padding
         ═══════════════════════════════════════════════════════════════ */
 
+        /* ── Global box-sizing safety ── */
+        .dac-root *, .dac-root *::before, .dac-root *::after {
+          box-sizing: border-box;
+        }
+
+        /* ── Z-index scale ── */
+        .dac-modal-overlay { z-index: 100; }
+        .dac-topbar        { z-index: 30; }
+        .dac-dash          { z-index: 10; }
+
         /* Tablet: 768–1023px */
         @media (min-width: 768px) and (max-width: 1023px) {
           /* Dashboard panel: narrower to give chat more room */
-          .dac-dash               { width: 320px; }
+          .dac-dash               { width: 280px; }
           /* Chat message padding: tighter */
-          .dac-msgs               { padding: 16px 16px; }
+          .dac-msgs               { padding: 14px 14px; gap: 10px; }
           /* Topbar: tighter horizontal padding */
-          .dac-topbar             { padding: 0 16px; }
+          .dac-topbar             { padding: 0 12px; height: 52px; }
+          .dac-topbar-left        { gap: 10px; }
+          .dac-topbar-right       { gap: 6px; flex-wrap: wrap; }
+          /* Agent pill: compact */
+          .dac-agent-pill         { padding: 5px 9px; gap: 7px; }
+          .dac-agent-name         { font-size: 12px; }
+          /* Topbar buttons: wrap-safe */
+          .dac-topbtn             { padding: 6px 10px; font-size: 12px; min-height: 44px; }
           /* Bubbles & cards: slightly wider on small viewports */
-          .dac-bubble             { max-width: 78%; font-size: 13px; }
-          .dac-confirm            { max-width: 78%; }
-          .dac-form-card          { max-width: 88%; }
+          .dac-bubble             { max-width: 82%; font-size: 13px; }
+          .dac-confirm            { max-width: 82%; }
+          .dac-form-card          { max-width: 92%; }
+          .dac-form-grid          { grid-template-columns: 1fr; }
+          .dac-form-grid .full    { grid-column: 1; }
           /* Dashboard header: tighter */
-          .dac-dash-header        { padding: 10px 14px; }
-          .dac-dash-title         { font-size: 14px; margin-bottom: 10px; }
-          .dac-results            { padding: 10px 14px; }
-          /* Stats: compact */
-          .dac-stats              { gap: 6px; margin-bottom: 10px; }
+          .dac-dash-header        { padding: 10px 12px; }
+          .dac-dash-title         { font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+          .dac-results            { padding: 10px 12px; }
+          /* Stats: compact 2-col still but tighter */
+          .dac-stats              { gap: 5px; margin-bottom: 8px; }
           /* Input zone: tighter */
-          .dac-inputzone          { padding: 8px 14px 12px; }
+          .dac-inputzone          { padding: 8px 12px 12px; }
+          .dac-inputrow           { padding: 6px 10px; gap: 7px; }
+          .dac-textinput          { font-size: 13px; }
+          .dac-send               { padding: 8px 14px; font-size: 12px; min-height: 44px; }
+          .dac-icon-btn           { min-height: 44px; min-width: 44px; justify-content: center; }
           /* Table: smaller text */
-          .dac-table              { font-size: 11.5px; }
-          .dac-tbl-btn            { padding: 3px 7px; font-size: 10px; }
+          .dac-table              { font-size: 11px; }
+          .dac-table th           { padding: 6px 6px; font-size: 10px; }
+          .dac-table td           { padding: 8px 6px; }
+          .dac-tbl-btn            { padding: 3px 6px; font-size: 10px; min-height: 44px; display: inline-flex; align-items: center; }
           /* Filter section: tighter */
-          .dac-filter-section     { padding: 10px 11px; }
-          .dac-filter-label       { min-width: 60px; font-size: 11px; }
+          .dac-filter-section     { padding: 9px 10px; }
+          .dac-filter-title       { font-size: 10px; }
+          .dac-filter-label       { min-width: 56px; font-size: 11px; }
+          .dac-filter-row         { gap: 6px; flex-wrap: wrap; }
+          .dac-filter-select,
+          .dac-filter-input       { font-size: 11px; padding: 5px 7px; }
+          .dac-search-btn         { padding: 6px 11px; font-size: 11px; min-height: 44px; }
           /* Bulk buttons: compact */
-          .dac-bulk-btn           { padding: 5px 10px; font-size: 11px; }
+          .dac-bulk-btn           { padding: 5px 8px; font-size: 10px; gap: 4px; min-height: 44px; }
+          /* Confirm buttons: touch-friendly */
+          .dac-yes, .dac-no       { padding: 9px 14px; min-height: 44px; }
+          /* Modal: full-width on tablet */
+          .dac-modal              { max-width: calc(100vw - 32px); }
+          .dac-modal-body         { grid-template-columns: 1fr; }
+          .dac-modal-full         { grid-column: 1; }
+          /* Error logs: tighter */
+          .dac-errlog             { margin: 8px 12px 0; }
         }
 
         /* Small laptop: 1024–1279px (MacBook 13") */
         @media (min-width: 1024px) and (max-width: 1279px) {
           /* Dashboard panel: moderately narrower */
-          .dac-dash               { width: 380px; }
+          .dac-dash               { width: 360px; }
           /* Chat message padding: slightly tighter */
-          .dac-msgs               { padding: 20px 20px; }
+          .dac-msgs               { padding: 18px 18px; gap: 12px; }
           /* Topbar: slightly tighter */
-          .dac-topbar             { padding: 0 20px; }
+          .dac-topbar             { padding: 0 18px; }
+          .dac-topbar-left        { gap: 12px; }
           /* Bubbles */
-          .dac-bubble             { max-width: 72%; font-size: 13.5px; }
-          .dac-confirm            { max-width: 72%; }
-          .dac-form-card          { max-width: 84%; }
+          .dac-bubble             { max-width: 74%; font-size: clamp(12.5px, 0.9vw, 14px); }
+          .dac-confirm            { max-width: 74%; }
+          .dac-form-card          { max-width: 86%; }
           /* Dashboard header */
-          .dac-dash-header        { padding: 12px 16px; }
-          .dac-dash-title         { font-size: 15px; margin-bottom: 12px; }
-          .dac-results            { padding: 12px 16px; }
+          .dac-dash-header        { padding: 11px 14px; }
+          .dac-dash-title         { font-size: 14px; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+          .dac-results            { padding: 11px 14px; }
           /* Stats */
-          .dac-stats              { gap: 7px; margin-bottom: 12px; }
+          .dac-stats              { gap: 6px; margin-bottom: 10px; }
           /* Table */
-          .dac-table              { font-size: 12px; }
-          .dac-tbl-btn            { padding: 3px 8px; font-size: 10.5px; }
+          .dac-table              { font-size: 11.5px; }
+          .dac-table th           { padding: 7px 8px; font-size: 10px; }
+          .dac-table td           { padding: 8px 8px; }
+          .dac-tbl-btn            { padding: 3px 7px; font-size: 10px; }
           /* Filter */
-          .dac-filter-section     { padding: 10px 12px; }
-          .dac-filter-label       { min-width: 64px; }
+          .dac-filter-section     { padding: 10px 11px; }
+          .dac-filter-label       { min-width: 62px; font-size: 11px; }
+          .dac-filter-select,
+          .dac-filter-input       { font-size: 11.5px; }
           /* Bulk buttons */
-          .dac-bulk-btn           { padding: 6px 11px; font-size: 11.5px; }
+          .dac-bulk-btn           { padding: 5px 10px; font-size: 11px; }
           /* Input zone */
-          .dac-inputzone          { padding: 10px 16px 14px; }
+          .dac-inputzone          { padding: 10px 14px 13px; }
           /* Send button: slightly compact */
-          .dac-send               { padding: 8px 16px; }
+          .dac-send               { padding: 8px 15px; font-size: 12px; }
+          /* Modal */
+          .dac-modal              { max-width: 460px; }
         }
 
         /* Laptop: 1280–1439px (MacBook 14/15", typical 1366/1440) */
@@ -1033,47 +1086,172 @@ const DirectoryAgentChat: React.FC = () => {
           .dac-msgs               { padding: 22px 24px; }
           .dac-topbar             { padding: 0 22px; }
           /* Dashboard header */
-          .dac-dash-header        { padding: 13px 17px; }
+          .dac-dash-header        { padding: 13px 16px; }
           .dac-dash-title         { font-size: 16px; }
-          .dac-results            { padding: 13px 17px; }
+          .dac-results            { padding: 13px 16px; }
+          /* Stats */
+          .dac-stats              { gap: 7px; margin-bottom: 12px; }
+          /* Table */
+          .dac-table              { font-size: 12.5px; }
+          /* Bulk buttons: slightly compact */
+          .dac-bulk-btn           { padding: 6px 12px; font-size: 11.5px; }
+          /* Modal */
+          .dac-modal              { max-width: 480px; }
         }
 
         /* Large laptop / small desktop: 1440–1919px */
         @media (min-width: 1440px) and (max-width: 1919px) {
           /* Dashboard panel: very close to baseline */
           .dac-dash               { width: 460px; }
+          /* Chat: proportionally tighter than 1920px */
+          .dac-msgs               { padding: 23px 26px; }
+          .dac-topbar             { padding: 0 23px; }
+          /* Dashboard header */
+          .dac-dash-header        { padding: 13px 17px; }
+          .dac-dash-title         { font-size: 16.5px; }
+          .dac-results            { padding: 13px 17px; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* Exact target: 1920×1080 — lock the baseline (defaults above already match) */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .dac-dash               { width: 480px; }
+          .dac-msgs               { padding: 24px 28px; gap: 14px; }
+          .dac-topbar             { padding: 0 24px; height: 56px; }
+          .dac-bubble             { font-size: 14px; }
+          .dac-dash-header        { padding: 14px 18px; }
+          .dac-dash-title         { font-size: 17px; }
+          .dac-results            { padding: 14px 18px; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
+        /* QHD: 2560–3839px */
+        @media (min-width: 2560px) and (max-width: 3839px) {
           /* Dashboard panel: wider to make use of extra screen */
-          .dac-dash               { width: 600px; }
+          .dac-dash               { width: 620px; }
           /* Chat: more generous padding */
-          .dac-msgs               { padding: 32px 40px; gap: 18px; }
-          .dac-topbar             { padding: 0 40px; height: 64px; }
+          .dac-msgs               { padding: 32px 42px; gap: 18px; }
+          .dac-topbar             { padding: 0 42px; height: 66px; }
+          .dac-topbar-left        { gap: 20px; }
+          .dac-topbar-right       { gap: 14px; }
+          /* Agent pill: larger */
+          .dac-agent-pill         { padding: 8px 16px; gap: 12px; }
+          .dac-agent-name         { font-size: 15px; }
+          .dac-agent-dot          { width: 10px; height: 10px; }
+          /* Topbar buttons: larger */
+          .dac-topbtn             { padding: 9px 18px; font-size: 14px; }
           /* Bubbles: slightly larger text */
-          .dac-bubble             { font-size: 15px; }
+          .dac-bubble             { font-size: 15px; max-width: 65%; padding: 13px 18px; }
+          .dac-confirm            { max-width: 65%; padding: 20px 22px; }
           .dac-confirm-text       { font-size: 15px; }
+          .dac-form-card          { max-width: 76%; padding: 22px; }
+          .dac-form-title         { font-size: 14px; }
+          .dac-form-label         { font-size: 12px; }
+          .dac-form-input         { font-size: 14px; padding: 10px 13px; }
+          .dac-form-submit        { font-size: 14px; padding: 12px; }
+          /* Avatar: larger */
+          .dac-avatar             { width: 38px; height: 38px; font-size: 16px; }
+          /* Typing indicator: larger dots */
+          .dac-dot                { width: 9px; height: 9px; }
           /* Dashboard */
           .dac-dash-header        { padding: 18px 24px; }
-          .dac-dash-title         { font-size: 19px; }
+          .dac-dash-title         { font-size: 20px; margin-bottom: 18px; }
           .dac-results            { padding: 18px 24px; }
+          .dac-results-title      { font-size: 16px; }
           .dac-stats              { gap: 12px; margin-bottom: 18px; }
           /* Table */
           .dac-table              { font-size: 14px; }
-          .dac-tbl-btn            { padding: 5px 13px; font-size: 12px; }
+          .dac-table th           { padding: 10px 12px; font-size: 12px; }
+          .dac-table td           { padding: 12px 12px; }
+          .dac-tbl-btn            { padding: 5px 14px; font-size: 12px; }
+          /* Filter section */
+          .dac-filter-section     { padding: 14px 16px; }
+          .dac-filter-title       { font-size: 13px; }
+          .dac-filter-label       { font-size: 13px; min-width: 86px; }
+          .dac-filter-select,
+          .dac-filter-input       { font-size: 13px; padding: 7px 11px; }
+          .dac-search-btn         { padding: 8px 20px; font-size: 13px; }
           /* Input zone */
-          .dac-inputzone          { padding: 16px 28px 20px; }
+          .dac-inputzone          { padding: 16px 30px 22px; }
+          .dac-inputrow           { padding: 10px 16px; gap: 12px; }
           .dac-textinput          { font-size: 15px; }
-          .dac-send               { padding: 11px 26px; font-size: 14px; }
+          .dac-icon-btn           { font-size: 22px; }
+          .dac-send               { padding: 12px 28px; font-size: 15px; gap: 9px; }
           /* Buttons */
-          .dac-bulk-btn           { padding: 9px 18px; font-size: 13px; }
+          .dac-bulk-btn           { padding: 9px 18px; font-size: 13px; gap: 8px; }
           /* Modal */
-          .dac-modal              { max-width: 560px; }
-          /* Agent pill */
-          .dac-agent-name         { font-size: 14px; }
+          .dac-modal              { max-width: 580px; }
+          .dac-modal-title        { font-size: 18px; }
+          .dac-modal-input        { font-size: 14px; padding: 11px 14px; }
+          .dac-modal-label        { font-size: 12px; }
+          /* Error logs */
+          .dac-errlog             { font-size: 12px; }
+          /* Timestamps */
+          .dac-ts                 { font-size: 12px; }
+          .dac-ts.ai,
+          .dac-ts.system          { padding-left: 50px; }
+          /* Confirm/No buttons */
+          .dac-yes, .dac-no       { padding: 10px 22px; font-size: 14px; }
+          /* Back button */
+          .dac-back               { font-size: 14px; padding: 8px 13px; }
+          /* Font smoothing for large headings */
+          .dac-dash-title,
+          .dac-modal-title,
+          .dac-results-title      { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        }
+
+        /* 4K+: 3840px+ */
+        @media (min-width: 3840px) {
+          .dac-dash               { width: 820px; }
+          .dac-msgs               { padding: 48px 64px; gap: 24px; }
+          .dac-topbar             { padding: 0 64px; height: 80px; }
+          .dac-topbar-left        { gap: 28px; }
+          .dac-topbar-right       { gap: 20px; }
+          .dac-agent-pill         { padding: 10px 22px; gap: 14px; }
+          .dac-agent-name         { font-size: 18px; }
+          .dac-agent-dot          { width: 12px; height: 12px; }
+          .dac-topbtn             { padding: 12px 24px; font-size: 17px; }
+          .dac-back               { font-size: 17px; padding: 10px 16px; }
+          .dac-bubble             { font-size: 18px; max-width: 60%; padding: 16px 22px; }
+          .dac-confirm            { max-width: 60%; padding: 24px 28px; }
+          .dac-confirm-text       { font-size: 18px; }
+          .dac-form-card          { max-width: 72%; padding: 28px; }
+          .dac-form-title         { font-size: 16px; }
+          .dac-form-label         { font-size: 14px; }
+          .dac-form-input         { font-size: 16px; padding: 12px 16px; }
+          .dac-form-submit        { font-size: 16px; padding: 14px; }
+          .dac-avatar             { width: 48px; height: 48px; font-size: 20px; }
+          .dac-dot                { width: 11px; height: 11px; }
+          .dac-ts                 { font-size: 14px; }
+          .dac-ts.ai,
+          .dac-ts.system          { padding-left: 62px; }
+          .dac-yes, .dac-no       { padding: 13px 28px; font-size: 17px; }
+          /* Dashboard */
+          .dac-dash-header        { padding: 24px 32px; }
+          .dac-dash-title         { font-size: 26px; margin-bottom: 24px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .dac-stats              { gap: 16px; margin-bottom: 24px; }
+          .dac-results            { padding: 24px 32px; }
+          .dac-results-title      { font-size: 20px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .dac-errlogs-btn        { padding: 8px 18px; font-size: 13px; }
+          .dac-table              { font-size: 17px; }
+          .dac-table th           { padding: 14px 16px; font-size: 14px; }
+          .dac-table td           { padding: 16px 16px; }
+          .dac-tbl-btn            { padding: 7px 18px; font-size: 14px; }
+          .dac-filter-section     { padding: 18px 22px; }
+          .dac-filter-title       { font-size: 16px; }
+          .dac-filter-label       { font-size: 16px; min-width: 110px; }
+          .dac-filter-select,
+          .dac-filter-input       { font-size: 16px; padding: 9px 14px; }
+          .dac-search-btn         { padding: 10px 26px; font-size: 15px; }
+          .dac-inputzone          { padding: 20px 44px 28px; }
+          .dac-inputrow           { padding: 14px 20px; gap: 16px; }
+          .dac-textinput          { font-size: 18px; }
+          .dac-icon-btn           { font-size: 28px; }
+          .dac-send               { padding: 15px 36px; font-size: 18px; gap: 11px; }
+          .dac-bulk-btn           { padding: 12px 24px; font-size: 16px; gap: 10px; }
+          .dac-modal              { max-width: 720px; }
+          .dac-modal-title        { font-size: 22px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .dac-modal-input        { font-size: 16px; padding: 13px 16px; }
+          .dac-modal-label        { font-size: 14px; }
+          .dac-errlog             { font-size: 14px; }
         }
 
         /* Original breakpoint — kept exactly as-is */
@@ -1357,7 +1535,7 @@ const DirectoryAgentChat: React.FC = () => {
                             <div style={{ width:26, height:26, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#6d28d9', flexShrink:0 }}>
                               {displayName(user).charAt(0).toUpperCase()}
                             </div>
-                            <span style={{ fontWeight:500, color:'#111827' }}>{displayName(user)}</span>
+                            <span style={{ fontWeight:500, color:'#111827', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName(user)}</span>
                           </div>
                         </td>
                         <td><span className="mono">{(user.uid as string) || '—'}</span></td>

@@ -239,61 +239,126 @@ const TargetSystemIntegration: React.FC = () => {
           --tsi-badge-fs:         11px;
         }
 
-        /* ── LARGE DESKTOP / 4K : >1920px ───────────────────────────────── */
-        @media (min-width: 1921px) {
+        /* ── QHD : 2560–3839px ───────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
           :root {
-            --tsi-page-max-w:       1800px;
-            --tsi-page-px:          80px;
-            --tsi-header-pt:        56px;
-            --tsi-header-pb:        44px;
-            --tsi-back-fs:          15px;
-            --tsi-back-mb:          18px;
-            --tsi-h1-fs:            52px;
-            --tsi-h1-mb:            12px;
-            --tsi-subtitle-fs:      18px;
-            --tsi-content-pt:       56px;
-            --tsi-content-pb:       100px;
-            --tsi-section-gap:      64px;
-            --tsi-cat-icon-sz:      48px;
-            --tsi-cat-icon-fs:      18px;
-            --tsi-cat-title-fs:     18px;
-            --tsi-cat-count-fs:     14px;
-            --tsi-cat-header-mb:    32px;
-            --tsi-grid-gap:         28px;
-            --tsi-card-min-w:       340px;
-            --tsi-card-p:           32px;
-            --tsi-card-header-mb:   22px;
-            --tsi-logo-sz:          58px;
-            --tsi-card-title-fs:    18px;
-            --tsi-check-icon-fs:    17px;
-            --tsi-card-desc-fs:     14px;
-            --tsi-badge-px:         13px;
-            --tsi-badge-py:         6px;
-            --tsi-badge-fs:         13px;
+            --tsi-page-max-w:       1600px;
+            --tsi-page-px:          64px;
+            --tsi-header-pt:        52px;
+            --tsi-header-pb:        40px;
+            --tsi-back-fs:          14px;
+            --tsi-back-mb:          16px;
+            --tsi-h1-fs:            46px;
+            --tsi-h1-mb:            10px;
+            --tsi-subtitle-fs:      17px;
+            --tsi-content-pt:       52px;
+            --tsi-content-pb:       96px;
+            --tsi-section-gap:      60px;
+            --tsi-cat-icon-sz:      44px;
+            --tsi-cat-icon-fs:      17px;
+            --tsi-cat-title-fs:     17px;
+            --tsi-cat-count-fs:     13px;
+            --tsi-cat-header-mb:    30px;
+            --tsi-grid-gap:         26px;
+            --tsi-card-min-w:       320px;
+            --tsi-card-p:           30px;
+            --tsi-card-header-mb:   20px;
+            --tsi-logo-sz:          54px;
+            --tsi-card-title-fs:    17px;
+            --tsi-check-icon-fs:    16px;
+            --tsi-card-desc-fs:     13px;
+            --tsi-badge-px:         12px;
+            --tsi-badge-py:         5px;
+            --tsi-badge-fs:         12px;
           }
         }
 
-        /* ── LAPTOP : 1280–1919px ─────────────────────────────────────────
-           Covers MacBook Pro 14" (1512px scaled), 15"/16" (1680px scaled),
-           standard 1280–1440 laptops. UI looks identical to 1920 baseline.
-        ─────────────────────────────────────────────────────────────────── */
-        @media (min-width: 1280px) and (max-width: 1919px) {
+        /* ── 4K AND ULTRAWIDE : 3840px+ ──────────────────────────────────── */
+        @media (min-width: 3840px) {
           :root {
-            --tsi-page-max-w:       1200px;
+            --tsi-page-max-w:       2200px;
+            --tsi-page-px:          80px;
+            --tsi-header-pt:        64px;
+            --tsi-header-pb:        52px;
+            --tsi-back-fs:          16px;
+            --tsi-back-mb:          20px;
+            --tsi-h1-fs:            60px;
+            --tsi-h1-mb:            14px;
+            --tsi-subtitle-fs:      20px;
+            --tsi-content-pt:       64px;
+            --tsi-content-pb:       120px;
+            --tsi-section-gap:      80px;
+            --tsi-cat-icon-sz:      56px;
+            --tsi-cat-icon-fs:      22px;
+            --tsi-cat-title-fs:     22px;
+            --tsi-cat-count-fs:     16px;
+            --tsi-cat-header-mb:    40px;
+            --tsi-grid-gap:         36px;
+            --tsi-card-min-w:       400px;
+            --tsi-card-p:           40px;
+            --tsi-card-header-mb:   28px;
+            --tsi-logo-sz:          72px;
+            --tsi-card-title-fs:    22px;
+            --tsi-check-icon-fs:    20px;
+            --tsi-card-desc-fs:     17px;
+            --tsi-badge-px:         16px;
+            --tsi-badge-py:         8px;
+            --tsi-badge-fs:         15px;
+          }
+        }
+
+        /* ── LARGE LAPTOP : 1440–1919px ──────────────────────────────────── */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          :root {
+            --tsi-page-max-w:       1280px;
             --tsi-page-px:          36px;
-            --tsi-header-pt:        28px;
-            --tsi-header-pb:        22px;
+            --tsi-header-pt:        32px;
+            --tsi-header-pb:        26px;
+            --tsi-back-fs:          12.5px;
+            --tsi-back-mb:          11px;
+            --tsi-h1-fs:            32px;
+            --tsi-h1-mb:            7px;
+            --tsi-subtitle-fs:      14px;
+            --tsi-content-pt:       32px;
+            --tsi-content-pb:       72px;
+            --tsi-section-gap:      44px;
+            --tsi-cat-icon-sz:      33px;
+            --tsi-cat-icon-fs:      13px;
+            --tsi-cat-title-fs:     14px;
+            --tsi-cat-count-fs:     11.5px;
+            --tsi-cat-header-mb:    22px;
+            --tsi-grid-gap:         18px;
+            --tsi-card-min-w:       260px;
+            --tsi-card-p:           22px;
+            --tsi-card-header-mb:   15px;
+            --tsi-logo-sz:          40px;
+            --tsi-card-title-fs:    14px;
+            --tsi-check-icon-fs:    13px;
+            --tsi-card-desc-fs:     11.5px;
+            --tsi-badge-px:         9px;
+            --tsi-badge-py:         3.5px;
+            --tsi-badge-fs:         10.5px;
+          }
+        }
+
+        /* ── MEDIUM LAPTOP : 1280–1439px ─────────────────────────────────── */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          :root {
+            --tsi-page-max-w:       1100px;
+            --tsi-page-px:          28px;
+            --tsi-header-pt:        26px;
+            --tsi-header-pb:        20px;
             --tsi-back-fs:          12px;
             --tsi-back-mb:          10px;
-            --tsi-h1-fs:            28px;
+            --tsi-h1-fs:            26px;
             --tsi-h1-mb:            6px;
-            --tsi-subtitle-fs:      13.5px;
-            --tsi-content-pt:       28px;
-            --tsi-content-pb:       60px;
+            --tsi-subtitle-fs:      13px;
+            --tsi-content-pt:       26px;
+            --tsi-content-pb:       56px;
             --tsi-section-gap:      36px;
             --tsi-cat-icon-sz:      30px;
             --tsi-cat-icon-fs:      12px;
-            --tsi-cat-title-fs:     13.5px;
+            --tsi-cat-title-fs:     13px;
             --tsi-cat-count-fs:     11px;
             --tsi-cat-header-mb:    18px;
             --tsi-grid-gap:         16px;
@@ -301,7 +366,7 @@ const TargetSystemIntegration: React.FC = () => {
             --tsi-card-p:           18px;
             --tsi-card-header-mb:   13px;
             --tsi-logo-sz:          36px;
-            --tsi-card-title-fs:    13.5px;
+            --tsi-card-title-fs:    13px;
             --tsi-check-icon-fs:    12px;
             --tsi-card-desc-fs:     11px;
             --tsi-badge-px:         8px;
@@ -314,7 +379,7 @@ const TargetSystemIntegration: React.FC = () => {
         @media (min-width: 1024px) and (max-width: 1279px) {
           :root {
             --tsi-page-max-w:       100%;
-            --tsi-page-px:          28px;
+            --tsi-page-px:          24px;
             --tsi-header-pt:        22px;
             --tsi-header-pb:        18px;
             --tsi-back-fs:          11.5px;
@@ -348,7 +413,7 @@ const TargetSystemIntegration: React.FC = () => {
         @media (min-width: 768px) and (max-width: 1023px) {
           :root {
             --tsi-page-max-w:       100%;
-            --tsi-page-px:          20px;
+            --tsi-page-px:          16px;
             --tsi-header-pt:        18px;
             --tsi-header-pb:        14px;
             --tsi-back-fs:          11px;
@@ -376,6 +441,21 @@ const TargetSystemIntegration: React.FC = () => {
             --tsi-badge-py:         2px;
             --tsi-badge-fs:         9.5px;
           }
+
+          /* Force 2-column grid at tablet so cards don't become slivers */
+          .tsi-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          /* Touch targets: all interactive elements min 44×44px */
+          .tsi-card {
+            min-height: 44px;
+          }
+          .tsi-back-btn {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+          }
         }
 
         /* ── COMPONENT STYLES — all sizing via CSS vars ──────────────────── */
@@ -384,6 +464,8 @@ const TargetSystemIntegration: React.FC = () => {
           margin: 0 auto;
           padding-left: var(--tsi-page-px);
           padding-right: var(--tsi-page-px);
+          box-sizing: border-box;
+          width: 100%;
         }
         .tsi-header-inner {
           padding-top: var(--tsi-header-pt);
@@ -423,6 +505,61 @@ const TargetSystemIntegration: React.FC = () => {
         .tsi-card-desc { font-size: var(--tsi-card-desc-fs); }
         .tsi-badge-p { padding: var(--tsi-badge-py) var(--tsi-badge-px); }
         .tsi-badge-fs { font-size: var(--tsi-badge-fs); }
+
+        /* ── GLOBAL SAFETY NETS ──────────────────────────────────────────── */
+
+        /* Prevent horizontal overflow at all sizes */
+        .tsi-font {
+          overflow-x: hidden;
+        }
+
+        /* Flex children with truncated text must be able to shrink */
+        .tsi-card .flex-1 {
+          min-width: 0;
+        }
+
+        /* Card description: long unbreakable strings won't blow out */
+        .tsi-card-desc {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* Card title truncation guard */
+        .tsi-card-title {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* Images inside logo box scale correctly */
+        .tsi-logo-box img {
+          max-width: 100%;
+          height: auto;
+        }
+
+        /* SVG icons inside logo box */
+        .tsi-logo-box svg {
+          width: 50%;
+          height: 50%;
+        }
+
+        /* Ensure box-sizing is sane across all tsi elements */
+        .tsi-page-wrap,
+        .tsi-header-inner,
+        .tsi-content-wrap,
+        .tsi-grid,
+        .tsi-card {
+          box-sizing: border-box;
+        }
+
+        /* 4K font rendering quality */
+        @media (min-width: 2560px) {
+          .tsi-h1,
+          .tsi-cat-title,
+          .tsi-card-title {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+        }
       `}</style>
       <div className="tsi-font min-h-screen bg-[#FAFAFA]">
         {/* Header */}

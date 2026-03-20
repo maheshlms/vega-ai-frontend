@@ -2263,9 +2263,103 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           }
         }
 
+        /* ── QHD : 2560–3839px ───────────────────────────────────────────────
+           clamp() ceilings all hit at 1920px; the >1920px block fires from
+           1921px but its values start to feel small on a 2560px screen.
+           Override here for intentionally spacious QHD proportions.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          :root {
+            --tsf-hint-fs:          16px;
+            --tsf-field-label-fs:   20px;
+            --tsf-sublabel-fs:      16px;
+            --tsf-sm-fs:            18px;
+            --tsf-input-px:         26px;
+            --tsf-input-py:         20px;
+            --tsf-input-fs:         20px;
+            --tsf-header-px:        64px;
+            --tsf-header-py:        44px;
+            --tsf-header-h1-fs:     38px;
+            --tsf-header-badge-sz:  42px;
+            --tsf-header-badge-fs:  18px;
+            --tsf-close-btn-sz:     60px;
+            --tsf-close-icon-fs:    30px;
+            --tsf-form-px:          64px;
+            --tsf-form-py:          44px;
+            --tsf-error-px:         26px;
+            --tsf-error-py:         20px;
+            --tsf-error-mb:         32px;
+            --tsf-fields-gap:       36px;
+            --tsf-actions-mt:       52px;
+            --tsf-actions-pt:       44px;
+            --tsf-btn-fs:           19px;
+            --tsf-btn-icon-fs:      28px;
+            --tsf-checkbox-sz:      26px;
+            --tsf-ssl-p:            32px;
+            --tsf-ssl-gap:          32px;
+            --tsf-ssl-icon-sz:      38px;
+            --tsf-mono-fs:          17px;
+            --tsf-modal-max-w:      720px;
+            --tsf-modal-p:          60px;
+            --tsf-modal-icon-sz:    100px;
+            --tsf-modal-icon-fs:    52px;
+            --tsf-modal-icon-mb:    44px;
+            --tsf-modal-h2-fs:      38px;
+            --tsf-modal-sub-fs:     24px;
+            --tsf-modal-summary-p:  32px;
+            --tsf-modal-btn-py:     20px;
+          }
+        }
+
+        /* ── 4K+ : ≥3840px ───────────────────────────────────────────────────
+           Maximum layout expansion — intentionally spacious, not a narrow strip.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          :root {
+            --tsf-hint-fs:          20px;
+            --tsf-field-label-fs:   26px;
+            --tsf-sublabel-fs:      20px;
+            --tsf-sm-fs:            24px;
+            --tsf-input-px:         34px;
+            --tsf-input-py:         26px;
+            --tsf-input-fs:         26px;
+            --tsf-header-px:        86px;
+            --tsf-header-py:        56px;
+            --tsf-header-h1-fs:     50px;
+            --tsf-header-badge-sz:  54px;
+            --tsf-header-badge-fs:  24px;
+            --tsf-close-btn-sz:     78px;
+            --tsf-close-icon-fs:    40px;
+            --tsf-form-px:          86px;
+            --tsf-form-py:          56px;
+            --tsf-error-px:         34px;
+            --tsf-error-py:         26px;
+            --tsf-error-mb:         42px;
+            --tsf-fields-gap:       48px;
+            --tsf-actions-mt:       68px;
+            --tsf-actions-pt:       56px;
+            --tsf-btn-fs:           24px;
+            --tsf-btn-icon-fs:      36px;
+            --tsf-checkbox-sz:      34px;
+            --tsf-ssl-p:            42px;
+            --tsf-ssl-gap:          42px;
+            --tsf-ssl-icon-sz:      50px;
+            --tsf-mono-fs:          22px;
+            --tsf-modal-max-w:      960px;
+            --tsf-modal-p:          80px;
+            --tsf-modal-icon-sz:    130px;
+            --tsf-modal-icon-fs:    68px;
+            --tsf-modal-icon-mb:    56px;
+            --tsf-modal-h2-fs:      50px;
+            --tsf-modal-sub-fs:     32px;
+            --tsf-modal-summary-p:  42px;
+            --tsf-modal-btn-py:     26px;
+          }
+        }
+
         /* ── COMPONENT CLASSES — all sizing via CSS vars ─────────────────── */
-        .tsf-hint-text    { font-size: var(--tsf-hint-fs); }
-        .tsf-field-label  { font-size: var(--tsf-field-label-fs); }
+        .tsf-hint-text    { font-size: var(--tsf-hint-fs); line-height: 1.5; }
+        .tsf-field-label  { font-size: var(--tsf-field-label-fs); line-height: 1.4; }
         .tsf-sublabel     { font-size: var(--tsf-sublabel-fs); }
         .tsf-sm-text      { font-size: var(--tsf-sm-fs); }
         .tsf-mono-sm      { font-size: var(--tsf-mono-fs); }
@@ -2275,15 +2369,15 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
         .tsf-header-px    { padding-left: var(--tsf-header-px); padding-right: var(--tsf-header-px); }
         .tsf-header-py    { padding-top: var(--tsf-header-py); padding-bottom: var(--tsf-header-py); }
-        .tsf-header-h1    { font-size: var(--tsf-header-h1-fs); }
+        .tsf-header-h1    { font-size: var(--tsf-header-h1-fs); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; line-height: 1.2; }
         .tsf-header-badge { width: var(--tsf-header-badge-sz); height: var(--tsf-header-badge-sz); font-size: var(--tsf-header-badge-fs); }
-        .tsf-close-btn    { width: var(--tsf-close-btn-sz); height: var(--tsf-close-btn-sz); }
+        .tsf-close-btn    { width: var(--tsf-close-btn-sz); height: var(--tsf-close-btn-sz); min-width: 44px; min-height: 44px; box-sizing: border-box; }
         .tsf-close-icon   { font-size: var(--tsf-close-icon-fs); }
 
         .tsf-form-px      { padding-left: var(--tsf-form-px); padding-right: var(--tsf-form-px); }
         .tsf-form-py      { padding-top: var(--tsf-form-py); padding-bottom: var(--tsf-form-py); }
 
-        .tsf-error-p      { padding: var(--tsf-error-py) var(--tsf-error-px); }
+        .tsf-error-p      { padding: var(--tsf-error-py) var(--tsf-error-px); overflow-wrap: break-word; word-break: break-word; }
         .tsf-error-mb     { margin-bottom: var(--tsf-error-mb); }
 
         .tsf-fields-gap   { display: flex; flex-direction: column; gap: var(--tsf-fields-gap); }
@@ -2298,15 +2392,20 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         .tsf-ssl-panel    { padding: var(--tsf-ssl-p); display: flex; flex-direction: column; gap: var(--tsf-ssl-gap); }
         .tsf-ssl-icon     { width: var(--tsf-ssl-icon-sz); height: var(--tsf-ssl-icon-sz); }
 
-        .tsf-modal-w          { max-width: var(--tsf-modal-max-w); }
+        .tsf-modal-w          { max-width: var(--tsf-modal-max-w); max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
         .tsf-modal-p          { padding: var(--tsf-modal-p); }
         .tsf-modal-icon       { width: var(--tsf-modal-icon-sz); height: var(--tsf-modal-icon-sz); }
         .tsf-modal-icon-fs    { font-size: var(--tsf-modal-icon-fs); }
         .tsf-modal-icon-mb    { margin-bottom: var(--tsf-modal-icon-mb); }
-        .tsf-modal-h2         { font-size: var(--tsf-modal-h2-fs); }
-        .tsf-modal-sub        { font-size: var(--tsf-modal-sub-fs); }
+        .tsf-modal-h2         { font-size: var(--tsf-modal-h2-fs); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; line-height: 1.2; }
+        .tsf-modal-sub        { font-size: var(--tsf-modal-sub-fs); line-height: 1.5; }
         .tsf-modal-summary-p  { padding: var(--tsf-modal-summary-p); }
-        .tsf-modal-btn-py     { padding-top: var(--tsf-modal-btn-py); padding-bottom: var(--tsf-modal-btn-py); }
+        .tsf-modal-btn-py     { padding-top: var(--tsf-modal-btn-py); padding-bottom: var(--tsf-modal-btn-py); min-height: 44px; box-sizing: border-box; }
+
+        /* Tablet: modal goes full-width */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .tsf-modal-w { width: calc(100vw - 32px); max-width: 100%; }
+        }
       `}</style>  
     </div>
   );

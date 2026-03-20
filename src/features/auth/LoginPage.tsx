@@ -262,6 +262,82 @@ const LoginPage: React.FC = () => {
         .lp-divider     { margin-top: var(--lp-divider-my); margin-bottom: var(--lp-divider-my); }
         .lp-divider-fs  { font-size: var(--lp-divider-fs); }
         .lp-footer      { font-size: var(--lp-footer-fs); margin-top: var(--lp-footer-mt); }
+
+        /* ── SAFETY: card must never overflow viewport on any screen ──────── */
+        .lp-card {
+          max-width: calc(100vw - 32px);
+          box-sizing: border-box;
+        }
+
+        /* ── QHD (2560–3839px): card and font step up further ─────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          :root {
+            --lp-card-w:       640px;
+            --lp-card-br:      24px;
+            --lp-card-pb:      40px;
+            --lp-logo-h:       200px;
+            --lp-logo-pt:      40px;
+            --lp-h1-fs:        38px;
+            --lp-h1-mt:        26px;
+            --lp-sub-fs:       17px;
+            --lp-sub-mb:       36px;
+            --lp-form-px:      48px;
+            --lp-label-fs:     19px;
+            --lp-input-px:     18px;
+            --lp-input-py:     13px;
+            --lp-btn-h:        60px;
+            --lp-divider-my:   36px;
+            --lp-divider-fs:   16px;
+            --lp-footer-mt:    36px;
+            --lp-footer-fs:    16px;
+          }
+          /* Heading font-smoothing at large sizes */
+          .lp-h1 { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* Settings icon: larger tap target */
+          .lp-font .absolute.top-6.right-6 button { padding: 10px; }
+          .lp-font .absolute.top-6.right-6 { top: 32px; right: 32px; }
+        }
+
+        /* ── 4K+ (3840px+): maximum scale ─────────────────────────────────── */
+        @media (min-width: 3840px) {
+          :root {
+            --lp-card-w:       820px;
+            --lp-card-br:      30px;
+            --lp-card-pb:      56px;
+            --lp-logo-h:       260px;
+            --lp-logo-pt:      56px;
+            --lp-h1-fs:        52px;
+            --lp-h1-mt:        36px;
+            --lp-sub-fs:       22px;
+            --lp-sub-mb:       48px;
+            --lp-form-px:      64px;
+            --lp-label-fs:     24px;
+            --lp-input-px:     24px;
+            --lp-input-py:     18px;
+            --lp-btn-h:        80px;
+            --lp-divider-my:   48px;
+            --lp-divider-fs:   20px;
+            --lp-footer-mt:    48px;
+            --lp-footer-fs:    20px;
+          }
+          .lp-h1 { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .lp-font .absolute.top-6.right-6 { top: 48px; right: 48px; }
+          .lp-font .absolute.top-6.right-6 button { padding: 14px; }
+          .lp-admin-menu { width: 220px; border-radius: 14px; }
+          .lp-admin-menu button { padding: 14px 20px; font-size: 18px; }
+        }
+
+        /* ── Tablet: touch-target safety for settings button ─────────────── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .lp-font .absolute.top-6.right-6 button {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .lp-btn-h { min-height: 44px; }
+        }
       `}</style>
 
       {/* MOBILE BLOCKER */}
@@ -275,7 +351,7 @@ const LoginPage: React.FC = () => {
 
       {/* DESKTOP UI */}
       <div className="lp-font hidden md:flex h-screen w-full items-center justify-center bg-gradient-to-l from-[#DBEAFE] via-[#F3E8FF] to-[#FCE7F3] p-6 relative" style={{ background: "var(--bg-gradient)" }}>
-        <MouseMove />
+        {/* <MouseMove /> */}
         <FloatingDots />
 
         {/* THEME ICON & ADMIN SETTINGS */}
