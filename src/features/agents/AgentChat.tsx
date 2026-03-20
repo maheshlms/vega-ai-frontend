@@ -40,7 +40,6 @@ interface Agent {
   role?: string;
   description?: string;
   type?: string;
-  // CHANGE 1: Added guided_actions field — populated by backend (fixes/state_management branch)
   guided_actions?: Array<{ label: string; prompt: string }>;
   config?: {
     environment?: string;
@@ -115,15 +114,10 @@ const KNOWN_STREAMING_AVATARS: Record<string, string[]> = {
 
 const DEFAULT_STREAMING_AVATAR = 'Marianne_ProfessionalLook_public';
 
-// ─── Guided Actions — CHANGE 2: Updated interface — icon and color removed,
-//     now driven purely by backend data (fixes/state_management branch)
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─── Guided Actions interface ─────────────────────────────────────────────────
 interface GuidedAction {
-  // icon: string;   // REMOVED — backend no longer sends this field
   label: string;
   prompt: string;
-  // color: string;  // REMOVED — backend no longer sends this field
 }
 
 // ─── Guided Actions Panel ─────────────────────────────────────────────────────
@@ -136,7 +130,6 @@ interface GuidedActionsPanelProps {
 }
 
 const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible, onDismiss, onActionClick }) => {
-  // CHANGE 4: Use backend-provided guided_actions instead of getActionsForAgent()
   const actions = agent?.guided_actions || [];
   const agentName = agent?.name || 'your agent';
 
@@ -167,7 +160,6 @@ const GuidedActionsPanel: React.FC<GuidedActionsPanelProps> = ({ agent, visible,
               onMouseDown={e => e.preventDefault()}
               onClick={() => onActionClick(action.prompt)}
             >
-              {/* icon and color removed — backend no longer sends these fields */}
               <span className="agc-guided-action-label">{action.label}</span>
               <span className="agc-guided-action-arrow">→</span>
             </button>
@@ -193,6 +185,7 @@ interface TourStep {
   position: 'top' | 'bottom' | 'left' | 'right';
 }
 
+// ─── FIX: Added 'tour-help-btn' step for the ⚡ Help button ──────────────────
 const TOUR_STEPS: TourStep[] = [
   {
     id: 'tour-start-btn',
@@ -213,15 +206,15 @@ const TOUR_STEPS: TourStep[] = [
     position: 'top',
   },
   {
-    id: 'tour-send-btn',
-    title: '✈️ Send Message',
-    description: 'Type your question and hit Send — or press Enter. The agent will process and reply instantly.',
+    id: 'tour-help-btn',
+    title: '⚡ Quick Actions',
+    description: 'Click Help anytime to see suggested actions tailored for this agent — great for getting started fast.',
     position: 'top',
   },
   {
-    id: 'tour-quick-actions',
-    title: '⚡ Quick Actions',
-    description: 'Click the text box anytime to see suggested actions tailored for this agent. Great for getting started fast.',
+    id: 'tour-send-btn',
+    title: '✈️ Send Message',
+    description: 'Type your question and hit Send — or press Enter. The agent will process and reply instantly.',
     position: 'top',
   },
   {
@@ -419,6 +412,11 @@ const AgentChat: React.FC = () => {
   const [tourStep, setTourStep] = useState<number>(0);
   const [tourTargetRect, setTourTargetRect] = useState<DOMRect | null>(null);
 
+  // ── FIX: Capture isNewAgent from location.state once at mount via ref ─────
+  // This prevents re-reads after React Router may clear/change the state,
+  // and ensures private browser contexts cannot trigger the tour for old agents.
+  const isNewAgentRef = useRef<boolean>((location.state as any)?.isNewAgent === true);
+
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [isAvatarActive, setIsAvatarActive] = useState(false);
   const [hasVideo, setHasVideo] = useState(false);
@@ -470,8 +468,6 @@ const AgentChat: React.FC = () => {
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
   // ── Show guided actions after 5 seconds on initial load ──────────────────
-  // BUG FIX: Use refs to check current state at callback time, so the panel
-  // does NOT appear if the user has already sent a message within those 5 seconds.
   useEffect(() => {
     guidedTimerRef.current = setTimeout(() => {
       if (!isTypingRef.current && messagesRef.current.length === 0 && showWelcomeRef.current) {
@@ -486,7 +482,6 @@ const AgentChat: React.FC = () => {
   const handleGuidedActionClick = useCallback((prompt: string) => {
     setInputValue(prompt);
     setShowGuidedActions(false);
-    // Re-focus input so user can immediately hit Enter or edit
     requestAnimationFrame(() => {
       const inputEl = document.querySelector('.agc-text-input') as HTMLInputElement;
       if (inputEl) { inputEl.focus(); inputEl.setSelectionRange(prompt.length, prompt.length); }
@@ -494,8 +489,12 @@ const AgentChat: React.FC = () => {
   }, []);
 
   const handleDismissGuided = useCallback(() => {
-    // Only hide panel temporarily — user can reopen by clicking the input again
     setShowGuidedActions(false);
+  }, []);
+
+  // ── Toggle Quick Actions button handler ───────────────────────────────────
+  const handleToggleQuickActions = useCallback(() => {
+    setShowGuidedActions(prev => !prev);
   }, []);
 
   // ── Tour logic ────────────────────────────────────────────────────────────
@@ -510,43 +509,55 @@ const AgentChat: React.FC = () => {
     }
   }, []);
 
-  // Start tour only if this agent was JUST created (isNewAgent flag in route state)
-  // and hasn't been toured before (localStorage guard prevents repeat on refresh)
+  // ── FIX: Tour trigger — only fires when this navigation was explicitly for
+  //    a NEW agent (isNewAgent flag in location.state). Relies solely on
+  //    sessionStorage to de-duplicate within the same browser session.
+  //    localStorage removed entirely — it was the root cause of the bug in
+  //    private/incognito windows where every agent appeared "new".
+  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (loadingAgent || !agentId) return;
-    const isNewAgent = (location.state as any)?.isNewAgent === true;
-    if (!isNewAgent) return;
+
+    // PRIMARY GATE: only show tour when navigating to a freshly created agent.
+    // If isNewAgent is not true in location.state, NEVER show tour regardless
+    // of any storage state. This is the correct source of truth.
+    if (!isNewAgentRef.current) return;
+
+    // SECONDARY GATE: avoid re-showing if the user already saw it this session
+    // (e.g. page refresh after creation). sessionStorage is scoped to the tab,
+    // so it works correctly in both normal and private/incognito windows.
     const key = getTourStorageKey();
-    const alreadySeen = localStorage.getItem(key);
-    if (!alreadySeen) {
-      const t = setTimeout(() => {
-        setTourActive(true);
-        setTourStep(0);
-        measureTourTarget(TOUR_STEPS[0].id);
-      }, 800);
-      return () => clearTimeout(t);
-    }
+    if (sessionStorage.getItem(key)) return;
+
+    // Mark as seen immediately so a quick refresh won't re-trigger it.
+    sessionStorage.setItem(key, '1');
+
+    const t = setTimeout(() => {
+      setTourActive(true);
+      setTourStep(0);
+      measureTourTarget(TOUR_STEPS[0].id);
+    }, 800);
+    return () => clearTimeout(t);
   }, [loadingAgent, agentId]); // eslint-disable-line
 
-  // Re-measure target whenever step changes
   useEffect(() => {
     if (!tourActive) return;
     measureTourTarget(TOUR_STEPS[tourStep].id);
   }, [tourStep, tourActive]); // eslint-disable-line
 
+  // ── FIX: handleTourNext / handleTourSkip — sessionStorage only ───────────
   const handleTourNext = useCallback(() => {
     if (tourStep < TOUR_STEPS.length - 1) {
       setTourStep(s => s + 1);
     } else {
-      // Tour complete
       setTourActive(false);
-      localStorage.setItem(getTourStorageKey(), '1');
+      sessionStorage.setItem(getTourStorageKey(), '1');
     }
   }, [tourStep, getTourStorageKey]);
 
   const handleTourSkip = useCallback(() => {
     setTourActive(false);
-    localStorage.setItem(getTourStorageKey(), '1');
+    sessionStorage.setItem(getTourStorageKey(), '1');
   }, [getTourStorageKey]);
 
   useEffect(() => {
@@ -906,7 +917,6 @@ const AgentChat: React.FC = () => {
     setPendingApproval(null);
     setShowWelcomeMessage(false);
     setShowGuidedActions(false);
-    // Cancel the 5-second guided actions timer if user sends before it fires
     if (guidedTimerRef.current) {
       clearTimeout(guidedTimerRef.current);
       guidedTimerRef.current = null;
@@ -992,11 +1002,18 @@ const AgentChat: React.FC = () => {
   return (
     <>
       <style>{`
+        /* ════════════════════════════════════════════════════════════════
+           BASE STYLES — identical to original at 1920×1080 (BASELINE)
+           Only responsive overrides are added below the base block.
+        ════════════════════════════════════════════════════════════════ */
+
         .agc-root {
           display: flex; flex-direction: column;
           height: 100%; width: 100%;
           background: #F9FAFB; overflow: hidden; min-height: 0;
         }
+
+        /* ── Header ─────────────────────────────────────────────────── */
         .agc-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 8px 20px; background: #fff;
@@ -1033,22 +1050,23 @@ const AgentChat: React.FC = () => {
         .agc-hbtn-neutral:hover { background: #f9fafb; color: #374151; }
         .agc-hbtn-red { background: #fff5f5; border-color: #fecaca; color: #ef4444; }
         .agc-hbtn-red:hover { background: #fee2e2; }
+
+        /* ── Body layout ────────────────────────────────────────────── */
         .agc-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+        /* ── Avatar panel ───────────────────────────────────────────── */
         .agc-avatar-panel {
-          width: clamp(220px, 28vw, 350px); flex-shrink: 0; flex-grow: 0;
+          width: clamp(220px, 28vw, 350px);
+          flex-shrink: 0; flex-grow: 0;
           border-right: 1px solid #eaecf0; background: #fff;
           display: flex; flex-direction: column; overflow: hidden; position: relative;
-        }
-        @media (max-width: 1100px) { .agc-avatar-panel { width: clamp(200px, 26vw, 300px); } }
-        @media (max-width: 800px) { .agc-avatar-panel { width: clamp(160px, 38vw, 240px); } }
-        @media (max-width: 560px) {
-          .agc-body { flex-direction: column; }
-          .agc-avatar-panel { width: 100%; height: 220px; min-height: 220px; border-right: none; border-bottom: 1px solid #eaecf0; }
         }
         .agc-avatar-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #f1f5f9; }
         .agc-speaking-ring { position: absolute; inset: 0; pointer-events: none; z-index: 5; border: 3px solid transparent; transition: border-color 0.3s; }
         .agc-speaking-ring.active { border-color: #10b981; animation: agc-speak-glow 1.2s ease-in-out infinite; }
         @keyframes agc-speak-glow { 0%,100%{box-shadow:inset 0 0 0 3px rgba(16,185,129,0.3)} 50%{box-shadow:inset 0 0 0 3px rgba(16,185,129,0.7)} }
+
+        /* ── Avatar top bar ─────────────────────────────────────────── */
         .agc-avatar-top-bar {
           position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 0 8px;
           background: rgba(255,255,255,0.9); backdrop-filter: blur(12px);
@@ -1080,6 +1098,8 @@ const AgentChat: React.FC = () => {
           width: 82px; min-width: 82px; max-width: 82px;
           overflow: hidden; white-space: nowrap; box-sizing: border-box; flex-shrink: 0;
         }
+
+        /* ── Avatar idle image ──────────────────────────────────────── */
         .agc-avatar-idle { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
         .agc-avatar-idle-img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center; display: block; }
         .agc-avatar-idle-placeholder {
@@ -1088,6 +1108,8 @@ const AgentChat: React.FC = () => {
           display: flex; align-items: center; justify-content: center;
           font-size: 72px; font-weight: 700; color: #6366f1;
         }
+
+        /* ── Avatar info bar ────────────────────────────────────────── */
         .agc-avatar-info-bar {
           position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
           padding: 10px 16px 12px; background: rgba(255,255,255,0.92);
@@ -1109,19 +1131,23 @@ const AgentChat: React.FC = () => {
         }
         .agc-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
         .agc-volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
-        .agc-chat-panel { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #F9FAFB; }
+
+        /* ── Chat panel ─────────────────────────────────────────────── */
+        .agc-chat-panel { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #F9FAFB; position: relative; }
         .agc-chat-header {
           height: 56px; flex-shrink: 0; padding: 0 16px; box-sizing: border-box;
           border-bottom: 1px solid #eaecf0; background: #fff;
           display: flex; align-items: center; justify-content: space-between;
         }
         .agc-messages {
-          flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
+          flex: 1; min-height: 0; overflow-y: auto; padding: 28px 16px 16px;
           display: flex; flex-direction: column; gap: 4px;
           scrollbar-width: thin; scrollbar-color: #e5e7eb transparent;
         }
         .agc-messages::-webkit-scrollbar { width: 4px; }
         .agc-messages::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+        /* ── Welcome state ──────────────────────────────────────────── */
         .agc-welcome {
           flex: 1; display: flex; flex-direction: column;
           align-items: center; justify-content: center;
@@ -1139,6 +1165,8 @@ const AgentChat: React.FC = () => {
         @keyframes agc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         .agc-welcome-title { font-size: 36px; font-weight: 700; line-height: 1.25; letter-spacing: -0.025em; color: #0A0A0A; margin-bottom: 8px; }
         .agc-welcome-sub { font-size: 15px; color: #9ca3af; text-transform: capitalize; }
+
+        /* ── Messages ───────────────────────────────────────────────── */
         .agc-row { display: flex; align-items: flex-end; gap: 8px; animation: agc-msgin 0.22s ease; }
         .agc-row.user { justify-content: flex-end; }
         .agc-row.ai, .agc-row.system { justify-content: flex-start; }
@@ -1152,11 +1180,15 @@ const AgentChat: React.FC = () => {
         .agc-ts { font-size:10px; color:#d1d5db; margin-top:2px; display:flex; }
         .agc-ts.user { justify-content:flex-end; }
         .agc-ts.ai, .agc-ts.system { justify-content:flex-start; padding-left:36px; }
+
+        /* ── Typing indicator ───────────────────────────────────────── */
         .agc-typing { background:#fff; border:1px solid #e5e7eb; border-radius:18px; border-bottom-left-radius:5px; padding:12px 16px; display:flex; gap:5px; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
         .agc-dot { width:7px; height:7px; border-radius:50%; background:#c7d2fe; animation:agc-bounce 1.2s ease-in-out infinite; }
         .agc-dot:nth-child(2) { animation-delay:.18s; background:#a5b4fc; }
         .agc-dot:nth-child(3) { animation-delay:.36s; background:#818cf8; }
         @keyframes agc-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+        /* ── Approval widget ────────────────────────────────────────── */
         .agc-approval { background: #fff; border: 1.5px solid #d1fae5; border-radius: 14px; padding: 14px 16px; max-width: 68%; box-shadow: 0 2px 10px rgba(16,185,129,0.08); }
         .agc-approval-title { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 10px; }
         .agc-approval-actions { display: flex; gap: 8px; }
@@ -1171,6 +1203,8 @@ const AgentChat: React.FC = () => {
         .agc-approval-processing { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 11.5px; color: #6b7280; }
         .agc-approval-processing .agc-spinner { width: 13px; height: 13px; border: 2px solid #d1d5db; border-top-color: #6366f1; border-radius: 50%; animation: agc-spin 0.7s linear infinite; flex-shrink: 0; }
         @keyframes agc-spin { to { transform: rotate(360deg); } }
+
+        /* ── Input zone ─────────────────────────────────────────────── */
         .agc-input-zone { flex-shrink: 0; background: #fff; border-top: 1px solid #eaecf0; padding: 10px 16px 12px; min-height: 76px; box-sizing: border-box; }
         .agc-file-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
         .agc-chip { display:flex; align-items:center; gap:5px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:3px 8px; font-size:11.5px; color:#4f46e5; }
@@ -1182,6 +1216,20 @@ const AgentChat: React.FC = () => {
         .agc-icon-btn:hover { color:#9ca3af; background:#f3f4f6; }
         .agc-icon-btn.recording { color:#ef4444; animation:agc-pulse-red 1s ease-in-out infinite; }
         @keyframes agc-pulse-red { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+        /* ── Quick Actions toggle button ────────────────────────────── */
+        .agc-quick-actions-btn {
+          background: none; border: 1px solid #e5e7eb; color: #6b7280;
+          cursor: pointer; padding: 4px 9px; border-radius: 7px;
+          display: flex; align-items: center; gap: 5px;
+          font-size: 11.5px; font-weight: 500; flex-shrink: 0;
+          transition: color .15s, background .15s, border-color .15s;
+          white-space: nowrap;
+        }
+        .agc-quick-actions-btn:hover { color: #4f46e5; background: #eef2ff; border-color: #c7d2fe; }
+        .agc-quick-actions-btn.active { color: #4f46e5; background: #eef2ff; border-color: #a5b4fc; }
+        .agc-quick-actions-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
         .agc-text-input { flex:1; background:none; border:none; outline:none; color:#111827; font-size:13.5px; padding:4px 0; }
         .agc-text-input::placeholder { color:#d1d5db; }
         .agc-divider { width:1px; height:18px; background:#e5e7eb; flex-shrink:0; }
@@ -1192,61 +1240,33 @@ const AgentChat: React.FC = () => {
 
         /* ── Guided backdrop ────────────────────────────────────────── */
         .agc-guided-backdrop {
-          position: absolute;
-          inset: 0;
-          z-index: 29;
-          background: rgba(249, 250, 251, 0.55);
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.35s ease;
+          position: absolute; inset: 0; z-index: 29;
+          background: rgba(249,250,251,0.55);
+          backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+          opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
         }
-        .agc-guided-backdrop-visible {
-          opacity: 1;
-          pointer-events: auto;
-        }
+        .agc-guided-backdrop-visible { opacity: 1; pointer-events: auto; }
 
         /* ── Guided Actions Panel ───────────────────────────────────── */
         .agc-guided-panel {
-          position: absolute;
-          bottom: 0; left: 0; right: 0;
-          z-index: 30;
-          padding: 0 16px 12px;
-          pointer-events: none;
-          transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          position: absolute; bottom: 0; left: 0; right: 0; z-index: 30;
+          padding: 0 16px 12px; pointer-events: none;
+          transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1),
+                      transform 0.4s cubic-bezier(0.16,1,0.3,1);
         }
-        .agc-guided-visible {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
-        }
-        .agc-guided-hidden {
-          opacity: 0;
-          transform: translateY(20px);
-          pointer-events: none;
-        }
+        .agc-guided-visible  { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .agc-guided-hidden   { opacity: 0; transform: translateY(20px); pointer-events: none; }
         .agc-guided-inner {
-          background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 18px;
+          background: #fff; border: 1px solid #e5e7eb; border-radius: 18px;
           box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.02),
                       0 20px 40px -8px rgba(99,102,241,0.12),
                       0 8px 24px rgba(0,0,0,0.06);
           overflow: hidden;
         }
-        .agc-guided-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 16px 0;
-          gap: 10px;
-        }
-        .agc-guided-header-left {
-          display: flex; align-items: center; gap: 10px;
-        }
+        .agc-guided-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 0; gap: 10px; }
+        .agc-guided-header-left { display: flex; align-items: center; gap: 10px; }
         .agc-guided-pulse-dot {
-          width: 8px; height: 8px; border-radius: 50%;
-          background: #6366f1; flex-shrink: 0;
+          width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0;
           animation: agc-guided-pulse 2s ease-in-out infinite;
           box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
         }
@@ -1255,80 +1275,89 @@ const AgentChat: React.FC = () => {
           70%  { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
           100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
         }
-        .agc-guided-title {
-          font-size: 12.5px; font-weight: 700;
-          color: #111827; letter-spacing: -0.01em;
-        }
-        .agc-guided-subtitle {
-          font-size: 11px; color: #9ca3af; margin-top: 1px;
-        }
+        .agc-guided-title   { font-size: 12.5px; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
+        .agc-guided-subtitle{ font-size: 11px; color: #9ca3af; margin-top: 1px; }
         .agc-guided-dismiss {
           width: 24px; height: 24px; border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          background: none; border: none; color: #d1d5db;
-          cursor: pointer; flex-shrink: 0;
+          background: none; border: none; color: #d1d5db; cursor: pointer; flex-shrink: 0;
           transition: background 0.15s, color 0.15s;
         }
         .agc-guided-dismiss:hover { background: #f3f4f6; color: #6b7280; }
-        .agc-guided-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 6px;
-          padding: 10px 16px 12px;
-        }
-        @media (max-width: 600px) {
-          .agc-guided-grid { grid-template-columns: repeat(2, 1fr); }
-        }
+        .agc-guided-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; padding: 10px 16px 12px; }
         .agc-guided-action {
           display: flex; align-items: center; gap: 7px;
           padding: 8px 10px; border-radius: 11px;
           background: #fafafa; border: 1px solid #f0f0f0;
           cursor: pointer; text-align: left;
-          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-          animation: agc-action-in 0.35s ease both;
-          overflow: hidden;
+          transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
+          animation: agc-action-in 0.35s ease both; overflow: hidden;
         }
-        @keyframes agc-action-in {
-          from { opacity: 0; transform: translateY(8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .agc-guided-action:hover {
-          background: #f0f0ff;
-          border-color: #c7d2fe;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(99,102,241,0.1);
-        }
+        @keyframes agc-action-in { from{opacity:0;transform:translateY(8px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        .agc-guided-action:hover { background:#f0f0ff; border-color:#c7d2fe; transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,0.1); }
         .agc-guided-action:active { transform: translateY(0); }
-        .agc-guided-action-label {
-          font-size: 11.5px; font-weight: 500; color: #374151;
-          flex: 1; line-height: 1.3; min-width: 0;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .agc-guided-action:hover .agc-guided-action-label {
-          color: #4f46e5;
-        }
-        .agc-guided-action-arrow {
-          font-size: 11px; color: #d1d5db; flex-shrink: 0;
-          transition: transform 0.18s, color 0.18s;
-        }
-        .agc-guided-action:hover .agc-guided-action-arrow {
-          color: #6366f1;
-          transform: translateX(2px);
-        }
-        .agc-guided-footer {
-          display: flex; align-items: center; gap: 6px;
-          padding: 0 16px 10px;
-          font-size: 10.5px; color: #c4c9d1;
-        }
+        .agc-guided-action-label { font-size:11.5px; font-weight:500; color:#374151; flex:1; line-height:1.3; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .agc-guided-action:hover .agc-guided-action-label { color: #4f46e5; }
+        .agc-guided-action-arrow { font-size:11px; color:#d1d5db; flex-shrink:0; transition:transform 0.18s,color 0.18s; }
+        .agc-guided-action:hover .agc-guided-action-arrow { color:#6366f1; transform:translateX(2px); }
+        .agc-guided-footer { display:flex; align-items:center; gap:6px; padding:0 16px 10px; font-size:10.5px; color:#c4c9d1; }
 
+        /* ── Tour ring ──────────────────────────────────────────────── */
         @keyframes tour-ring-pulse {
-          0%, 100% { box-shadow: 0 0 0 3px #6366f1, 0 0 0 5px rgba(99,102,241,0.3); }
-          50%       { box-shadow: 0 0 0 3px #6366f1, 0 0 0 9px rgba(99,102,241,0.12); }
+          0%,100% { box-shadow: 0 0 0 3px #6366f1, 0 0 0 5px rgba(99,102,241,0.3); }
+          50%      { box-shadow: 0 0 0 3px #6366f1, 0 0 0 9px rgba(99,102,241,0.12); }
         }
 
-        /* Input zone must be relative for guided panel positioning */
-        .agc-chat-panel { position: relative; }
-        .agc-messages-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        /* ── Messages wrap ──────────────────────────────────────────── */
+        .agc-messages-wrap { position: relative; flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+
+        /* ════════════════════════════════════════════════════════════
+           RESPONSIVE OVERRIDES
+        ════════════════════════════════════════════════════════════ */
+
+        @media (min-width: 1920px) {
+          .agc-avatar-panel { width: clamp(320px, 22vw, 420px); }
+          .agc-agent-name   { font-size: 20px; }
+          .agc-welcome-title{ font-size: 40px; }
+          .agc-bubble       { font-size: 15px; }
+        }
+
+        @media (min-width: 1280px) and (max-width: 1535px) {
+          .agc-avatar-panel { width: clamp(200px, 24vw, 300px); }
+          .agc-agent-name   { font-size: 16px; }
+          .agc-welcome-title{ font-size: 30px; }
+          .agc-welcome      { padding: 40px 16px; }
+          .agc-bubble       { max-width: 72%; font-size: 13.5px; }
+          .agc-send-btn     { padding: 8px 14px; }
+        }
+
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .agc-avatar-panel { width: clamp(180px, 22vw, 260px); }
+          .agc-header       { padding: 6px 14px; }
+          .agc-back-btn     { padding: 0 12px; font-size: 12px; }
+          .agc-agent-name   { font-size: 15px; }
+          .agc-agent-status { font-size: 12px; }
+          .agc-hbtn         { padding: 5px 10px; font-size: 12px; }
+          .agc-avatar-top-bar { height: 48px; padding: 0 6px; }
+          .agc-overlay-btn    { height: 24px; padding: 0 6px; font-size: 10.5px; }
+          .agc-status-pill-fixed { width: 74px; min-width: 74px; max-width: 74px; font-size: 10px; }
+          .agc-avatar-idle-placeholder { width: 160px; height: 210px; font-size: 56px; }
+          .agc-avatar-info-bar { min-height: 62px; padding: 8px 12px 10px; }
+          .agc-chat-header  { height: 50px; padding: 0 12px; }
+          .agc-welcome-title{ font-size: 26px; }
+          .agc-welcome-sub  { font-size: 13px; }
+          .agc-welcome      { padding: 32px 12px; }
+          .agc-messages     { padding: 22px 12px 12px; }
+          .agc-bubble       { max-width: 76%; font-size: 13px; padding: 9px 12px; }
+          .agc-input-zone   { padding: 8px 12px 10px; min-height: 66px; }
+          .agc-send-btn     { padding: 7px 12px; font-size: 12px; }
+          .agc-text-input   { font-size: 13px; }
+          .agc-guided-grid  { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+          .agc-guided-grid  { grid-template-columns: repeat(2, 1fr); }
+        }
       `}</style>
 
       <div className="agc-root">
@@ -1575,20 +1604,25 @@ const AgentChat: React.FC = () => {
               <input ref={fileInputRef} type="file" onChange={handleFileSelect} multiple accept=".lic,.txt,.pem,.crt,.key,.license" style={{ display: 'none' }} />
               <div className="agc-input-wrap">
                 <button id="tour-attach-btn" className="agc-icon-btn" onClick={handleAttachClick} title="Attach file"><IoAttachOutline /></button>
-                <input id="tour-quick-actions" type="text" className="agc-text-input" value={inputValue}
-                  onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyPress}
-                  onFocus={() => {
-                    // Show guided actions whenever agent is idle — not typing/processing
-                    if (!isTyping) {
-                      setShowGuidedActions(true);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Delay so mousedown on action chip registers before hiding
-                    setTimeout(() => setShowGuidedActions(false), 200);
-                  }}
+                <input
+                  type="text"
+                  className="agc-text-input"
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
                   placeholder={isAvatarActive ? `Ask ${agent?.name || avatarName} anything…` : 'Type your message…'}
-                  disabled={isTyping} />
+                  disabled={isTyping}
+                />
+                {/* ── FIX: id moved from input to this button so tour can target it ── */}
+                <button
+                  id="tour-help-btn"
+                  className={`agc-quick-actions-btn${showGuidedActions ? ' active' : ''}`}
+                  onClick={handleToggleQuickActions}
+                  disabled={isTyping}
+                  title={showGuidedActions ? 'Hide quick actions' : 'Show quick actions'}
+                >
+                  ⚡ Help
+                </button>
                 <button id="tour-voice-btn" className={`agc-icon-btn ${isListening ? 'recording' : ''}`} onClick={startListening}
                   disabled={isListening || isTyping} title={isListening ? 'Listening…' : 'Voice input'}>
                   <FaMicrophone />
@@ -1602,23 +1636,18 @@ const AgentChat: React.FC = () => {
           </div>
         </div>
       </div>
+
       {/* ── Onboarding Tour Overlay ── */}
       {tourActive && tourTargetRect && (() => {
         const r = tourTargetRect;
         const pad = 8;
         return (
           <>
-            {/* Spotlight: 4 dark panels around the highlighted element */}
             <div style={{ position: 'fixed', inset: 0, zIndex: 9998, pointerEvents: 'none' }}>
-              {/* Top */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: r.top - pad, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
-              {/* Bottom */}
               <div style={{ position: 'absolute', top: r.bottom + pad, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
-              {/* Left */}
               <div style={{ position: 'absolute', top: r.top - pad, left: 0, width: r.left - pad, height: r.height + pad * 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
-              {/* Right */}
               <div style={{ position: 'absolute', top: r.top - pad, left: r.right + pad, right: 0, height: r.height + pad * 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1.5px)' }} />
-              {/* Spotlight ring around target */}
               <div style={{
                 position: 'absolute',
                 top: r.top - pad, left: r.left - pad,
@@ -1628,9 +1657,7 @@ const AgentChat: React.FC = () => {
                 animation: 'tour-ring-pulse 1.8s ease-in-out infinite',
               }} />
             </div>
-            {/* Skip overlay click area (click outside spotlight to skip) */}
             <div style={{ position: 'fixed', inset: 0, zIndex: 9997, cursor: 'default' }} onClick={handleTourSkip} />
-            {/* Tooltip */}
             <TourTooltip
               step={TOUR_STEPS[tourStep]}
               stepIndex={tourStep}
@@ -1646,4 +1673,4 @@ const AgentChat: React.FC = () => {
   );
 };
 
-export default AgentChat; 
+export default AgentChat;

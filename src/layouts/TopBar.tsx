@@ -22,10 +22,10 @@ const TopBar: React.FC = () => {
       </div>
 
       {/* DESKTOP NAVBAR */}
-      <div className="hidden md:flex h-18 items-center justify-between px-6 min-w-[1024px]">
+      <div className="tb-navbar hidden md:flex h-18 items-center justify-between px-6">
 
-        {/* LEFT - Logo */}
-        <div className="flex items-center">
+        {/* LEFT - Logo — flex-shrink-0 so it never compresses */}
+        <div className="flex items-center flex-shrink-0">
           <img
             src={isDark ? "/logo-dark.png" : "/logo-light.png"}
             alt="Vega AI"
@@ -33,11 +33,13 @@ const TopBar: React.FC = () => {
           />
         </div>
 
-        {/* CENTER - Search */}
-        <SearchBox icon={IoIosSearch} />
+        {/* CENTER - Search — grows into available space but won't push siblings off-screen */}
+        <div className="flex-1 flex justify-center px-4 min-w-0">
+          <SearchBox icon={IoIosSearch} />
+        </div>
 
-        {/* RIGHT - Actions */}
-        <div className="flex items-center gap-4">
+        {/* RIGHT - Actions — flex-shrink-0 so it NEVER gets cut off */}
+        <div className="flex items-center gap-4 flex-shrink-0">
           {/* <NotificationDropdown /> */}
           {/* <HelpDropdown /> */}
           <ProfileDropdown />
@@ -55,6 +57,35 @@ const TopBar: React.FC = () => {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE RULES — TopBar.tsx
+           1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px) → scales padding gently
+           4K / ultrawide (2560px+) → expands gently
+        ═══════════════════════════════════════════════════════ */
+
+        /* Small laptop: 1024–1279 */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .tb-navbar { padding-left: 16px; padding-right: 16px; }
+        }
+
+        /* Laptop: 1280–1439 */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .tb-navbar { padding-left: 24px; padding-right: 24px; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919 */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .tb-navbar { padding-left: 28px; padding-right: 28px; }
+        }
+
+        /* Exact target: 1920×1080 — px-6 = 24px default already matches */
+
+        /* 4K / ultrawide: 2560px+ */
+        @media (min-width: 2560px) {
+          .tb-navbar { padding-left: 80px; padding-right: 80px; }
         }
       `}</style>
     </div>

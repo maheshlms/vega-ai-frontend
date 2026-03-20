@@ -548,6 +548,85 @@ const AdminLoginForm: React.FC = () => {
         .adm-theme { animation: admTheme 0.3s ease both; }
 
         .adm-input::placeholder { opacity: 1; }
+
+        /* ─── Responsive card sizing ───
+           Baseline: 1920×1080 → card width 420px, logo h-32, heading text-2xl, px-7, py-6
+           Below 1920 wide (large desktops / hi-res): scale down proportionally
+           Laptop range (768px–1365px / mac 13–15"): compact but fully usable
+           Medium desktops (1366px–1599px): slight reduction
+           Large desktops (1600px–1919px): near-baseline
+           1920px+: exact baseline (420px card, all original sizes)
+        ─────────────────────────────── */
+
+        /* 1920px+ — exact baseline, no changes */
+        @media (min-width: 1920px) {
+          .adm-card-wrap { width: 420px !important; }
+          .adm-logo-img  { height: 8rem !important; } /* h-32 */
+          .adm-heading   { font-size: 1.5rem !important; } /* text-2xl */
+          .adm-sub       { font-size: 0.75rem !important; margin-bottom: 1.5rem !important; }
+          .adm-px        { padding-left: 1.75rem !important; padding-right: 1.75rem !important; } /* px-7 */
+          .adm-pt        { padding-top: 1.5rem !important; } /* pt-6 */
+          .adm-pb        { padding-bottom: 1.5rem !important; } /* pb-6 */
+          .adm-label     { font-size: 0.875rem !important; }
+          .adm-input-el  { padding: 0.5rem 0.75rem !important; font-size: 0.8125rem !important; }
+          .adm-btn-el    { height: 2.5rem !important; font-size: 0.875rem !important; }
+          .adm-footer    { font-size: 0.75rem !important; margin-top: 1.5rem !important; }
+          .adm-toggle-btn { font-size: 13px !important; padding: 0.5rem 0.75rem !important; }
+          .adm-top-right { top: 1.5rem !important; right: 1.5rem !important; }
+        }
+
+        /* 1600px–1919px — near baseline */
+        @media (min-width: 1600px) and (max-width: 1919px) {
+          .adm-card-wrap { width: 400px !important; }
+          .adm-logo-img  { height: 7rem !important; }
+          .adm-heading   { font-size: 1.375rem !important; }
+          .adm-sub       { font-size: 0.7rem !important; margin-bottom: 1.35rem !important; }
+          .adm-px        { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+          .adm-pt        { padding-top: 1.35rem !important; }
+          .adm-pb        { padding-bottom: 1.35rem !important; }
+          .adm-label     { font-size: 0.8125rem !important; }
+          .adm-input-el  { padding: 0.45rem 0.7rem !important; font-size: 0.8rem !important; }
+          .adm-btn-el    { height: 2.4rem !important; font-size: 0.8125rem !important; }
+          .adm-footer    { font-size: 0.7rem !important; margin-top: 1.35rem !important; }
+          .adm-toggle-btn { font-size: 12px !important; padding: 0.45rem 0.7rem !important; }
+          .adm-top-right { top: 1.35rem !important; right: 1.35rem !important; }
+        }
+
+        /* 1366px–1599px — medium desktops */
+        @media (min-width: 1366px) and (max-width: 1599px) {
+          .adm-card-wrap { width: 380px !important; }
+          .adm-logo-img  { height: 6rem !important; }
+          .adm-heading   { font-size: 1.25rem !important; }
+          .adm-sub       { font-size: 0.6875rem !important; margin-bottom: 1.25rem !important; }
+          .adm-px        { padding-left: 1.35rem !important; padding-right: 1.35rem !important; }
+          .adm-pt        { padding-top: 1.25rem !important; }
+          .adm-pb        { padding-bottom: 1.25rem !important; }
+          .adm-label     { font-size: 0.8125rem !important; }
+          .adm-input-el  { padding: 0.425rem 0.65rem !important; font-size: 0.78rem !important; }
+          .adm-btn-el    { height: 2.3rem !important; font-size: 0.8rem !important; }
+          .adm-footer    { font-size: 0.68rem !important; margin-top: 1.25rem !important; }
+          .adm-toggle-btn { font-size: 12px !important; padding: 0.425rem 0.65rem !important; }
+          .adm-top-right { top: 1.25rem !important; right: 1.25rem !important; }
+        }
+
+        /* 768px–1365px — laptops (including MacBooks 13"/14"/15") */
+        @media (min-width: 768px) and (max-width: 1365px) {
+          .adm-card-wrap { width: min(360px, calc(100vw - 48px)) !important; }
+          .adm-logo-img  { height: 5.5rem !important; }
+          .adm-heading   { font-size: 1.125rem !important; }
+          .adm-sub       { font-size: 0.6625rem !important; margin-bottom: 1.1rem !important; }
+          .adm-px        { padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
+          .adm-pt        { padding-top: 1.1rem !important; }
+          .adm-pb        { padding-bottom: 1.1rem !important; }
+          .adm-label     { font-size: 0.775rem !important; }
+          .adm-input-el  { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
+          .adm-btn-el    { height: 2.2rem !important; font-size: 0.775rem !important; }
+          .adm-footer    { font-size: 0.65rem !important; margin-top: 1rem !important; }
+          .adm-toggle-btn { font-size: 11px !important; padding: 0.4rem 0.6rem !important; }
+          .adm-top-right { top: 1rem !important; right: 1rem !important; }
+          /* Tighten internal card spacing on laptops */
+          .adm-space-y > * + * { margin-top: 0.75rem !important; }
+        }
       `}</style>
 
       {/* MOBILE BLOCKER */}
@@ -606,10 +685,10 @@ const AdminLoginForm: React.FC = () => {
         )}
 
         {/* THEME TOGGLE + BACK TO LOGIN */}
-        <div className="absolute top-6 right-6 z-50 flex items-center gap-2">
+        <div className="adm-top-right absolute z-50 flex items-center gap-2" style={{ top: '1.5rem', right: '1.5rem' }}>
           <button
             onClick={() => navigate('/login')}
-            className="px-3 py-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 text-sm font-medium"
+            className="adm-toggle-btn px-3 py-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 text-sm font-medium"
             style={{
               background: T.toggleBg,
               border:     dark ? '1px solid rgba(45,212,191,0.25)' : '1px solid #E5E7EB',
@@ -620,7 +699,7 @@ const AdminLoginForm: React.FC = () => {
           >
             ← Login
           </button>
-          <button
+          {/* <button
             onClick={() => setDark(d => !d)}
             className="p-2 rounded-md shadow cursor-pointer hover:bg-gray-100 transition-all duration-200"
             style={{
@@ -630,11 +709,11 @@ const AdminLoginForm: React.FC = () => {
             }}
           >
             {dark ? <GoSun size={18} /> : <MdOutlineDarkMode size={18} />}
-          </button>
+          </button> */}
         </div>
 
         {/* CARD */}
-        <div className="adm-card relative" style={{ width: 420 }}>
+        <div className="adm-card adm-card-wrap relative" style={{ width: 420 }}>
 
           {dark && (
             <div className="absolute -inset-px rounded-2xl pointer-events-none" style={{
@@ -651,18 +730,18 @@ const AdminLoginForm: React.FC = () => {
 
             {dark && <div className="h-px w-full" style={{ background: T.topBar }} />}
 
-            <div className="pb-6">
+            <div className="adm-pb pb-6">
 
-              <div className="flex justify-center pt-6">
+              <div className="adm-pt flex justify-center pt-6">
                 <img
                   src={dark ? '/logo-dark.png' : '/logo-light.png'}
                   alt="Vega AI"
-                  className="h-32"
+                  className="adm-logo-img h-32"
                 />
               </div>
 
               <h1
-                className="text-center text-2xl font-bold mt-4"
+                className="adm-heading text-center text-2xl font-bold mt-4"
                 style={{
                   color:      T.heading,
                   fontFamily: "'DM Sans',sans-serif",
@@ -672,7 +751,7 @@ const AdminLoginForm: React.FC = () => {
               </h1>
 
               <p
-                className="text-center text-xs font-medium mt-1 mb-6"
+                className="adm-sub text-center text-xs font-medium mt-1 mb-6"
                 style={{
                   color:      T.sub,
                   fontFamily: "'DM Sans',sans-serif",
@@ -681,13 +760,13 @@ const AdminLoginForm: React.FC = () => {
                 System administrator portal
               </p>
 
-              <div className="px-7">
-                <form onSubmit={handleLogin} className="space-y-4">
+              <div className="adm-px px-7">
+                <form onSubmit={handleLogin} className="adm-space-y space-y-4">
 
                   {/* USERNAME */}
                   <div>
                     <label
-                      className="text-sm font-medium mb-1 block"
+                      className="adm-label text-sm font-medium mb-1 block"
                       style={{
                         color:      T.heading,
                         fontFamily: "'DM Sans',sans-serif",
@@ -701,7 +780,7 @@ const AdminLoginForm: React.FC = () => {
                       onChange={e => { setUsername(e.target.value); setError(''); }}
                       placeholder="admin"
                       disabled={isLoading}
-                      className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
+                      className="adm-input adm-input-el w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
                       style={{
                         background: T.inputBg,
                         border:     `1px solid ${T.inputBorder}`,
@@ -725,7 +804,7 @@ const AdminLoginForm: React.FC = () => {
                   {/* PASSWORD */}
                   <div>
                     <label
-                      className="text-sm font-medium mb-1 block"
+                      className="adm-label text-sm font-medium mb-1 block"
                       style={{
                         color:      T.heading,
                         fontFamily: "'DM Sans',sans-serif",
@@ -739,7 +818,7 @@ const AdminLoginForm: React.FC = () => {
                       onChange={e => { setPassword(e.target.value); setError(''); }}
                       placeholder="••••••••"
                       disabled={isLoading}
-                      className="adm-input w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
+                      className="adm-input adm-input-el w-full px-3 py-2 rounded-md outline-none transition-all duration-200"
                       style={{
                         background: T.inputBg,
                         border:     `1px solid ${T.inputBorder}`,
@@ -780,7 +859,7 @@ const AdminLoginForm: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="relative w-full h-10 rounded-md overflow-hidden font-semibold text-sm transition-all duration-300 ease-in-out group"
+                    className="adm-btn-el relative w-full h-10 rounded-md overflow-hidden font-semibold text-sm transition-all duration-300 ease-in-out group"
                     style={{
                       background:    T.btnBg,
                       border:        T.btnBorder || undefined,
@@ -812,7 +891,7 @@ const AdminLoginForm: React.FC = () => {
 
                 {/* footer */}
                 <p
-                  className="w-full text-center text-xs mt-6"
+                  className="adm-footer w-full text-center text-xs mt-6"
                   style={{
                     color:      T.muted,
                     fontFamily: "'DM Sans',sans-serif",

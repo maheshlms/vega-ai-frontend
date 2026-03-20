@@ -103,14 +103,28 @@ const ProfileDropdown: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       {userData && (
         <>
+          {/*
+           * Trigger button
+           * ─────────────
+           * At 1920×1080 (2xl): full pill with avatar + first name  ← BASELINE (unchanged)
+           * At 1280–1535px (xl / large laptop): avatar + name, slightly tighter padding
+           * At 1024–1279px (lg / standard laptop): avatar only — name is hidden to save
+           *   navbar real-estate; a tooltip via title keeps it accessible
+           *
+           * We keep px-3 py-1 at all sizes because the border/bg tokens come from
+           * the design system (navbar-profile). Only padding tweaks are applied.
+           */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer"
+            title={userData.name}           /* accessible label when name text is hidden */
+            className="flex items-center gap-2 px-3 py-1 border border-navbar-profile rounded-md bg-navbar-profile cursor-pointer
+              lg:px-2 lg:gap-1.5
+              xl:px-3 xl:gap-2"
             aria-label="Profile menu"
           >
-            <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon overflow-hidden">
-              <img 
-                src={userData.avatar} 
+            <div className="w-7 h-7 flex items-center justify-center rounded-md bg-navbar-profile-icon overflow-hidden flex-shrink-0">
+              <img
+                src={userData.avatar}
                 alt={userData.name}
                 className="w-full h-full object-cover rounded-md"
                 onError={(e) => {
@@ -119,16 +133,39 @@ const ProfileDropdown: React.FC = () => {
                 }}
               />
             </div>
-            <span className="text-sm font-semibold text-navbar-profile">
+            {/*
+             * Hide the first-name label on lg (laptop) viewports.
+             * Show it from xl (large laptop / 1280px) upward.
+             */}
+            <span className="hidden xl:inline text-sm font-semibold text-navbar-profile">
               {userData.name.split(' ')[0]}
             </span>
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown">
+            /*
+             * Dropdown panel
+             * ──────────────
+             * Baseline (2xl / 1920): w-80 (320px) — unchanged
+             * xl (1280–1535px): w-72 (288px) — slightly narrower, still spacious
+             * lg (1024–1279px): w-64 (256px) — compact for laptop screens
+             *
+             * right-0 ensures the panel never bleeds off the right edge
+             * regardless of viewport.
+             */
+            <div className="absolute right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-slideDown
+              w-64
+              xl:w-72
+              2xl:w-80">
+
+              {/* ── Profile header ── */}
               <div className="px-4 py-4 border-b border-gray-200 bg-gradient-to-br from-blue-50 to-purple-50">
                 <div className="flex items-start gap-3">
-                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
+                  {/*
+                   * Avatar: keep 56×56 at 2xl baseline; shrink to 44×44 on smaller viewports
+                   * so the email + badge row doesn't wrap awkwardly.
+                   */}
+                  <div className="w-11 h-11 2xl:w-14 2xl:h-14 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
                     <img
                       src={userData.avatar}
                       alt={userData.name}
@@ -141,13 +178,13 @@ const ProfileDropdown: React.FC = () => {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-gray-900 truncate">
+                    <h3 className="text-sm 2xl:text-base font-bold text-gray-900 truncate">
                       {userData.name}
                     </h3>
-                    <p className="text-sm text-gray-600 truncate">
+                    <p className="text-xs 2xl:text-sm text-gray-600 truncate">
                       {userData.email}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
                         {userData.role}
                       </span>
@@ -159,13 +196,14 @@ const ProfileDropdown: React.FC = () => {
 
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                   >
                     <IoIosClose className="text-2xl" />
                   </button>
                 </div>
               </div>
 
+              {/* ── Menu items ── */}
               <div className="py-2">
                 {menuItems.map((item, index) => {
                   const Icon = item.icon;
@@ -185,6 +223,7 @@ const ProfileDropdown: React.FC = () => {
                 })}
               </div>
 
+              {/* ── Logout ── */}
               <div className="px-4 py-3 border-t border-gray-200">
                 <button
                   onClick={handleLogout}

@@ -510,23 +510,87 @@ export const api = {
       return await response.json();
     },
 
-    // Create new target system
+    // Create new target system — saves to DB then immediately tests the connection.
+    // Returns: { ...createdSystem, _connectionTest: { success, message } }
+    // The _connectionTest field tells the caller the real connection outcome
+    // so it can show the user accurate feedback instead of a false success.
     create: async (data: any): Promise<any> => {
-      const response = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems', {
+      // ── Step 1: Save the system ──────────────────────────────────────────
+      const createResponse = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems', {
         method: 'POST',
         body: JSON.stringify(data)
       });
       
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+      if (!createResponse.ok) {
+        const error = await createResponse.json().catch(() => ({}));
         throw new Error(error.detail || 'Failed to create target system');
       }
       
-      return await response.json();
+      const created = await createResponse.json();
+      console.log('[api.targetSystems.create] created:', created);
+
+      // ── Step 2: Resolve the ID (backend may use _id or id) ───────────────
+      const systemId =
+        created?._id ||
+        created?.id ||
+        created?.data?._id ||
+        created?.data?.id ||
+        created?.system?._id ||
+        created?.system?.id;
+
+      console.log('[api.targetSystems.create] resolved systemId:', systemId);
+
+      if (!systemId) {
+        // No ID returned — can't test, just return the created object as-is
+        console.warn('[api.targetSystems.create] No ID found in response, skipping connection test');
+        return created;
+      }
+
+      // ── Step 3: Auto-test connection right after creation ─────────────────
+      try {
+        const testResponse = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems/test-connection', {
+          method: 'POST',
+          body: JSON.stringify({ target_system_id: systemId })
+        });
+
+        const testResult = await testResponse.json().catch(() => ({}));
+        console.log('[api.targetSystems.create] connection test result:', testResult);
+
+        const msg = testResult?.message || testResult?.detail || '';
+        const isFailure =
+          !testResponse.ok ||
+          testResult?.success === false ||
+          testResult?.connected === false ||
+          testResult?.status === 'error' ||
+          testResult?.status === 'failed' ||
+          /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
+
+        return {
+          ...created,
+          _connectionTest: {
+            success: !isFailure,
+            message: msg || (isFailure ? 'Connection test failed' : 'Connection established successfully')
+          }
+        };
+      } catch (testErr: any) {
+        // Test threw — return created system with failed test info, don't throw
+        const errMsg = testErr?.message || 'Connection test failed';
+        console.error('[api.targetSystems.create] connection test threw:', testErr);
+        return {
+          ...created,
+          _connectionTest: {
+            success: false,
+            message: errMsg
+          }
+        };
+      }
     },
 
-    // Update target system
+    // Update target system — saves to DB then immediately tests the connection.
+    // Returns: { ...updatedSystem, _connectionTest: { success, message } }
+    // Same pattern as create() so TargetSystemForm can show the test result modal.
     update: async (id: string, data: any): Promise<any> => {
+      // ── Step 1: Save the updated system ──────────────────────────────────
       const response = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, `/api/v1/target-systems/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data)
@@ -537,7 +601,58 @@ export const api = {
         throw new Error(error.detail || 'Failed to update target system');
       }
       
-      return await response.json();
+      const updated = await response.json();
+      console.log('[api.targetSystems.update] updated:', updated);
+
+      // ── Step 2: Resolve the ID — prefer response body, fall back to arg ──
+      const systemId =
+        updated?._id ||
+        updated?.id ||
+        updated?.data?._id ||
+        updated?.data?.id ||
+        id;
+
+      console.log('[api.targetSystems.update] resolved systemId:', systemId);
+
+      // ── Step 3: Auto-test connection right after update ───────────────────
+      try {
+        const testResponse = await fetchWithAuthToService(TARGET_SYSTEMS_SERVICE, '/api/v1/target-systems/test-connection', {
+          method: 'POST',
+          body: JSON.stringify({ target_system_id: systemId })
+        });
+
+        const testResult = await testResponse.json().catch(() => ({}));
+        console.log('[api.targetSystems.update] connection test result:', testResult);
+
+        const msg = testResult?.message || testResult?.detail || '';
+        const isFailure =
+          !testResponse.ok ||
+          testResult?.success === false ||
+          testResult?.connected === false ||
+          testResult?.status === 'error' ||
+          testResult?.status === 'failed' ||
+          /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
+
+        return {
+          ...updated,
+          _connectionTest: {
+            success: !isFailure,
+            message: msg || (isFailure ? 'Connection test failed' : 'Connection established successfully')
+          }
+        };
+      } catch (testErr: any) {
+        // Test threw — return updated system with failed test info, don't throw.
+        // We never want a test error to mask a successful save.
+        const errMsg = testErr?.message || 'Connection test failed';
+        console.error('[api.targetSystems.update] connection test threw:', testErr);
+        return {
+          ...updated,
+          _connectionTest: {
+            success: false,
+            message: errMsg
+          }
+        };
+      }
     },
 
     // Delete target system
@@ -754,7 +869,7 @@ export const api = {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || 'Failed to update user');
       }
-      
+
       return await response.json();
     },
 

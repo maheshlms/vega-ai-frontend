@@ -68,6 +68,162 @@ const customStyles = `
     from { width: 0%; }
   }
   .bar-fill { animation: bar-fill 1s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+  /* ═══════════════════════════════════════════════════════
+     RESPONSIVE RULES
+     1920×1080 → exact current design (no changes)
+     Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+     Tablet (768–1023px) → stacked, compressed
+     4K / ultrawide (2560px+) → expands gently
+  ═══════════════════════════════════════════════════════ */
+
+  /* ── Outer page wrapper ── */
+  .aad-page-wrapper {
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  /* ── Header inner wrapper ── */
+  .aad-header-wrapper {
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 48px;
+    padding-right: 48px;
+    padding-top: 40px;
+    padding-bottom: 32px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Tablet: 768–1023 */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .aad-page-wrapper   { max-width: 100%; padding-left: 20px; padding-right: 20px; }
+    .aad-header-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 20px; padding-bottom: 16px; }
+    .aad-h1-resp        { font-size: 1.75rem !important; }
+  }
+
+  /* Small laptop: 1024–1279 (MacBook 13" at 1280 logical, etc.) */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .aad-page-wrapper   { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+    .aad-header-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 28px; padding-bottom: 22px; }
+    .aad-h1-resp        { font-size: 1.875rem !important; }
+  }
+
+  /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440 laptops) */
+  @media (min-width: 1280px) and (max-width: 1439px) {
+    .aad-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
+    .aad-header-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 32px; padding-bottom: 26px; }
+    .aad-h1-resp        { font-size: 2rem !important; }
+  }
+
+  /* Large laptop / small desktop: 1440–1919 */
+  @media (min-width: 1440px) and (max-width: 1919px) {
+    .aad-page-wrapper   { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+    .aad-header-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+  }
+
+  /* Exact target: 1920×1080 — unchanged (default values above already match) */
+
+  /* 4K / ultrawide: 2560px+ */
+  @media (min-width: 2560px) {
+    .aad-page-wrapper   { max-width: 1920px; padding-left: 80px; padding-right: 80px; }
+    .aad-header-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; padding-bottom: 44px; }
+    .aad-h1-resp        { font-size: 3rem !important; }
+  }
+
+  /* ── Stats grid: fix column count per breakpoint ── */
+  /* Tailwind lg:grid-cols-3 xl:grid-cols-6 works fine for 1920;
+     but on 1024–1279 "lg" fires too early and gives 3 cols which is correct.
+     On tablet (768–1023) we want 3 cols too, but Tailwind's sm/md don't cover it cleanly.
+     Override with explicit media queries only where Tailwind falls short. */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .aad-stats-grid-override { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  }
+  @media (min-width: 2560px) {
+    .aad-stats-grid-override { gap: 16px !important; }
+  }
+
+  /* ── Chart height per breakpoint ── */
+  /* 1920×1080 base: 300px keeps the chart well-proportioned with the stat cards below */
+  .aad-chart-h80 { height: 300px; }
+  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-chart-h80 { height: 200px; } }
+  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-chart-h80 { height: 220px; } }
+  @media (min-width: 1280px) and (max-width: 1439px)  { .aad-chart-h80 { height: 250px; } }
+  @media (min-width: 1440px) and (max-width: 1919px)  { .aad-chart-h80 { height: 270px; } }
+  @media (min-width: 1920px) and (max-width: 2559px)  { .aad-chart-h80 { height: 300px; } }
+  @media (min-width: 2560px)                           { .aad-chart-h80 { height: 380px; } }
+
+  /* ── Response-time list max-height ── */
+  .aad-rt-maxh { max-height: 280px; }
+  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-rt-maxh { max-height: 180px; } }
+  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-rt-maxh { max-height: 210px; } }
+  @media (min-width: 2560px)                           { .aad-rt-maxh { max-height: 360px; } }
+
+  /* ── Distribution card list max-height ── */
+  .aad-dist-maxh { max-height: 380px; }
+  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-dist-maxh { max-height: 240px; } }
+  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-dist-maxh { max-height: 280px; } }
+  @media (min-width: 2560px)                           { .aad-dist-maxh { max-height: 500px; } }
+
+  /* ── Details modal max-width ── */
+  .aad-details-modal { width: 100%; }
+  @media (min-width: 768px)  and (max-width: 1023px)  { .aad-details-modal { max-width: 95vw; } }
+  @media (min-width: 1024px) and (max-width: 1279px)  { .aad-details-modal { max-width: 860px; } }
+  @media (min-width: 1280px) and (max-width: 1439px)  { .aad-details-modal { max-width: 1000px; } }
+  @media (min-width: 1440px) and (max-width: 1919px)  { .aad-details-modal { max-width: 1100px; } }
+  @media (min-width: 1920px) and (max-width: 2559px)  { .aad-details-modal { max-width: min(95vw, 1280px); } }
+  @media (min-width: 2560px)                           { .aad-details-modal { max-width: 1600px; } }
+
+  /* ── Task Overview: flex column, full height to match Agent Distribution card.
+     The chart uses flex-grow:1 (see .aad-chart-flex) to consume all remaining
+     space after the header and stat cards — so there is never an empty gap,
+     regardless of screen size. ── */
+  .aad-task-overview-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Chart wrapper: grows to fill whatever vertical space is left in the card */
+  .aad-chart-flex {
+    flex: 1 1 0%;
+    min-height: 180px;
+  }
+
+  /* ── Stat cards grid: collapse to 2-col on tablet ── */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .aad-stat-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  }
+
+  /* ── Stat card value font scaling per breakpoint ── */
+  .aad-stat-card-value { font-size: 1.5rem; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .aad-stat-card-value { font-size: 1.25rem; } }
+  @media (min-width: 1280px) and (max-width: 1439px) { .aad-stat-card-value { font-size: 1.375rem; } }
+  @media (min-width: 2560px)                          { .aad-stat-card-value { font-size: 1.75rem; } }
+
+  /* ── Stat card padding scaling ── */
+  .aad-stat-card-pad { padding: 12px 16px; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .aad-stat-card-pad { padding: 10px 12px; } }
+  @media (min-width: 1280px) and (max-width: 1439px) { .aad-stat-card-pad { padding: 10px 14px; } }
+  @media (min-width: 2560px)                          { .aad-stat-card-pad { padding: 16px 20px; } }
+
+  /* ── Main content grid: ensure side-by-side on laptop ── */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .aad-main-grid { gap: 14px !important; }
+    .aad-charts-grid { gap: 14px !important; }
+  }
+  @media (min-width: 1280px) and (max-width: 1439px) {
+    .aad-main-grid { gap: 16px !important; }
+    .aad-charts-grid { gap: 16px !important; }
+  }
 `;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -603,7 +759,7 @@ const ResponseTimeCard: React.FC<ResponseTimeCardProps> = ({
         ))}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto max-h-[280px] pr-2 space-y-3 aad-scrollbar">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto aad-rt-maxh pr-2 space-y-3 aad-scrollbar">
         {filteredAgents.length === 0 ? (
           <div className="flex items-center justify-center h-20 text-[13px] text-gray-400">
             No agents match this filter
@@ -772,7 +928,7 @@ const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, t
   );
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4 h-150">
       <div>
         <h3 className="text-[17px] font-bold text-[#0A0A0A] tracking-tight mb-1">Agent Distribution</h3>
         <p className="text-[12.5px] text-gray-500">By product, environment and type</p>
@@ -786,7 +942,7 @@ const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, t
         ))}
         <span className="text-[11px] text-gray-400 flex-shrink-0 ml-auto">{totalAgents} total</span>
       </div>
-      <div className="space-y-2 overflow-y-auto max-h-[380px] aad-scrollbar pr-1">
+      <div className="space-y-2 aad-scrollbar pr-1 flex-1">
         {productGroups.map(group => {
           const isOpen = expandedKey === group.key;
           const envEntries  = Object.entries(group.envStats);
@@ -1207,6 +1363,12 @@ const AdminAgentControl: React.FC = () => {
   const trulyInactiveAgents = agents.filter(a => !a.isActive && !a.killswitchActivated && !a.softDeleted).length;
   const disabledDeletedAgents = agents.filter(a => a.killswitchActivated || a.softDeleted).length;
 
+  // ── Task summary totals for the bottom stat cards ──
+  const weekTasksGiven     = chartActivityData.reduce((s, d) => s + d.tasksGiven, 0);
+  const weekTasksCompleted = chartActivityData.reduce((s, d) => s + d.tasksCompleted, 0);
+  const weekTasksInProcess = chartActivityData.reduce((s, d) => s + d.tasksInProcess, 0);
+  const weekTasksFailed    = chartActivityData.reduce((s, d) => s + d.tasksFailed, 0);
+
   return (
     <div className="aad-font min-h-screen bg-[#FAFAFA] text-[#111] overflow-x-hidden">
       <style>{customStyles}</style>
@@ -1226,10 +1388,10 @@ const AdminAgentControl: React.FC = () => {
       )}
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-        <div className="max-w-[1400px] mx-auto pt-10 pb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div className="bg-white border-b border-gray-200">
+        <div className="aad-header-wrapper">
           <div>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">AI Agent Dashboard</h1>
+            <h1 className="aad-h1-resp text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">AI Agent Dashboard</h1>
             <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">Manage and monitor your AI-powered IAM agents</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -1244,11 +1406,11 @@ const AdminAgentControl: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-12 max-md:px-5">
+      <div className="aad-page-wrapper">
 
         {/* ── Stats strip ── */}
         <div className="py-5 border-b border-gray-100">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 aad-stats-grid-override">
             {[
               { icon: FaRobot,       label: 'Total Agents', value: totalAgents,                             bg: '#EFF6FF', color: '#3B82F6', tooltip: { title: 'Total Agents',         desc: 'The total number of AI agents configured in your system, including those that are active, inactive, or disabled.' } },
               { icon: FaCheckCircle, label: 'Active',       value: activeAgents,                            bg: '#F0FDF4', color: '#22C55E', tooltip: { title: 'Active Agents',         desc: 'Agents that are active and prepared to handle incoming tasks in the IAM system.' } },
@@ -1288,11 +1450,11 @@ const AdminAgentControl: React.FC = () => {
           </div>
         </div>
 
-        {/* MAIN CONTENT GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8 pt-8">
+        {/* MAIN CONTENT GRID — lg:items-stretch so Task Overview matches Agent Distribution height */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8 pt-8 lg:items-stretch aad-main-grid">
 
           {/* TASK OVERVIEW CHART */}
-          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6">
+          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 aad-task-overview-card">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -1307,7 +1469,7 @@ const AdminAgentControl: React.FC = () => {
 
             {/* ── Show error OR empty state (mahesh), but chart fills all 7 days with zeros (HeyGen) ── */}
             {telemetryError || activityData.every(d => d.tasksGiven === 0 && d.tasksFailed === 0) ? (
-              <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex-1 flex items-center justify-center min-h-[260px] bg-red-50 border border-red-200 rounded-lg">
                 <div className="text-center">
                   <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-3" />
                   <p className="text-red-700 font-medium">Telemetry Data Unavailable</p>
@@ -1316,7 +1478,8 @@ const AdminAgentControl: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="h-80 mb-4">
+                {/* Chart — flex-grows to fill remaining card height, matching Agent Distribution */}
+                <div className="aad-chart-flex aad-chart-h80 mb-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartActivityData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
@@ -1330,21 +1493,62 @@ const AdminAgentControl: React.FC = () => {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                {/* ── Stat cards — match the reference image style ── */}
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 aad-stat-cards-grid">
                     {[
-                      { color: 'bg-green-500',  label: 'Tasks Given', value: chartActivityData.reduce((s,d)=>s+d.tasksGiven,0),     textColor: 'text-green-600'  },
-                      { color: 'bg-blue-500',   label: 'Completed',   value: chartActivityData.reduce((s,d)=>s+d.tasksCompleted,0), textColor: 'text-blue-600'   },
-                      { color: 'bg-yellow-500', label: 'In Process',  value: chartActivityData.reduce((s,d)=>s+d.tasksInProcess,0), textColor: 'text-yellow-600' },
-                      { color: 'bg-red-500',    label: 'Failed',      value: chartActivityData.reduce((s,d)=>s+d.tasksFailed,0),    textColor: 'text-red-600'    },
+                      {
+                        dot: 'bg-green-500',
+                        dotHex: '#22c55e',
+                        label: 'TASKS GIVEN',
+                        value: weekTasksGiven,
+                        valueColor: 'text-green-500',
+                        cardBg: 'bg-green-50',
+                        border: 'border-green-100',
+                      },
+                      {
+                        dot: 'bg-blue-500',
+                        dotHex: '#3b82f6',
+                        label: 'COMPLETED',
+                        value: weekTasksCompleted,
+                        valueColor: 'text-blue-500',
+                        cardBg: 'bg-blue-50',
+                        border: 'border-blue-100',
+                      },
+                      {
+                        dot: 'bg-yellow-500',
+                        dotHex: '#eab308',
+                        label: 'IN PROCESS',
+                        value: weekTasksInProcess,
+                        valueColor: 'text-yellow-500',
+                        cardBg: 'bg-yellow-50',
+                        border: 'border-yellow-100',
+                      },
+                      {
+                        dot: 'bg-red-500',
+                        dotHex: '#ef4444',
+                        label: 'FAILED',
+                        value: weekTasksFailed,
+                        valueColor: 'text-red-500',
+                        cardBg: 'bg-red-50',
+                        border: 'border-red-100',
+                      },
                     ].map(item => (
-                      <div key={item.label} className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 ${item.color} rounded-full`} />
-                          <span className="text-xs font-medium text-gray-700">{item.label}</span>
+                      <div
+                        key={item.label}
+                        className={`${item.cardBg} border ${item.border} rounded-xl aad-stat-card-pad flex flex-col gap-1.5`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${item.dot}`}
+                          />
+                          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+                            {item.label}
+                          </span>
                         </div>
-                        <div className="ml-auto">
-                          <div className={`text-sm font-bold ${item.textColor}`}>{item.value}</div>
+                        <div className={`aad-stat-card-value font-bold ${item.valueColor}`}>
+                          {item.value}
                         </div>
                       </div>
                     ))}
@@ -1358,7 +1562,7 @@ const AdminAgentControl: React.FC = () => {
         </div>
 
         {/* ADDITIONAL CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8 aad-charts-grid">
 
           {/* AGENT ACTIVITY STATUS */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-5">
@@ -1563,7 +1767,7 @@ const AdminAgentControl: React.FC = () => {
       {/* ════════════ VIEW DETAILS PANEL ════════════ */}
       {showDetailsPanel && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDetailsPanel(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="aad-details-modal bg-white rounded-2xl shadow-2xl max-w-[95vw] xl:max-w-5xl 2xl:max-w-7xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-2xl z-10">
               <div className="flex items-center justify-between mb-4">
                 <div>

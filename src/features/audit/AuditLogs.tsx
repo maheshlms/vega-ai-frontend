@@ -483,13 +483,101 @@ const AuditLogs: React.FC = () => {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
         .al-spin { animation: spin 1s linear infinite; }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE RULES — AuditLogs.tsx
+           1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+           Tablet (768–1023px) → compressed
+           4K / ultrawide (2560px+) → expands gently
+        ═══════════════════════════════════════════════════════ */
+
+        /* ── Header band padding ── */
+        .al-band-px { padding-left: 48px; padding-right: 48px; }
+
+        /* ── Header inner wrapper ── */
+        .al-header-inner {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-top: 40px;
+          padding-bottom: 32px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        /* ── Page content wrapper ── */
+        .al-page-wrapper {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-left: 48px;
+          padding-right: 48px;
+        }
+
+        /* ── Stats grid ── */
+        .al-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        /* ── H1 ── */
+        .al-h1 { font-size: 2.25rem; }
+
+        /* Tablet: 768–1023 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .al-band-px      { padding-left: 20px; padding-right: 20px; }
+          .al-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
+          .al-page-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; }
+          .al-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          .al-h1           { font-size: 1.75rem !important; }
+        }
+
+        /* Small laptop: 1024–1279 (MacBook 13") */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .al-band-px      { padding-left: 28px; padding-right: 28px; }
+          .al-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
+          .al-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+          .al-stats-grid   { gap: 10px; }
+          .al-h1           { font-size: 1.875rem !important; }
+        }
+
+        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .al-band-px      { padding-left: 36px; padding-right: 36px; }
+          .al-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
+          .al-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
+          .al-h1           { font-size: 2rem !important; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919 */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .al-band-px      { padding-left: 44px; padding-right: 44px; }
+          .al-header-inner { max-width: 1400px; }
+          .al-page-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+        }
+
+        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+
+        /* 4K / ultrawide: 2560px+ */
+        @media (min-width: 2560px) {
+          .al-band-px      { padding-left: 80px; padding-right: 80px; }
+          .al-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
+          .al-page-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; }
+          .al-stats-grid   { gap: 16px; }
+          .al-h1           { font-size: 3rem !important; }
+        }
       `}</style>
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-        <div className="max-w-[1400px] mx-auto pt-10 pb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div className="bg-white border-b border-gray-200 al-band-px">
+        <div className="al-header-inner">
           <div>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
+            <h1 className="al-h1 text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
               Audit Logs
             </h1>
             <p className="text-[15px] text-gray-500 font-normal leading-relaxed m-0">
@@ -502,21 +590,21 @@ const AuditLogs: React.FC = () => {
               <FaSync className={loading ? 'al-spin text-xs' : 'text-xs'} />
               Refresh
             </button>
-            <button onClick={handleExportClick} disabled={loading || logs.length === 0}
+            {/* <button onClick={handleExportClick} disabled={loading || logs.length === 0}
               className="flex items-center gap-1.5 px-4 py-2 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-40">
               <FaDownload className="text-xs" />
               Export CSV
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-12 max-md:px-5">
+      <div className="al-page-wrapper">
 
         {/* ── Stats strip ── */}
         {stats && (
           <div className="py-5 border-b border-gray-100">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="al-stats-grid">
               {[
                 { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, bg: '#F0FDF4', color: '#22C55E' },
                 { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, bg: '#FEF2F2', color: '#EF4444' },
@@ -893,6 +981,8 @@ const AuditLogs: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2">
                         {Object.entries(selectedLog.details).map(([key, val]) => {
                           const isLong = typeof val === 'object' || String(val).length > 60;
+                          // FIX: for error-type boolean keys, true = red (bad), false = green (good)
+                          const isErrorKey = /error|fail|invalid/i.test(key);
                           return (
                             <div
                               key={key}
@@ -902,8 +992,16 @@ const AuditLogs: React.FC = () => {
                                 {key.replace(/_/g, ' ')}
                               </div>
                               {typeof val === 'boolean' ? (
-                                <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${val ? 'text-green-700' : 'text-red-700'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${
+                                  isErrorKey
+                                    ? (val ? 'text-red-700' : 'text-green-700')
+                                    : (val ? 'text-green-700' : 'text-red-700')
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    isErrorKey
+                                      ? (val ? 'bg-red-500' : 'bg-green-500')
+                                      : (val ? 'bg-green-500' : 'bg-red-500')
+                                  }`} />
                                   {val ? 'true' : 'false'}
                                 </span>
                               ) : typeof val === 'object' ? (
@@ -942,6 +1040,8 @@ const AuditLogs: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(selectedLog.metadata).map(([key, val]) => {
                       const isLong = typeof val === 'object' || String(val).length > 60;
+                      // FIX: for error-type boolean keys, true = red (bad), false = green (good)
+                      const isErrorKey = /error|fail|invalid/i.test(key);
                       return (
                         <div
                           key={key}
@@ -951,8 +1051,16 @@ const AuditLogs: React.FC = () => {
                             {key.replace(/_/g, ' ')}
                           </div>
                           {typeof val === 'boolean' ? (
-                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${val ? 'text-green-700' : 'text-red-700'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold ${
+                              isErrorKey
+                                ? (val ? 'text-red-700' : 'text-green-700')
+                                : (val ? 'text-green-700' : 'text-red-700')
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                isErrorKey
+                                  ? (val ? 'bg-red-500' : 'bg-green-500')
+                                  : (val ? 'bg-green-500' : 'bg-red-500')
+                              }`} />
                               {val ? 'true' : 'false'}
                             </span>
                           ) : typeof val === 'object' ? (

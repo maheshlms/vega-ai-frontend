@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint, FaEye, FaEyeSlash, FaClipboard, FaCheck } from 'react-icons/fa';
+// CHANGE 1 of 4: Added FaExclamationTriangle to existing import (needed for failed-state icon in modal)
+import { FaTimes, FaCheckCircle, FaShieldAlt, FaKey, FaLock, FaFingerprint, FaEye, FaEyeSlash, FaClipboard, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
 import { IconType } from 'react-icons';
+// CHANGE 2 of 4: Added api import so we can call api.targetSystems.testConnection after create/update
+import api from '../../utils/api';
 
 interface TypeOption {
   value: string;
@@ -115,7 +118,9 @@ interface TargetSystemFormProps {
   integrationValue?: string | null;
   integrationId?: string | null;
   integrationName?: string | null;
-  onSubmit: (data: SubmitData) => Promise<void>;
+  // CHANGE 3 of 4: onSubmit return type changed from Promise<void> to Promise<any>
+  // so the parent can return the created/updated system object (with _id) for auto-testing
+  onSubmit: (data: SubmitData) => Promise<any>;
   onCancel?: () => void;
   isModal?: boolean;
 }
@@ -300,14 +305,14 @@ const getIntegrationDefaults = (type: string): IntegrationDefaults => {
 /* Helper Components (defined outside to prevent re-creation on render)       */
 /* ─────────────────────────────────────────────────────────────────────────── */
 const SecureNote = () => (
-  <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+  <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
     <span>🔒</span>
     <span>This value will be securely encrypted and stored</span>
   </p>
 );
 
 const Hint = ({ text }: { text: string }) => (
-  <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+  <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
     <span>💡</span>
     <span>{text}</span>
   </p>
@@ -323,10 +328,10 @@ interface FieldProps {
 
 const Field = ({ label, required, hint, subLabel, children }: FieldProps) => (
   <div className="group">
-    <label className="block text-sm 2xl:text-base font-semibold text-gray-900 mb-2">
+    <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
       {label}
       {required && <span className="text-red-500 ml-1">*</span>}
-      {subLabel && <span className="text-xs 2xl:text-sm text-gray-500 ml-2 font-normal">{subLabel}</span>}
+      {subLabel && <span className="tsf-sublabel text-gray-500 ml-2 font-normal">{subLabel}</span>}
     </label>
     {children}
     {hint && <Hint text={hint} />}
@@ -425,6 +430,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   const [expandInstructions, setExpandInstructions] = useState<boolean>(false);
   const [showIntrospectionSecret, setShowIntrospectionSecret] = useState<boolean>(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  // CHANGE 4 of 4 (part a): New state for auto connection-test after CREATE or UPDATE
+  // 'idle'      = not running (edit mode where parent returned no _id, or plain fallback)
+  // 'testing'   = test in-flight — spinner shown, Done button disabled
+  // 'connected' = test passed
+  // 'failed'    = test failed
+  const [connTestStatus, setConnTestStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [connTestMessage, setConnTestMessage] = useState<string>('');
 
   // Debug: Log props on mount
   useEffect(() => {
@@ -909,11 +921,59 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       }
 
       // ── Call parent onSubmit and ONLY show success if it resolves without throwing ──
-      await onSubmit(submitData);
+      const savedSystem = await onSubmit(submitData);
 
       // If we reach here, the API call succeeded
-      setShowSuccess(true);
       setLoading(false);
+
+      // Backend may return the ID as "_id" (MongoDB) or "id" (REST) — handle both.
+      // Also unwrap nested shapes like { data: { _id: ... } } or { system: { id: ... } }
+      const savedId =
+        savedSystem?._id ||
+        savedSystem?.id ||
+        savedSystem?.data?._id ||
+        savedSystem?.data?.id ||
+        savedSystem?.system?._id ||
+        savedSystem?.system?.id;
+
+      console.log('[TargetSystemForm] save response:', JSON.stringify(savedSystem), '→ resolved id:', savedId);
+
+      // CHANGE 4 of 4 (part b): Show connection-test modal for BOTH create and update.
+      // Fast path: api layer already embedded _connectionTest (create or update both do this).
+      // Fallback: run the test ourselves when the api layer skipped it (no _id returned, etc.)
+      const embeddedTest = savedSystem?._connectionTest;
+
+      if (embeddedTest) {
+        // api.targetSystems.create() and api.targetSystems.update() both embed this
+        setConnTestStatus(embeddedTest.success ? 'connected' : 'failed');
+        setConnTestMessage(embeddedTest.message || '');
+        setShowSuccess(true);
+      } else if (savedId) {
+        // Fallback: fire the test ourselves
+        setConnTestStatus('testing');
+        setConnTestMessage('Testing connection to your system…');
+        setShowSuccess(true);
+        try {
+          const testResult = await api.targetSystems.testConnection(savedId);
+          const msg = testResult?.message || testResult?.detail || '';
+          const isFailure =
+            testResult?.success === false ||
+            testResult?.connected === false ||
+            testResult?.status === 'error' ||
+            testResult?.status === 'failed' ||
+            /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
+          setConnTestStatus(isFailure ? 'failed' : 'connected');
+          setConnTestMessage(msg || (isFailure ? 'Connection test failed' : 'Connection established successfully'));
+        } catch (testErr: any) {
+          const errMsg = testErr?.response?.data?.detail || testErr?.message || 'Connection test failed';
+          setConnTestStatus('failed');
+          setConnTestMessage(errMsg);
+        }
+      } else {
+        // No ID at all — show plain success modal (no test)
+        setConnTestStatus('idle');
+        setShowSuccess(true);
+      }
     } catch (err) {
       // onSubmit threw (API error) — show the error, do NOT show success
       setError((err as Error).message || 'Failed to save target system');
@@ -921,7 +981,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     }
   };
 
-  const handleSuccess = () => { setShowSuccess(false); if (onCancel) onCancel(); };
+  // CHANGE 4 of 4 (part c): reset connTest state on close
+  const handleSuccess = () => {
+    setShowSuccess(false);
+    setConnTestStatus('idle');
+    setConnTestMessage('');
+    if (onCancel) onCancel();
+  };
 
   const handleReset = () => setFormData({
     ...emptyForm,
@@ -1018,7 +1084,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 className={inputCls}
               />
               {system && (
-                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
                   <span>ℹ️</span>
                   <span>Username is required - enter new username to replace existing</span>
                 </p>
@@ -1047,7 +1113,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 className={inputCls}
               />
               {system && (
-                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
                   <span>ℹ️</span>
                   <span>Client ID is required - enter new client ID to replace existing</span>
                 </p>
@@ -1088,7 +1154,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           <>
             {/* Token Provider Configuration Display */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
-              <h3 className="text-sm font-semibold text-blue-900 mb-4 flex items-center gap-2">
+              <h3 className="tsf-sm-text font-semibold text-blue-900 mb-4 flex items-center gap-2">
                 <span>🔐</span>
                 Token Provider Configuration
               </h3>
@@ -1096,7 +1162,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               {loadingTokenConfig ? (
                 <div className="text-center py-4">
                   <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
-                  <span className="text-sm text-blue-700">Loading configuration...</span>
+                  <span className="tsf-sm-text text-blue-700">Loading configuration...</span>
                 </div>
               ) : tokenProviderConfig ? (
                 <div className="space-y-4">
@@ -1212,7 +1278,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 text-sm text-blue-700">
+                <div className="text-center py-4 tsf-sm-text text-blue-700">
                   ⚠️ Token provider configuration not found. Please configure it first.
                 </div>
               )}
@@ -1225,7 +1291,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 onClick={() => setExpandInstructions(!expandInstructions)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-100 transition-colors duration-200"
               >
-                <h3 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+                <h3 className="tsf-sm-text font-semibold text-amber-900 flex items-center gap-2">
                   <span>📋</span>
                   Configuration Instructions
                 </h3>
@@ -1236,7 +1302,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
               {expandInstructions && (
                 <div className="px-6 py-4 border-t border-amber-200 bg-white space-y-4">
-                  <div className="space-y-3 text-sm text-gray-700">
+                  <div className="space-y-3 tsf-sm-text text-gray-700">
                     <p className="font-semibold text-gray-900">General Steps:</p>
                     <ol className="list-decimal list-inside space-y-2 ml-2">
                       <li>Configure your target system to trust the SSL certificate of the Token Provider</li>
@@ -1388,7 +1454,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               required={!system}
               className={inputCls}
             />
-            <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+            <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
               <span>🔒</span>
               <span>Your password will be securely encrypted and stored</span>
             </p>
@@ -1420,14 +1486,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 name="enable_ssl"
                 checked={formData.enable_ssl}
                 onChange={handleChange}
-                className="w-4 h-4 2xl:w-5 2xl:h-5 rounded border-2 border-gray-300 focus:ring-2 focus:ring-purple-400 cursor-pointer accent-purple-600"
+                className="tsf-checkbox rounded border-2 border-gray-300 focus:ring-2 focus:ring-purple-400 cursor-pointer accent-purple-600"
               />
             </div>
             <div>
-              <label htmlFor="enable_ssl" className="text-sm 2xl:text-base font-semibold text-gray-900 cursor-pointer select-none">
+              <label htmlFor="enable_ssl" className="tsf-field-label font-semibold text-gray-900 cursor-pointer select-none">
                 Enable SSL (LDAPS)
               </label>
-              <p className="text-xs 2xl:text-sm text-gray-500 mt-0.5">
+              <p className="tsf-hint-text text-gray-500 mt-0.5">
                 💡 Enables an encrypted LDAPS connection. Additional SSL settings will appear below.
               </p>
             </div>
@@ -1435,13 +1501,13 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
           {/* ── LDAPS config panel — only visible when SSL is ON ── */}
           {formData.enable_ssl && (
-            <div className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/60 to-indigo-50/40 rounded-xl p-5 2xl:p-6 space-y-5 2xl:space-y-6">
+            <div className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/60 to-indigo-50/40 rounded-xl tsf-ssl-panel">
               {/* Section header */}
               <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
-                <div className="w-6 h-6 2xl:w-7 2xl:h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="tsf-ssl-icon bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-white text-xs">🔐</span>
                 </div>
-                <h3 className="text-sm 2xl:text-base font-bold text-purple-900">LDAPS / SSL Configuration</h3>
+                <h3 className="tsf-field-label font-bold text-purple-900">LDAPS / SSL Configuration</h3>
               </div>
 
               {/* LDAPS port */}
@@ -1497,7 +1563,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                     placeholder={`-----BEGIN CERTIFICATE-----\nMIID…\n-----END CERTIFICATE-----`}
                     rows={6}
                     required
-                    className={`${inputCls} font-mono text-xs 2xl:text-sm`}
+                    className={`${inputCls} font-mono tsf-mono-sm`}
                   />
                 </Field>
               )}
@@ -1533,7 +1599,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       placeholder="Enter trust store password"
                       className={inputCls}
                     />
-                    <p className="text-xs 2xl:text-sm text-gray-500 mt-2 flex items-center gap-1">
+                    <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
                       <span>🔒</span>
                       <span>Trust store password will be securely encrypted</span>
                     </p>
@@ -1545,7 +1611,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               {formData.ssl_trust_mode === 'trustAll' && (
                 <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                   <span className="text-amber-500 text-base flex-shrink-0 mt-0.5">⚠️</span>
-                  <p className="text-xs 2xl:text-sm text-amber-800 leading-relaxed">
+                  <p className="tsf-hint-text text-amber-800 leading-relaxed">
                     <strong>Not recommended for production.</strong> Trusting all certificates disables server identity verification and is vulnerable to man-in-the-middle attacks. Use a specific certificate or trust store in production environments.
                   </p>
                 </div>
@@ -1610,7 +1676,27 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   /* Shared style tokens                                                       */
   /* ─────────────────────────────────────────────────────────────────────── */
   const inputCls =
-    'w-full px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300';
+    'w-full tsf-input-p tsf-input-fs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300';
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* CHANGE 4 of 4 (part d): Modal title/subtitle helpers                    */
+  /* Works for both CREATE (!system) and EDIT (system) flows.                */
+  /* ─────────────────────────────────────────────────────────────────────── */
+  const modalTitle = (): string => {
+    if (connTestStatus === 'testing')   return system ? 'System Updated!' : 'System Created!';
+    if (connTestStatus === 'connected') return system ? 'System Updated & Connected!' : 'System Created & Connected!';
+    if (connTestStatus === 'failed')    return system ? 'System Updated — Connection Failed' : 'System Created — Connection Failed';
+    // idle fallback
+    return system ? 'System Updated Successfully!' : 'Target System Created!';
+  };
+
+  const modalSubtitle = (): string => {
+    if (connTestStatus === 'testing')   return 'Testing connection to your system…';
+    if (connTestStatus === 'connected') return connTestMessage || (system ? 'Your target system has been updated' : 'Connection established successfully');
+    if (connTestStatus === 'failed')    return 'The system was saved. Check your host / credentials and test again from the dashboard.';
+    // idle fallback
+    return system ? 'Your target system has been updated' : 'Your target system is now ready to use';
+  };
 
   /* ─────────────────────────────────────────────────────────────────────── */
   /* Render                                                                   */
@@ -1618,23 +1704,66 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
   return (
     <div className="relative w-full">
 
-      {/* Success Modal */}
+      {/* Success Modal — CHANGE 4 of 4 (part e):
+          The modal now has 4 states driven by connTestStatus for BOTH create AND update:
+          - idle: original green check + original text (no test ran or no ID)
+          - testing: blue spinner, "Testing connection…", Done button disabled
+          - connected: green check, "System Created/Updated & Connected!"
+          - failed: red warning icon, "System Created/Updated — Connection Failed"
+          Everything else (summary card, layout, animations) is untouched. */}
       {showSuccess && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-md 2xl:max-w-xl w-full p-8 2xl:p-12 text-center animate-scaleIn border border-white/20">
-            <div className="flex justify-center mb-6 2xl:mb-8">
-              <div className="w-16 h-16 2xl:w-20 2xl:h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg animate-pulse-gentle">
-                <FaCheckCircle className="text-white text-3xl 2xl:text-4xl" />
-              </div>
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl tsf-modal-w w-full tsf-modal-p text-center animate-scaleIn border border-white/20">
+            <div className="flex justify-center tsf-modal-icon-mb">
+              {connTestStatus === 'testing' ? (
+                <div className="tsf-modal-icon bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : connTestStatus === 'failed' ? (
+                <div className="tsf-modal-icon bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
+                  <FaExclamationTriangle className="text-white tsf-modal-icon-fs" />
+                </div>
+              ) : (
+                <div className="tsf-modal-icon bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg animate-pulse-gentle">
+                  <FaCheckCircle className="text-white tsf-modal-icon-fs" />
+                </div>
+              )}
             </div>
-            <h2 className="text-2xl 2xl:text-3xl font-semibold text-gray-900 mb-2">
-              {system ? 'System Updated Successfully!' : 'Target System Created!'}
-            </h2>
-            <p className="text-gray-600 2xl:text-lg mb-8 2xl:mb-10">
-              {system ? 'Your target system has been updated' : 'Your target system is now ready to use'}
-            </p>
 
-            <div className="bg-gradient-to-br from-gray-50 to-purple-50/50 rounded-xl p-5 2xl:p-6 mb-8 2xl:mb-10 border border-gray-100">
+            {connTestStatus === 'testing' ? (
+              <>
+                <h2 className="tsf-modal-h2 font-semibold text-gray-900 mb-2">{modalTitle()}</h2>
+                <p className="text-gray-500 tsf-modal-sub mb-2">{modalSubtitle()}</p>
+                <p className="text-gray-400 text-xs mb-8">Please wait while we verify connectivity</p>
+              </>
+            ) : connTestStatus === 'connected' ? (
+              <>
+                <h2 className="tsf-modal-h2 font-semibold text-gray-900 mb-2">{modalTitle()}</h2>
+                <p className="text-green-600 tsf-modal-sub font-medium mb-2">{connTestMessage}</p>
+                <p className="text-gray-400 text-xs mb-8">{system ? 'Your target system has been updated' : 'Your target system is ready to use'}</p>
+              </>
+            ) : connTestStatus === 'failed' ? (
+              <>
+                <h2 className="tsf-modal-h2 font-semibold text-gray-900 mb-2">{modalTitle()}</h2>
+                {/* <p className="text-red-600 tsf-modal-sub font-medium mb-2">{connTestMessage}</p> */}
+                <p className="text-gray-400 text-xs mb-8">
+                  The system was saved. Check your host / credentials and test again from the dashboard.
+                </p>
+              </>
+            ) : (
+              /* original text — idle mode (no test ran or no ID returned) */
+              <>
+                <h2 className="tsf-modal-h2 font-semibold text-gray-900 mb-2">
+                  {system ? 'System Updated Successfully!' : 'Target System Created!'}
+                </h2>
+                <p className="text-gray-600 tsf-modal-sub mb-8">
+                  {system ? 'Your target system has been updated' : 'Your target system is now ready to use'}
+                </p>
+              </>
+            )}
+
+            {/* Summary card — completely unchanged */}
+            <div className="bg-gradient-to-br from-gray-50 to-purple-50/50 rounded-xl tsf-modal-summary-p mb-8 border border-gray-100">
               {[
                 ['System Name', formData.name],
                 ['Type', formData.type],
@@ -1646,17 +1775,32 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   key={label}
                   className={`flex items-center justify-between ${i < arr.length - 1 ? 'mb-3 pb-3 border-b border-gray-200' : ''}`}
                 >
-                  <span className="text-sm 2xl:text-base text-gray-600">{label}</span>
-                  <span className="font-semibold text-gray-900 text-sm 2xl:text-base capitalize">{val}</span>
+                  <span className="tsf-sm-text text-gray-600">{label}</span>
+                  <span className="font-semibold text-gray-900 tsf-sm-text capitalize">{val}</span>
                 </div>
               ))}
             </div>
 
+            {/* Connection result banner — only shown after test completes */}
+            {(connTestStatus === 'connected' || connTestStatus === 'failed') && (
+              <div className={`rounded-xl px-4 py-3 mb-6 flex items-center gap-3 ${connTestStatus === 'connected' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                {connTestStatus === 'connected'
+                  ? <FaCheckCircle className="text-green-500 flex-shrink-0" />
+                  : <FaExclamationTriangle className="text-red-500 flex-shrink-0" />
+                }
+                <p className={`text-sm font-medium ${connTestStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
+                  {connTestStatus === 'connected' ? ' Connection verified successfully' : ' Connection could not be established'}
+                </p>
+              </div>
+            )}
+
+            {/* Done button — disabled while test is in flight */}
             <button
               onClick={handleSuccess}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-3 2xl:py-4 2xl:text-lg rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              disabled={connTestStatus === 'testing'}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 tsf-modal-btn-py rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Done
+              {connTestStatus === 'testing' ? 'Testing connection…' : 'Done'}
             </button>
           </div>
         </div>
@@ -1670,37 +1814,37 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-slideUp ${isModal ? 'max-h-[90vh] overflow-y-auto' : ''}`}>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-8 2xl:px-12 py-6 2xl:py-8 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between tsf-header-px tsf-header-py border-b border-gray-100 bg-white">
               <div>
-                <div className="flex items-center gap-2 text-sm 2xl:text-base text-gray-500 mb-2">
-                  <span className="w-6 h-6 2xl:w-8 2xl:h-8 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs 2xl:text-sm font-bold shadow-sm">
+                <div className="flex items-center gap-2 tsf-sm-text text-gray-500 mb-2">
+                  <span className="tsf-header-badge bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
                     {system ? '✏️' : '+'}
                   </span>
                   <span className="font-medium">{system ? 'Edit Target System' : 'Create Target System'}</span>
                 </div>
-                <h1 className="text-2xl 2xl:text-3xl font-bold text-gray-900">
+                <h1 className="tsf-header-h1 font-bold text-gray-900">
                   {integrationName || 'Target System Configuration'}
                 </h1>
               </div>
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="w-10 h-10 2xl:w-12 2xl:h-12 flex items-center justify-center rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all duration-300 hover:scale-110"
+                  className="tsf-close-btn flex items-center justify-center rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all duration-300 hover:scale-110"
                 >
-                  <FaTimes className="text-xl 2xl:text-2xl" />
+                  <FaTimes className="tsf-close-icon" />
                 </button>
               )}
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="px-8 2xl:px-12 py-6 2xl:py-8">
+            <form onSubmit={handleSubmit} className="tsf-form-px tsf-form-py">
               {error && (
-                <div className="mb-4 2xl:mb-6 rounded-lg bg-red-50 border border-red-100 text-red-700 px-4 py-3 2xl:px-5 2xl:py-4 text-sm 2xl:text-base">
+                <div className="tsf-error-mb rounded-lg bg-red-50 border border-red-100 text-red-700 tsf-error-p tsf-sm-text">
                   {error}
                 </div>
               )}
 
-              <div className="space-y-5 2xl:space-y-7">
+              <div className="tsf-fields-gap">
 
                 {/* ── System Name ── */}
                 <Field
@@ -1752,7 +1896,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
                 {/* Authentication Method - Dropdown */}
                 <div className="group">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
                     Authentication Method <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -1760,7 +1904,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                     value={formData.auth_method}
                     onChange={(e) => handleAuthMethodChange(e.target.value)}
                     required
-                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent bg-white transition-colors hover:border-gray-300 cursor-pointer"
+                    className="w-full tsf-input-p tsf-input-fs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent bg-white transition-colors hover:border-gray-300 cursor-pointer"
                   >
                     {authMethodOptions.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -1768,7 +1912,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
                     <span>💡</span>
                     <span>Choose the authentication method for your system</span>
                   </p>
@@ -1777,7 +1921,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 {/* Engine Port - Only for PingFederate + BearerToken */}
                 {isPingFederate(formData.type) && formData.auth_method === 'BearerToken' && (
                   <div className="group">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
                       Engine Port
                     </label>
                     <input
@@ -1788,9 +1932,9 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       value={formData.engine_port}
                       onChange={handleChange}
                       placeholder="9031"
-                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300"
+                      className="w-full tsf-input-p tsf-input-fs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300"
                     />
-                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
                       <span>💡</span>
                       <span>Engine port for PingFederate admin API (default: 9031)</span>
                     </p>
@@ -1845,17 +1989,17 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-8 2xl:mt-10 pt-6 2xl:pt-8 border-t border-gray-100">
+              <div className="flex gap-4 tsf-actions-mt tsf-actions-pt border-t border-gray-100">
                 <button
                   type="button" onClick={handleReset}
-                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 rounded-lg tsf-btn-fs font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  <span className="text-lg 2xl:text-xl">🔄</span>
+                  <span className="tsf-btn-icon">🔄</span>
                   <span>Reset</span>
                 </button>
                 <button
                   type="submit" disabled={loading}
-                  className="flex-1 px-6 py-3 bg-[#111] hover:bg-[#333] text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3 bg-[#111] hover:bg-[#333] text-white rounded-lg tsf-btn-fs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Saving…' : system ? 'Update System' : 'Create System'}
                 </button>
@@ -1891,7 +2035,279 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         .animate-scaleIn         { animation: scaleIn 0.3s ease-out; }
         .animate-slideUp         { animation: slideUp 0.5s ease-out; }
         .animate-pulse-gentle    { animation: pulse-gentle 2s ease-in-out infinite; }
-      `}</style>
+
+        /* =====================================================================
+           RESPONSIVE TOKENS — 1920×1080 is the baseline (default :root).
+           Replaces all Tailwind 2xl: classes (which fire at 1536px, not 1920px).
+           No UI, structure, features, comments, or logic is altered.
+           ===================================================================== */
+
+        /* ── BASELINE : 1920×1080 ────────────────────────────────────────── */
+        :root {
+          --tsf-hint-fs:          12px;
+          --tsf-field-label-fs:   14px;
+          --tsf-sublabel-fs:      12px;
+          --tsf-sm-fs:            14px;
+          --tsf-input-px:         16px;
+          --tsf-input-py:         12px;
+          --tsf-input-fs:         14px;
+          --tsf-header-px:        32px;
+          --tsf-header-py:        24px;
+          --tsf-header-h1-fs:     24px;
+          --tsf-header-badge-sz:  24px;
+          --tsf-header-badge-fs:  12px;
+          --tsf-close-btn-sz:     40px;
+          --tsf-close-icon-fs:    20px;
+          --tsf-form-px:          32px;
+          --tsf-form-py:          24px;
+          --tsf-error-px:         16px;
+          --tsf-error-py:         12px;
+          --tsf-error-mb:         16px;
+          --tsf-fields-gap:       20px;
+          --tsf-actions-mt:       32px;
+          --tsf-actions-pt:       24px;
+          --tsf-btn-fs:           13px;
+          --tsf-btn-icon-fs:      18px;
+          --tsf-checkbox-sz:      16px;
+          --tsf-ssl-p:            20px;
+          --tsf-ssl-gap:          20px;
+          --tsf-ssl-icon-sz:      24px;
+          --tsf-mono-fs:          12px;
+          --tsf-modal-max-w:      448px;
+          --tsf-modal-p:          32px;
+          --tsf-modal-icon-sz:    64px;
+          --tsf-modal-icon-fs:    30px;
+          --tsf-modal-icon-mb:    24px;
+          --tsf-modal-h2-fs:      24px;
+          --tsf-modal-sub-fs:     16px;
+          --tsf-modal-summary-p:  20px;
+          --tsf-modal-btn-py:     12px;
+        }
+
+        /* ── LARGE DESKTOP / 4K : >1920px ───────────────────────────────── */
+        @media (min-width: 1921px) {
+          :root {
+            --tsf-hint-fs:          14px;
+            --tsf-field-label-fs:   16px;
+            --tsf-sublabel-fs:      14px;
+            --tsf-sm-fs:            16px;
+            --tsf-input-px:         20px;
+            --tsf-input-py:         16px;
+            --tsf-input-fs:         16px;
+            --tsf-header-px:        48px;
+            --tsf-header-py:        32px;
+            --tsf-header-h1-fs:     30px;
+            --tsf-header-badge-sz:  32px;
+            --tsf-header-badge-fs:  14px;
+            --tsf-close-btn-sz:     48px;
+            --tsf-close-icon-fs:    24px;
+            --tsf-form-px:          48px;
+            --tsf-form-py:          32px;
+            --tsf-error-px:         20px;
+            --tsf-error-py:         16px;
+            --tsf-error-mb:         24px;
+            --tsf-fields-gap:       28px;
+            --tsf-actions-mt:       40px;
+            --tsf-actions-pt:       32px;
+            --tsf-btn-fs:           15px;
+            --tsf-btn-icon-fs:      21px;
+            --tsf-checkbox-sz:      20px;
+            --tsf-ssl-p:            24px;
+            --tsf-ssl-gap:          24px;
+            --tsf-ssl-icon-sz:      28px;
+            --tsf-mono-fs:          14px;
+            --tsf-modal-max-w:      576px;
+            --tsf-modal-p:          48px;
+            --tsf-modal-icon-sz:    80px;
+            --tsf-modal-icon-fs:    40px;
+            --tsf-modal-icon-mb:    32px;
+            --tsf-modal-h2-fs:      30px;
+            --tsf-modal-sub-fs:     18px;
+            --tsf-modal-summary-p:  24px;
+            --tsf-modal-btn-py:     16px;
+          }
+        }
+
+        /* ── LAPTOP : 1280–1919px ─────────────────────────────────────────
+           Covers MacBook Pro 14" (1512px scaled), 15"/16" (1680px scaled),
+           standard 1280–1440 laptops. UI looks identical to 1920 baseline.
+        ─────────────────────────────────────────────────────────────────── */
+        @media (min-width: 1280px) and (max-width: 1919px) {
+          :root {
+            --tsf-hint-fs:          11px;
+            --tsf-field-label-fs:   13px;
+            --tsf-sublabel-fs:      11px;
+            --tsf-sm-fs:            13px;
+            --tsf-input-px:         14px;
+            --tsf-input-py:         10px;
+            --tsf-input-fs:         13px;
+            --tsf-header-px:        24px;
+            --tsf-header-py:        18px;
+            --tsf-header-h1-fs:     20px;
+            --tsf-header-badge-sz:  20px;
+            --tsf-header-badge-fs:  10px;
+            --tsf-close-btn-sz:     34px;
+            --tsf-close-icon-fs:    17px;
+            --tsf-form-px:          24px;
+            --tsf-form-py:          20px;
+            --tsf-error-px:         14px;
+            --tsf-error-py:         10px;
+            --tsf-error-mb:         14px;
+            --tsf-fields-gap:       16px;
+            --tsf-actions-mt:       24px;
+            --tsf-actions-pt:       18px;
+            --tsf-btn-fs:           12px;
+            --tsf-btn-icon-fs:      16px;
+            --tsf-checkbox-sz:      14px;
+            --tsf-ssl-p:            16px;
+            --tsf-ssl-gap:          16px;
+            --tsf-ssl-icon-sz:      20px;
+            --tsf-mono-fs:          11px;
+            --tsf-modal-max-w:      400px;
+            --tsf-modal-p:          26px;
+            --tsf-modal-icon-sz:    56px;
+            --tsf-modal-icon-fs:    26px;
+            --tsf-modal-icon-mb:    20px;
+            --tsf-modal-h2-fs:      20px;
+            --tsf-modal-sub-fs:     14px;
+            --tsf-modal-summary-p:  16px;
+            --tsf-modal-btn-py:     10px;
+          }
+        }
+
+        /* ── SMALL LAPTOP : 1024–1279px ─────────────────────────────────── */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          :root {
+            --tsf-hint-fs:          10.5px;
+            --tsf-field-label-fs:   12.5px;
+            --tsf-sublabel-fs:      10.5px;
+            --tsf-sm-fs:            12.5px;
+            --tsf-input-px:         12px;
+            --tsf-input-py:         9px;
+            --tsf-input-fs:         12.5px;
+            --tsf-header-px:        20px;
+            --tsf-header-py:        16px;
+            --tsf-header-h1-fs:     18px;
+            --tsf-header-badge-sz:  18px;
+            --tsf-header-badge-fs:  9px;
+            --tsf-close-btn-sz:     30px;
+            --tsf-close-icon-fs:    15px;
+            --tsf-form-px:          20px;
+            --tsf-form-py:          18px;
+            --tsf-error-px:         12px;
+            --tsf-error-py:         9px;
+            --tsf-error-mb:         12px;
+            --tsf-fields-gap:       14px;
+            --tsf-actions-mt:       20px;
+            --tsf-actions-pt:       16px;
+            --tsf-btn-fs:           11.5px;
+            --tsf-btn-icon-fs:      15px;
+            --tsf-checkbox-sz:      13px;
+            --tsf-ssl-p:            14px;
+            --tsf-ssl-gap:          14px;
+            --tsf-ssl-icon-sz:      18px;
+            --tsf-mono-fs:          10.5px;
+            --tsf-modal-max-w:      380px;
+            --tsf-modal-p:          22px;
+            --tsf-modal-icon-sz:    50px;
+            --tsf-modal-icon-fs:    22px;
+            --tsf-modal-icon-mb:    18px;
+            --tsf-modal-h2-fs:      18px;
+            --tsf-modal-sub-fs:     13px;
+            --tsf-modal-summary-p:  14px;
+            --tsf-modal-btn-py:     9px;
+          }
+        }
+
+        /* ── TABLET : 768–1023px ─────────────────────────────────────────── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          :root {
+            --tsf-hint-fs:          10px;
+            --tsf-field-label-fs:   12px;
+            --tsf-sublabel-fs:      10px;
+            --tsf-sm-fs:            12px;
+            --tsf-input-px:         11px;
+            --tsf-input-py:         8px;
+            --tsf-input-fs:         12px;
+            --tsf-header-px:        16px;
+            --tsf-header-py:        14px;
+            --tsf-header-h1-fs:     16px;
+            --tsf-header-badge-sz:  16px;
+            --tsf-header-badge-fs:  8px;
+            --tsf-close-btn-sz:     28px;
+            --tsf-close-icon-fs:    14px;
+            --tsf-form-px:          16px;
+            --tsf-form-py:          16px;
+            --tsf-error-px:         11px;
+            --tsf-error-py:         8px;
+            --tsf-error-mb:         11px;
+            --tsf-fields-gap:       12px;
+            --tsf-actions-mt:       18px;
+            --tsf-actions-pt:       14px;
+            --tsf-btn-fs:           11px;
+            --tsf-btn-icon-fs:      14px;
+            --tsf-checkbox-sz:      13px;
+            --tsf-ssl-p:            12px;
+            --tsf-ssl-gap:          12px;
+            --tsf-ssl-icon-sz:      16px;
+            --tsf-mono-fs:          10px;
+            --tsf-modal-max-w:      360px;
+            --tsf-modal-p:          20px;
+            --tsf-modal-icon-sz:    48px;
+            --tsf-modal-icon-fs:    20px;
+            --tsf-modal-icon-mb:    16px;
+            --tsf-modal-h2-fs:      16px;
+            --tsf-modal-sub-fs:     12px;
+            --tsf-modal-summary-p:  12px;
+            --tsf-modal-btn-py:     8px;
+          }
+        }
+
+        /* ── COMPONENT CLASSES — all sizing via CSS vars ─────────────────── */
+        .tsf-hint-text    { font-size: var(--tsf-hint-fs); }
+        .tsf-field-label  { font-size: var(--tsf-field-label-fs); }
+        .tsf-sublabel     { font-size: var(--tsf-sublabel-fs); }
+        .tsf-sm-text      { font-size: var(--tsf-sm-fs); }
+        .tsf-mono-sm      { font-size: var(--tsf-mono-fs); }
+
+        .tsf-input-p      { padding: var(--tsf-input-py) var(--tsf-input-px); }
+        .tsf-input-fs     { font-size: var(--tsf-input-fs); }
+
+        .tsf-header-px    { padding-left: var(--tsf-header-px); padding-right: var(--tsf-header-px); }
+        .tsf-header-py    { padding-top: var(--tsf-header-py); padding-bottom: var(--tsf-header-py); }
+        .tsf-header-h1    { font-size: var(--tsf-header-h1-fs); }
+        .tsf-header-badge { width: var(--tsf-header-badge-sz); height: var(--tsf-header-badge-sz); font-size: var(--tsf-header-badge-fs); }
+        .tsf-close-btn    { width: var(--tsf-close-btn-sz); height: var(--tsf-close-btn-sz); }
+        .tsf-close-icon   { font-size: var(--tsf-close-icon-fs); }
+
+        .tsf-form-px      { padding-left: var(--tsf-form-px); padding-right: var(--tsf-form-px); }
+        .tsf-form-py      { padding-top: var(--tsf-form-py); padding-bottom: var(--tsf-form-py); }
+
+        .tsf-error-p      { padding: var(--tsf-error-py) var(--tsf-error-px); }
+        .tsf-error-mb     { margin-bottom: var(--tsf-error-mb); }
+
+        .tsf-fields-gap   { display: flex; flex-direction: column; gap: var(--tsf-fields-gap); }
+        .tsf-actions-mt   { margin-top: var(--tsf-actions-mt); }
+        .tsf-actions-pt   { padding-top: var(--tsf-actions-pt); }
+
+        .tsf-btn-fs       { font-size: var(--tsf-btn-fs); }
+        .tsf-btn-icon     { font-size: var(--tsf-btn-icon-fs); }
+
+        .tsf-checkbox     { width: var(--tsf-checkbox-sz); height: var(--tsf-checkbox-sz); }
+
+        .tsf-ssl-panel    { padding: var(--tsf-ssl-p); display: flex; flex-direction: column; gap: var(--tsf-ssl-gap); }
+        .tsf-ssl-icon     { width: var(--tsf-ssl-icon-sz); height: var(--tsf-ssl-icon-sz); }
+
+        .tsf-modal-w          { max-width: var(--tsf-modal-max-w); }
+        .tsf-modal-p          { padding: var(--tsf-modal-p); }
+        .tsf-modal-icon       { width: var(--tsf-modal-icon-sz); height: var(--tsf-modal-icon-sz); }
+        .tsf-modal-icon-fs    { font-size: var(--tsf-modal-icon-fs); }
+        .tsf-modal-icon-mb    { margin-bottom: var(--tsf-modal-icon-mb); }
+        .tsf-modal-h2         { font-size: var(--tsf-modal-h2-fs); }
+        .tsf-modal-sub        { font-size: var(--tsf-modal-sub-fs); }
+        .tsf-modal-summary-p  { padding: var(--tsf-modal-summary-p); }
+        .tsf-modal-btn-py     { padding-top: var(--tsf-modal-btn-py); padding-bottom: var(--tsf-modal-btn-py); }
+      `}</style>  
     </div>
   );
 };

@@ -169,27 +169,57 @@ const TargetSystems: React.FC = () => {
     }
   };
 
-  const handleCreate = async (data: any): Promise<void> => {
+  // CHANGE: return the created system so TargetSystemForm can show the
+  // connection test result in its success modal. DO NOT close the form here —
+  // the form's "Done" button calls onCancel which closes it.
+  // Re-throw on error so the form shows the error instead of a false success modal.
+  const handleCreate = async (data: any): Promise<any> => {
     try {
-      await api.targetSystems.create(data);
-      setShowForm(false);
-      setEditingSystem(null);
-      fetchData();
+      // api.targetSystems.create() now auto-tests the connection internally.
+      // It returns the created system with a _connectionTest: { success, message } field.
+      const created = await api.targetSystems.create(data);
+      fetchData(); // refresh the list in background
+
+      const test = created?._connectionTest;
+      if (test) {
+        if (test.success) {
+          toast.success(`Connected: ${test.message}`);
+        } else {
+          toast.error(`System created but connection failed: ${test.message}`);
+        }
+      }
+
+      return created;
     } catch (err) {
       console.error('Error creating target system:', err);
       toast.error('Failed to create target system: ' + (err as Error).message);
+      throw err;
     }
   };
 
+  // CHANGE: return the updated system so TargetSystemForm can show the
+  // connection test result in its success modal. DO NOT close the form here —
+  // the form's "Done" button calls onCancel which closes it.
+  // api.targetSystems.update() now auto-tests and embeds _connectionTest.
+  // Re-throw on error so the form shows the error instead of a false success modal.
   const handleUpdate = async (id: string, data: any): Promise<void> => {
+    // try {
+    //   await api.targetSystems.update(id, data);
+    //   setShowForm(false);
+    //   setEditingSystem(null);
+    //   fetchData();
+    // } catch (err) {
+    //   console.error('Error updating target system:', err);
+    //   toast.error('Failed to update target system: ' + (err as Error).message);
+    // }
     try {
-      await api.targetSystems.update(id, data);
-      setShowForm(false);
-      setEditingSystem(null);
-      fetchData();
-    } catch (err) {
+      const updated = await api.targetSystems.update(id, data);
+      fetchData(); // refresh list in background
+      return updated ?? { _id: id, id };
+    } catch (err: any) {
       console.error('Error updating target system:', err);
       toast.error('Failed to update target system: ' + (err as Error).message);
+      throw err;
     }
   };
 
@@ -352,7 +382,7 @@ const TargetSystems: React.FC = () => {
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
+        <div className="ts-header-px px-6 2xl:px-20 py-6 2xl:py-10">
           <div className="flex justify-between items-start">
             <div>
               {integrationId && (
@@ -413,7 +443,7 @@ const TargetSystems: React.FC = () => {
 
       {/* Stats Summary */}
       {stats && (
-        <div className="px-6 2xl:px-20 py-6 2xl:py-10">
+        <div className="ts-px px-6 2xl:px-20 py-6 2xl:py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 2xl:gap-6 mb-6 2xl:mb-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
               <div className="flex items-center gap-3 2xl:gap-4">
@@ -455,7 +485,7 @@ const TargetSystems: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="px-6 2xl:px-20 pb-4 2xl:pb-6">
+      <div className="ts-px px-6 2xl:px-20 pb-4 2xl:pb-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 2xl:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 2xl:gap-6">
             <div>
@@ -511,7 +541,7 @@ const TargetSystems: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="px-6 2xl:px-20 pb-4 2xl:pb-6">
+        <div className="ts-px px-6 2xl:px-20 pb-4 2xl:pb-6">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 2xl:p-5 text-sm 2xl:text-base text-red-700">
             {error}
           </div>
@@ -519,7 +549,7 @@ const TargetSystems: React.FC = () => {
       )}
 
       {/* Target Systems Grid */}
-      <div className="px-6 2xl:px-20 pb-6 2xl:pb-10">
+      <div className="ts-px px-6 2xl:px-20 pb-6 2xl:pb-10">
         {loading ? (
           <div className="flex items-center justify-center p-12 2xl:p-20">
             <div className="animate-spin rounded-full h-8 w-8 2xl:h-12 2xl:w-12 border-b-2 border-blue-600"></div>
@@ -543,7 +573,7 @@ const TargetSystems: React.FC = () => {
         ) : (
           <div className="flex flex-wrap items-center gap-4 2xl:gap-6">
             {systems.map((system) => (
-              <div key={system._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-md transition-shadow w-fit min-w-[400px] 2xl:min-w-[500px] max-w-full">
+              <div key={system._id} className="ts-card bg-white rounded-lg shadow-sm border border-gray-200 p-6 2xl:p-8 hover:shadow-md transition-shadow w-fit min-w-[400px] 2xl:min-w-[500px] max-w-full">
                 <div className="mb-4 2xl:mb-5">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg 2xl:text-xl font-semibold text-gray-900">{system.name}</h3>
@@ -649,6 +679,63 @@ const TargetSystems: React.FC = () => {
         .animate-scaleIn {
           animation: scaleIn 0.3s ease-out;
         }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE RULES — TargetSystems.tsx
+           1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+           Tablet (768–1023px) → compressed
+           4K / ultrawide (2560px+) → handled by existing 2xl: classes
+        ═══════════════════════════════════════════════════════ */
+
+        /* ── Section padding wrapper ── */
+        .ts-px {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+
+        /* ── Header inner padding ── */
+        .ts-header-px {
+          padding-left: 24px;
+          padding-right: 24px;
+          padding-top: 24px;
+          padding-bottom: 24px;
+        }
+
+        /* ── System card min-width ── */
+        .ts-card { min-width: 400px; }
+
+        /* Tablet: 768–1023 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .ts-px         { padding-left: 20px; padding-right: 20px; }
+          .ts-header-px  { padding-left: 20px; padding-right: 20px; padding-top: 18px; padding-bottom: 18px; }
+          .ts-card       { min-width: 340px; }
+        }
+
+        /* Small laptop: 1024–1279 (MacBook 13") */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .ts-px         { padding-left: 28px; padding-right: 28px; }
+          .ts-header-px  { padding-left: 28px; padding-right: 28px; padding-top: 22px; padding-bottom: 22px; }
+          .ts-card       { min-width: 360px; }
+        }
+
+        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .ts-px         { padding-left: 32px; padding-right: 32px; }
+          .ts-header-px  { padding-left: 32px; padding-right: 32px; padding-top: 24px; padding-bottom: 24px; }
+          .ts-card       { min-width: 380px; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919 */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .ts-px         { padding-left: 40px; padding-right: 40px; }
+          .ts-header-px  { padding-left: 40px; padding-right: 40px; padding-top: 28px; padding-bottom: 28px; }
+          .ts-card       { min-width: 400px; }
+        }
+
+        /* Exact target: 1920×1080 — px-6 = 24px default above already matches */
+
+        /* 4K / ultrawide: handled by existing 2xl: Tailwind classes */
       `}</style>
     </div>
   );

@@ -91,9 +91,144 @@ const injectStyles = () => {
     [data-atm-scroll]::-webkit-scrollbar-track        { background: #f3f4f6; border-radius: 0 22px 22px 0; }
     [data-atm-scroll]::-webkit-scrollbar-thumb        { background: #d1d5db; border-radius: 10px; }
     [data-atm-scroll]::-webkit-scrollbar-thumb:hover  { background: #9ca3af; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE RULES — AgentToggleModal
+       This is a centered modal/dialog. The card already has
+       maxWidth: calc(100vw - 32px) so it never overflows.
+       We only adjust:
+         - card width          (atm-card-width)
+         - card padding        (atm-card-padding)
+         - max card height     (atm-card-maxh)
+         - avatar ring size    (handled via JS var --atm-avatar-ring)
+         - button height       (atm-btn-h)
+         - body font size      (atm-body-fs)
+         - title font size     (atm-title-fs)
+
+       1920×1080 → exact current design (no changes)
+       Laptop (1024–1919px) → slightly compact
+       Tablet (768–1023px)  → more compact
+       4K / ultrawide (2560px+) → slightly larger
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* ── CSS custom properties set per breakpoint ──────────────────
+       Consumed by the JS style objects via getComputedStyle or
+       directly applied via the .atm-responsive-* helper classes.    */
+
+    /* Baseline — 1920×1080 (no change from original inline values) */
+    [data-atm-root] {
+      --atm-card-w:       460px;
+      --atm-card-pad-v:   36px;
+      --atm-card-pad-h:   32px;
+      --atm-card-maxh:    calc(100vh - 48px);
+      --atm-avatar-ring:  72px;
+      --atm-avatar-img:   44px;
+      --atm-title-fs:     20px;
+      --atm-body-fs:      13px;
+      --atm-label-fs:     12px;
+      --atm-ta-fs:        13px;
+      --atm-btn-h:        44px;
+      --atm-btn-fs:       13px;
+      --atm-warn-pad:     12px 14px;
+      --atm-warn-fs:      12.5px;
+      --atm-badge-fs:     12px;
+    }
+
+    /* Tablet: 768–1023px */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      [data-atm-root] {
+        --atm-card-w:       420px;
+        --atm-card-pad-v:   24px;
+        --atm-card-pad-h:   24px;
+        --atm-card-maxh:    calc(100vh - 32px);
+        --atm-avatar-ring:  60px;
+        --atm-avatar-img:   36px;
+        --atm-title-fs:     17px;
+        --atm-body-fs:      12px;
+        --atm-label-fs:     11.5px;
+        --atm-ta-fs:        12px;
+        --atm-btn-h:        40px;
+        --atm-btn-fs:       12.5px;
+        --atm-warn-pad:     10px 12px;
+        --atm-warn-fs:      11.5px;
+        --atm-badge-fs:     11px;
+      }
+    }
+
+    /* Small laptop: 1024–1279px (MacBook 13") */
+    @media (min-width: 1024px) and (max-width: 1279px) {
+      [data-atm-root] {
+        --atm-card-w:       440px;
+        --atm-card-pad-v:   28px;
+        --atm-card-pad-h:   26px;
+        --atm-card-maxh:    calc(100vh - 40px);
+        --atm-avatar-ring:  66px;
+        --atm-avatar-img:   40px;
+        --atm-title-fs:     18px;
+        --atm-body-fs:      12.5px;
+        --atm-label-fs:     11.5px;
+        --atm-ta-fs:        12.5px;
+        --atm-btn-h:        42px;
+        --atm-btn-fs:       12.5px;
+        --atm-warn-pad:     10px 12px;
+        --atm-warn-fs:      12px;
+        --atm-badge-fs:     11.5px;
+      }
+    }
+
+    /* Laptop: 1280–1439px (MacBook 14/15", 1366/1440) */
+    @media (min-width: 1280px) and (max-width: 1439px) {
+      [data-atm-root] {
+        --atm-card-w:       450px;
+        --atm-card-pad-v:   32px;
+        --atm-card-pad-h:   28px;
+        --atm-card-maxh:    calc(100vh - 44px);
+        --atm-avatar-ring:  68px;
+        --atm-avatar-img:   42px;
+        --atm-title-fs:     19px;
+        --atm-btn-h:        43px;
+      }
+    }
+
+    /* Large laptop / small desktop: 1440–1919px */
+    @media (min-width: 1440px) and (max-width: 1919px) {
+      [data-atm-root] {
+        --atm-card-w:       456px;
+      }
+    }
+
+    /* Exact target: 1920×1080 — baseline values above already match */
+
+    /* 4K / ultrawide: 2560px+ */
+    @media (min-width: 2560px) {
+      [data-atm-root] {
+        --atm-card-w:       520px;
+        --atm-card-pad-v:   44px;
+        --atm-card-pad-h:   40px;
+        --atm-avatar-ring:  84px;
+        --atm-avatar-img:   52px;
+        --atm-title-fs:     23px;
+        --atm-body-fs:      14.5px;
+        --atm-label-fs:     13px;
+        --atm-ta-fs:        14px;
+        --atm-btn-h:        50px;
+        --atm-btn-fs:       14px;
+        --atm-warn-fs:      14px;
+        --atm-badge-fs:     13px;
+      }
+    }
   `;
   document.head.appendChild(s);
 };
+
+// ─── Helper: read a CSS custom property from [data-atm-root] ─────────────────
+// Called at render time so values always reflect the current breakpoint.
+// Falls back to the baseline value if the element isn't mounted yet.
+function atmVar(el: HTMLElement | null, name: string, fallback: string): string {
+  if (!el) return fallback;
+  const v = getComputedStyle(el).getPropertyValue(name).trim();
+  return v || fallback;
+}
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -170,6 +305,9 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
   const [reason,    setReason]    = useState('');
   const [particles, setParticles] = useState<Particle[]>([]);
 
+  // Ref to the backdrop element so we can read CSS vars at render time
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (open) { setExiting(false); setReason(''); requestAnimationFrame(() => setMounted(true)); }
   }, [open]);
@@ -191,7 +329,7 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
     setTimeout(() => { setMounted(false); onCancel(); }, 280);
   };
 
-  // ── Derived colours ──
+  // ── Derived colours ── (unchanged)
   const headerGrad  = isDisabling ? 'linear-gradient(90deg,#F87171,#EF4444)' : `linear-gradient(90deg,${accent}88,${accent})`;
   const iconBg      = isDisabling ? '#FEF2F2' : `${accent}12`;
   const iconShadow  = isDisabling
@@ -222,6 +360,7 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
   return (
     /* ── Backdrop ── */
     <div
+      ref={rootRef}
       data-atm-root
       onClick={!loading ? handleCancel : undefined}
       style={{
@@ -245,26 +384,24 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
         ))}
       </div>
 
-      {/* ── Card ──
-            The card is a flex-column. The scrollable region fills all available
-            height and shows a full-height right-side scrollbar via overflow-y:scroll.
-            overflow:hidden on the outer card clips the rounded corners cleanly.
-      */}
+      {/* ── Card ── */}
       <div
         onClick={e => e.stopPropagation()}
         style={{
           display: 'flex', flexDirection: 'column',
-          width: 460, maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100vh - 48px)',
+          /* Responsive width: CSS var falls back to 460px at baseline */
+          width: 'var(--atm-card-w, 460px)',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'var(--atm-card-maxh, calc(100vh - 48px))',
           borderRadius: 24,
-          overflow: 'hidden',          /* clips scrollbar track to card corners */
+          overflow: 'hidden',
           background: '#fff',
           boxShadow: cardShadow,
           animation: cardAnim,
           position: 'relative',
         }}
       >
-        {/* Shimmer + glow — absolutely positioned decorations */}
+        {/* Shimmer + glow decorations */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
           <div style={{
             position: 'absolute', inset: 0,
@@ -284,37 +421,50 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           height: 4, background: headerGrad, zIndex: 3, flexShrink: 0,
         }} />
 
-        {/* ══ SCROLLABLE AREA — fills card, scrollbar runs full height ══ */}
+        {/* ══ SCROLLABLE AREA ══ */}
         <div
           data-atm-scroll
           style={{
             position: 'relative', zIndex: 1,
             flex: 1,
-            overflowY: 'scroll',    /* always render scrollbar track */
+            overflowY: 'scroll',
             overflowX: 'hidden',
             scrollbarWidth: 'thin',
             scrollbarColor: '#d1d5db #f3f4f6',
-            padding: '36px 32px 32px',
+            /* Responsive padding via CSS vars */
+            padding: 'var(--atm-card-pad-v, 36px) var(--atm-card-pad-h, 32px) var(--atm-card-pad-v, 32px)',
           }}
         >
 
           {/* Avatar ring */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, marginTop: 4 }}>
             <div style={{
-              width: 72, height: 72, borderRadius: '50%',
+              /* Responsive ring size */
+              width:  'var(--atm-avatar-ring, 72px)',
+              height: 'var(--atm-avatar-ring, 72px)',
+              borderRadius: '50%',
               background: iconBg,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: iconShadow,
               animation: 'atm-icon-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both',
             }}>
-              <InlineAvatar src={agentAvatarSrc} name={agentName} size={44} accent={accent} dimmed={isDisabling} />
+              <InlineAvatar
+                src={agentAvatarSrc}
+                name={agentName}
+                /* Read responsive avatar image size from CSS var at render time */
+                size={parseInt(atmVar(rootRef.current, '--atm-avatar-img', '44')) || 44}
+                accent={accent}
+                dimmed={isDisabling}
+              />
             </div>
           </div>
 
           {/* Title */}
           <h2 style={{
             textAlign: 'center', margin: '0 0 8px',
-            fontSize: 20, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em',
+            /* Responsive font size */
+            fontSize: 'var(--atm-title-fs, 20px)',
+            fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em',
             animation: 'atm-slide-up 0.4s ease 0.15s both',
           }}>
             {isDisabling ? 'Disable this agent?' : 'Re-enable this agent?'}
@@ -324,7 +474,10 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, animation: 'atm-slide-up 0.4s ease 0.2s both' }}>
             <span style={{
               background: badgeBg, color: badgeColor, border: badgeBorder,
-              borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 600,
+              borderRadius: 999,
+              padding: '3px 12px',
+              fontSize: 'var(--atm-badge-fs, 12px)',
+              fontWeight: 600,
             }}>
               {agentName}
             </span>
@@ -333,7 +486,8 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           {/* Body text */}
           <p style={{
             textAlign: 'center', margin: '0 0 16px',
-            fontSize: 13, lineHeight: 1.6, color: '#6b7280',
+            fontSize: 'var(--atm-body-fs, 13px)',
+            lineHeight: 1.6, color: '#6b7280',
             animation: 'atm-slide-up 0.4s ease 0.25s both',
           }}>
             {isDisabling
@@ -346,7 +500,9 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
             <div style={{
               marginBottom: 20,
               background: '#FEF2F2', border: '1px solid #FECACA',
-              borderRadius: 14, padding: '12px 14px',
+              borderRadius: 14,
+              /* Responsive padding */
+              padding: 'var(--atm-warn-pad, 12px 14px)',
               animation: 'atm-warning-in 0.4s ease 0.28s both',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
@@ -355,7 +511,7 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
                   <path d="M10 8v4" stroke="#EF4444" strokeWidth="1.75" strokeLinecap="round"/>
                   <circle cx="10" cy="14.5" r="0.9" fill="#EF4444"/>
                 </svg>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#B91C1C', letterSpacing: '0.01em' }}>
+                <span style={{ fontSize: 'var(--atm-label-fs, 12px)', fontWeight: 700, color: '#B91C1C', letterSpacing: '0.01em' }}>
                   This action will immediately:
                 </span>
               </div>
@@ -370,7 +526,7 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
                       width: 6, height: 6, borderRadius: '50%',
                       background: '#EF4444', display: 'inline-block',
                     }} />
-                    <span style={{ fontSize: 12.5, color: '#7F1D1D', lineHeight: 1.5 }}>{warn}</span>
+                    <span style={{ fontSize: 'var(--atm-warn-fs, 12.5px)', color: '#7F1D1D', lineHeight: 1.5 }}>{warn}</span>
                   </li>
                 ))}
               </ul>
@@ -381,7 +537,9 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
           {needReason && (
             <div style={{ marginBottom: 24, animation: 'atm-slide-up 0.4s ease 0.32s both' }}>
               <label style={{
-                display: 'block', fontSize: 12, fontWeight: 700,
+                display: 'block',
+                fontSize: 'var(--atm-label-fs, 12px)',
+                fontWeight: 700,
                 color: '#374151', marginBottom: 8, letterSpacing: '0.01em',
               }}>
                 Reason <span style={{ color: '#EF4444' }}>*</span>
@@ -398,7 +556,8 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
                   width: '100%', padding: '10px 14px', borderRadius: 12,
                   border: `1.5px solid ${reason.trim() ? (isDisabling ? '#FCA5A5' : `${accent}88`) : '#E5E7EB'}`,
                   background: reason.trim() ? (isDisabling ? '#FFF5F5' : `${accent}08`) : '#F9FAFB',
-                  fontSize: 13, color: '#111827',
+                  fontSize: 'var(--atm-ta-fs, 13px)',
+                  color: '#111827',
                   resize: 'none', outline: 'none',
                   fontFamily: 'inherit', lineHeight: 1.5,
                   transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
@@ -423,9 +582,14 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.borderColor = '#D1D5DB'; }}}
               onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
               style={{
-                flex: 1, height: 44, borderRadius: 12,
+                flex: 1,
+                /* Responsive button height */
+                height: 'var(--atm-btn-h, 44px)',
+                borderRadius: 12,
                 border: '1px solid #E5E7EB', background: '#F9FAFB',
-                color: '#374151', fontSize: 13, fontWeight: 600,
+                color: '#374151',
+                fontSize: 'var(--atm-btn-fs, 13px)',
+                fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s ease', opacity: loading ? 0.5 : 1,
                 fontFamily: 'inherit',
@@ -441,9 +605,14 @@ export const AgentToggleModal: React.FC<AgentToggleModalProps> = ({
               onMouseEnter={e => { if (canConfirm) e.currentTarget.style.transform = 'scale(1.03)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               style={{
-                flex: 1, height: 44, borderRadius: 12,
+                flex: 1,
+                /* Responsive button height */
+                height: 'var(--atm-btn-h, 44px)',
+                borderRadius: 12,
                 border: 'none', background: confirmBg,
-                color: '#fff', fontSize: 13, fontWeight: 700,
+                color: '#fff',
+                fontSize: 'var(--atm-btn-fs, 13px)',
+                fontWeight: 700,
                 cursor: canConfirm ? 'pointer' : 'not-allowed',
                 opacity: canConfirm ? 1 : 0.7,
                 boxShadow: confirmGlow,

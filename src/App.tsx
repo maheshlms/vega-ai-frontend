@@ -24,13 +24,13 @@ import DirectoryAgentChat from './features/agents/DirectoryAgentChat';
 
 // Admin
 import AdminSidebar from './features/admin/AdminSidebar';
-import AdminAgentControl from './features/admin/AdminAgentControl';
+import AdminAgentControl from './features/Common/AdminAgentControl';
 import TargetSystemIntegration from './features/admin/TargetSystemIntegration';
 import AvailableIntegration from './features/admin/AvailableIntegration';
 import TargetSystemShow from './features/admin/TargetSystemShow';
 import CreateTargetSystem from './features/admin/CreateTargetSystem';
 import TargetSystems from './features/admin/TargetSystems';
-import IntegrationsPage from './features/admin/IntegrationsPage';
+import IntegrationsPage from './features/Common/IntegrationsPage';
 import AdminLoginForm from './features/admin/AdminLoginForm';
 import AdminSection from './features/admin/AdminSection';
 import AdminUserManagement from './features/admin/AdminUserManagement';

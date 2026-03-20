@@ -1,22 +1,8 @@
 import React from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
-import { FaCheckCircle, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaCheckCircle, FaTimes, FaChevronLeft, FaChevronRight, FaChevronDown, FaCheck } from 'react-icons/fa';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WHY THIS WORKS (and why `require()` didn't):
-//
-//   Vite uses ES modules. `require()` in a .tsx file silently returns {} at
-//   runtime in Vite because there is no CommonJS runtime — so the manifest
-//   was always empty, causing the code to always fall through to the HeyGen API.
-//
-//   `import.meta.glob` with `{ eager: true }` is a Vite build-time feature:
-//   Vite statically analyses the glob, bundles the matched files into the JS
-//   chunk, and makes them available SYNCHRONOUSLY — zero network request,
-//   zero useEffect, zero loading state.
-//
-//   Result: avatars are ready before React renders the first frame.
-// ─────────────────────────────────────────────────────────────────────────────
 const manifestModules = import.meta.glob<{ default: Record<string, string> }>(
   '../../data/avatarManifest.json',
   { eager: true },
@@ -24,7 +10,6 @@ const manifestModules = import.meta.glob<{ default: Record<string, string> }>(
 const avatarManifest: Record<string, string> =
   Object.values(manifestModules)[0]?.default ?? {};
 
-// ─── Classification helpers ────────────────────────────────────────────────────
 const FORMAL_KEYWORDS = ['professional', 'formal', 'pro', 'suit', 'business', 'front'];
 const CASUAL_KEYWORDS = ['casual', 'lite', 'summer', 'vacation', 'street', 'incasual', 'relaxed'];
 
@@ -51,7 +36,6 @@ const COLORS = [
   '#14b8a6','#5eead4',
 ];
 
-// ─── AvatarOption type ─────────────────────────────────────────────────────────
 interface AvatarOption {
   id: string;
   name: string;
@@ -59,17 +43,12 @@ interface AvatarOption {
   color: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Build avatar list ONCE at module load — synchronous, no useEffect needed.
-// Called exactly once when the JS module is first evaluated.
-// ─────────────────────────────────────────────────────────────────────────────
 const EXCLUDED_NAMES = ['santa', 'claus', 'holiday', 'christmas', 'xmas'];
 
 function buildAvatarListFromManifest(): AvatarOption[] {
   const keys = Object.keys(avatarManifest);
   if (keys.length === 0) return [];
 
-  // 1. Keep formal only, exclude holiday/costume avatars
   const formal = keys.filter(id => {
     if (classifyVariant(id) !== 'formal') return false;
     const l = id.toLowerCase();
@@ -77,7 +56,6 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     return true;
   });
 
-  // 2. Deduplicate by first name — prefer local /avatars/ path over CDN URL
   const byName = new Map<string, { id: string; img: string }>();
   for (const id of formal) {
     const img   = avatarManifest[id];
@@ -86,14 +64,12 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     if (!existing) {
       byName.set(first, { id, img });
     } else {
-      // Local /avatars/ file beats CDN URL
       const existingLocal = existing.img.startsWith('/avatars/');
       const newLocal      = img.startsWith('/avatars/');
       if (newLocal && !existingLocal) byName.set(first, { id, img });
     }
   }
 
-  // 3. Sort: local files first, then CDN URLs, then initials-only
   const rank = (img: string) => img.startsWith('/avatars/') ? 2 : img.startsWith('http') ? 1 : 0;
   return Array.from(byName.entries())
     .sort(([, a], [, b]) => rank(b.img) - rank(a.img))
@@ -105,10 +81,39 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     }));
 }
 
-// Module-level constant — computed once, reused forever
 const MANIFEST_AVATARS: AvatarOption[] = buildAvatarListFromManifest();
 
-// Shown when manifest is empty AND no HeyGen API key
+// ─── Instant preload — runs at module evaluation time ─────────────────────────
+// This fires before React mounts, before any useEffect, before the first render.
+// We inject <link rel="preload"> into <head> for every local avatar image AND
+// simultaneously kick off new Image() fetches. Together these are the two
+// highest-priority fetch mechanisms available in the browser — they bypass
+// lazy-loading, Intersection Observer, and overflow:hidden visibility checks.
+// By the time the carousel component renders, all images are already in cache.
+if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
+  MANIFEST_AVATARS.forEach(avatar => {
+    if (!avatar.img) return;
+
+    // 1. <link rel="preload"> — highest browser fetch priority, runs in parallel
+    //    with page parsing. Only inject once per URL.
+    const existing = document.head.querySelector(`link[rel="preload"][href="${avatar.img}"]`);
+    if (!existing) {
+      const link = document.createElement('link');
+      link.rel  = 'preload';
+      link.as   = 'image';
+      link.href = avatar.img;
+      // fetchpriority attribute on the link element (Chromium 101+)
+      (link as any).fetchPriority = 'high';
+      document.head.appendChild(link);
+    }
+
+    // 2. new Image() — fallback for browsers that don't honour link preload
+    //    for images, and forces cache population for the <img> elements below.
+    const img = new window.Image();
+    img.src = avatar.img;
+  });
+}
+
 const HARDCODED_FALLBACKS: AvatarOption[] = [
   { id: 'Marianne_ProfessionalLook_public',   name: 'Marianne',   img: '', color: '#6366f1' },
   { id: 'Katya_ProfessionalLook_public',      name: 'Katya',      img: '', color: '#10b981' },
@@ -121,7 +126,6 @@ const HARDCODED_FALLBACKS: AvatarOption[] = [
   { id: 'Wayne_20240711_public',              name: 'Wayne',      img: '', color: '#14b8a6' },
 ];
 
-// ─── Other interfaces ──────────────────────────────────────────────────────────
 interface TargetSystem {
   _id?: string;
   id?: string;
@@ -172,25 +176,233 @@ interface AgentCreationPayload {
 
 interface TargetSystemsResponse { systems?: TargetSystem[]; }
 
-// ─── Image state hook ──────────────────────────────────────────────────────────
-type ImgState = 'loading' | 'loaded' | 'error';
+type ImgState = 'loaded' | 'error' | 'loading';
 
+// ── Checks whether a URL is already in the browser image cache synchronously ──
+// An <img> with .complete===true and .naturalWidth>0 is fully decoded in cache.
+function isImgCached(src: string): boolean {
+  if (!src || typeof window === 'undefined') return false;
+  const probe = new window.Image();
+  probe.src = src;
+  return probe.complete && probe.naturalWidth > 0;
+}
+
+// ── Image state hook that handles the cached-image race condition ─────────────
+// Problem: if an image is already cached, the browser fires the `load` event
+// synchronously (before React attaches onLoad). The old hook always started
+// in 'loading', so cached images never transitioned to 'loaded'.
+// Fix: check isImgCached() at init time so cached images start in 'loaded'.
 function useImgState(src: string): [ImgState, () => void, () => void] {
-  const [state, setState] = React.useState<ImgState>(src ? 'loading' : 'error');
-  React.useEffect(() => { setState(src ? 'loading' : 'error'); }, [src]);
+  const [state, setState] = React.useState<ImgState>(() => {
+    if (!src) return 'error';
+    if (isImgCached(src)) return 'loaded';
+    return 'loading';
+  });
+
+  React.useEffect(() => {
+    if (!src) { setState('error'); return; }
+    if (isImgCached(src)) { setState('loaded'); return; }
+    setState('loading');
+  }, [src]);
+
   return [state, () => setState('loaded'), () => setState('error')];
 }
 
-// ─── Circle avatar ─────────────────────────────────────────────────────────────
+// ─── Custom Dropdown ──────────────────────────────────────────────────────────
+// Matches the visual style of the TargetSystemShow DropdownFilter (Image 1):
+// white bg, rounded-2xl panel, subtle shadow, checkmark for selected item,
+// smooth fade-up animation, hover states. Replaces native <select>.
+interface DropdownOption { value: string; label: string; }
+
+interface CustomDropdownProps {
+  label: string;
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+const CustomDropdown: React.FC<CustomDropdownProps> = ({
+  label, value, options, onChange, required, disabled,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  React.useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  // Close on Escape
+  React.useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, []);
+
+  const selected = options.find(o => o.value === value);
+  const isActive = !!selected && value !== '';
+
+  return (
+    <div ref={ref} className="relative w-full">
+      {/* Trigger — same height/padding/radius as .acf-input */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`acf-dropdown-trigger w-full flex items-center justify-between gap-2 text-left transition-all duration-150
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+          ${open ? 'acf-dropdown-open' : ''}
+          ${isActive ? 'acf-dropdown-active' : ''}
+        `}
+      >
+        <span className={`text-[13.5px] truncate ${isActive ? 'text-[#111] font-medium' : 'text-gray-400'}`}>
+          {selected ? selected.label : label}
+        </span>
+        <FaChevronDown
+          size={11}
+          className={`flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${isActive ? 'text-[#111]' : 'text-gray-400'}`}
+        />
+      </button>
+
+      {/* Panel — rounded-2xl, soft shadow, fade-up animation */}
+      {open && (
+        <div className="acf-dropdown-panel absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50">
+          <div className="py-1.5">
+            {options.map(opt => {
+              const isSel = value === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-[13.5px] transition-colors text-left
+                    ${isSel
+                      ? 'bg-gray-50 text-[#111] font-semibold'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-[#111]'
+                    }`}
+                >
+                  <span>{opt.label}</span>
+                  {isSel && <FaCheck size={11} className="text-[#111] flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Custom Target System Dropdown ────────────────────────────────────────────
+// Same panel style but with two-line rows (name + URL) for richer display.
+interface TargetSystemDropdownProps {
+  value: string;
+  systems: TargetSystem[];
+  onChange: (system: TargetSystem | null) => void;
+}
+
+const TargetSystemDropdown: React.FC<TargetSystemDropdownProps> = ({ value, systems, onChange }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  React.useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, []);
+
+  const selected = systems.find(s => (s._id ?? s.id) === value) ?? null;
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`acf-dropdown-trigger w-full flex items-center justify-between gap-2 text-left transition-all duration-150 cursor-pointer
+          ${open ? 'acf-dropdown-open' : ''}
+          ${selected ? 'acf-dropdown-active' : ''}
+        `}
+      >
+        {selected ? (
+          <div className="flex-1 min-w-0">
+            <div className="text-[13.5px] font-medium text-[#111] truncate">{selected.name}</div>
+            <div className="text-[11px] text-gray-400 truncate mt-0.5">{selected.base_url ?? selected.hostname ?? selected.host ?? ''}</div>
+          </div>
+        ) : (
+          <span className="text-[13.5px] text-gray-400">Select a target system…</span>
+        )}
+        <FaChevronDown
+          size={11}
+          className={`flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${selected ? 'text-[#111]' : 'text-gray-400'}`}
+        />
+      </button>
+
+      {open && (
+        <div className="acf-dropdown-panel absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto">
+          <div className="py-1.5">
+            {systems.map(sys => {
+              const id = sys._id ?? sys.id ?? '';
+              const isSel = value === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { onChange(sys); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors
+                    ${isSel ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[13px] truncate ${isSel ? 'font-semibold text-[#111]' : 'text-gray-700'}`}>
+                      {sys.name}
+                    </div>
+                    <div className="text-[11px] text-gray-400 truncate mt-0.5">
+                      {sys.base_url ?? sys.hostname ?? sys.host ?? 'n/a'}
+                    </div>
+                  </div>
+                  {isSel && <FaCheck size={11} className="text-[#111] flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AvatarCircleImage: React.FC<{
   avatar: AvatarOption;
   textSize?: string;
-  eager?: boolean;
-}> = ({ avatar, textSize = 'text-2xl', eager = false }) => {
+  eager?: boolean; // kept for API compatibility
+}> = ({ avatar, textSize = 'text-2xl' }) => {
   const [state, onLoad, onError] = useImgState(avatar.img);
+
+  // Extra safety: if img ref reports complete after mount, flip to loaded.
+  // Handles edge cases where isImgCached returns false but image is actually ready.
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  React.useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      onLoad();
+    }
+  });
+
   return (
     <>
-      {/* Initials always rendered — visible instantly, image fades over it */}
+      {/* Initials — always visible as background fallback */}
       <div
         className={`absolute inset-0 flex items-center justify-center text-white font-bold ${textSize}`}
         style={{ background: `linear-gradient(135deg, ${avatar.color}cc, ${avatar.color})` }}
@@ -199,33 +411,25 @@ const AvatarCircleImage: React.FC<{
       </div>
 
       {avatar.img && state !== 'error' && (
-        <>
-          {state === 'loading' && (
-            <div className="absolute inset-0 flex items-center justify-center z-10"
-              style={{ background: `${avatar.color}55` }}>
-              <div className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-          <img
-            src={avatar.img}
-            alt={avatar.name}
-            loading={eager ? 'eager' : 'lazy'}
-            // @ts-ignore — fetchPriority is valid HTML but TS types lag
-            fetchPriority={eager ? 'high' : 'auto'}
-            decoding={eager ? 'sync' : 'async'}
-            className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-200 ${
-              state === 'loaded' ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={onLoad}
-            onError={onError}
-          />
-        </>
+        <img
+          ref={imgRef}
+          src={avatar.img}
+          alt={avatar.name}
+          loading="eager"
+          // @ts-ignore — fetchPriority is valid HTML but TS types lag
+          fetchPriority="high"
+          decoding="sync"
+          className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${
+            state === 'loaded' ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={onLoad}
+          onError={onError}
+        />
       )}
     </>
   );
 };
 
-// ─── Large preview panel ───────────────────────────────────────────────────────
 const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar }) => {
   const [state, onLoad, onError] = useImgState(avatar?.img ?? '');
   if (!avatar) {
@@ -271,23 +475,18 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
       <div className="absolute bottom-0 left-0 right-0 z-30 p-5"
         style={{ background: `linear-gradient(to top, ${avatar.color}f0 0%, ${avatar.color}88 60%, transparent 100%)` }}>
         <p className="text-white font-bold text-xl leading-tight drop-shadow-sm">{avatar.name}</p>
-        <p className="text-white/80 text-sm mt-0.5">👔 Formal look</p>
+        {/* 👔 emoji removed per user's modification */}
+        <p className="text-white/80 text-sm mt-0.5"> Formal look</p>
       </div>
       <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
         style={{ background: '#6366f1dd', backdropFilter: 'blur(8px)' }}>
         Formal
       </div>
-      {state === 'loaded' && (
-        <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-black/30 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full">
-          <div className={`w-1.5 h-1.5 rounded-full ${avatar.img.startsWith('/avatars/') ? 'bg-green-400' : 'bg-blue-400'}`} />
-          {avatar.img.startsWith('/avatars/') ? 'Cached' : 'CDN'}
-        </div>
-      )}
+      {/* Cached/CDN badge removed per user's modification */}
     </div>
   );
 };
 
-// ─── Avatar Carousel ───────────────────────────────────────────────────────────
 const AvatarCarousel: React.FC<{
   avatars: AvatarOption[];
   selectedId: string;
@@ -297,6 +496,20 @@ const AvatarCarousel: React.FC<{
   const rafRef    = React.useRef<number>(0);
   const [canLeft,  setCanLeft]  = React.useState(false);
   const [canRight, setCanRight] = React.useState(true);
+
+  // ── Force-preload every avatar image via JS Image() objects ──────────────
+  // Browser lazy-load / Intersection Observer won't fetch images inside
+  // overflow:hidden ancestors even with loading="eager". Constructing
+  // Image() objects in JS bypasses that entirely — the browser fetches
+  // and caches every URL immediately, so <img> elements hit the cache
+  // and render instantly without waiting for any scroll/reflow event.
+  React.useEffect(() => {
+    avatars.forEach(avatar => {
+      if (!avatar.img) return;
+      const preloader = new window.Image();
+      preloader.src = avatar.img;
+    });
+  }, [avatars]);
 
   const update = React.useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -329,8 +542,9 @@ const AvatarCarousel: React.FC<{
         <label className="block text-sm font-semibold text-gray-900">
           Choose Your Avatar <span className="text-red-500">*</span>
         </label>
+        {/* 🖱️ emoji removed per user's modification */}
         <div className="hidden sm:flex items-center gap-1 text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full select-none">
-          <span>🖱️</span><span>scroll or use arrows</span>
+          <span>scroll or use arrows</span>
         </div>
       </div>
 
@@ -363,15 +577,9 @@ const AvatarCarousel: React.FC<{
                     style={isSelected
                       ? { boxShadow: `0 0 0 3px white, 0 0 0 5px ${avatar.color}, 0 6px 20px ${avatar.color}44` }
                       : { border: '2px solid #e5e7eb', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-                    {/* First 5 visible on initial render → load eagerly */}
                     <AvatarCircleImage avatar={avatar} textSize="text-xl" eager={index < 5} />
                     <div className="absolute top-0 left-0 text-white text-[8px] font-black px-1 py-0.5 rounded-br-md z-30 leading-none"
                       style={{ background: '#6366f1' }}>F</div>
-                    {isSelected && (
-                      <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md z-30">
-                        <FaCheckCircle size={11} style={{ color: avatar.color }} />
-                      </div>
-                    )}
                   </div>
                   <span className={`text-[10px] font-medium leading-tight text-center w-[80px] truncate transition-colors ${
                     isSelected ? 'text-indigo-600 font-semibold' : 'text-gray-500 group-hover:text-gray-800'
@@ -409,9 +617,6 @@ const AgentCreationForm: React.FC = () => {
   const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
   const [loadingTargetSystems,   setLoadingTargetSystems]   = React.useState(false);
 
-  // ── Avatar state ─────────────────────────────────────────────────────────────
-  // If manifest loaded → avatars available immediately, no spinner needed.
-  // If manifest empty  → async HeyGen fetch (rare; only on first run before caching).
   const hasManifest = MANIFEST_AVATARS.length > 0;
 
   const [avatars,        setAvatars]        = React.useState<AvatarOption[]>(
@@ -429,24 +634,15 @@ const AgentCreationForm: React.FC = () => {
     slackChannel: '#alerts', selectedTargetSystem: null,
   });
 
-  // ── CHANGE 1: removed createdAgentId state — no longer navigating to agent chat ──
-
-  // ── Only hit HeyGen API when manifest is absent (first-time setup) ──────────
   React.useEffect(() => {
     if (hasManifest) return;
-
     const go = async () => {
       const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
       if (!apiKey) {
-        setAvatars(HARDCODED_FALLBACKS);
-        setAvatarSource('fallback');
-        setLoadingAvatars(false);
-        return;
+        setAvatars(HARDCODED_FALLBACKS); setAvatarSource('fallback'); setLoadingAvatars(false); return;
       }
       try {
-        const res = await fetch('/heygen-api/v1/streaming/avatar.list', {
-          headers: { 'x-api-key': apiKey },
-        });
+        const res = await fetch('/heygen-api/v1/streaming/avatar.list', { headers: { 'x-api-key': apiKey } });
         if (!res.ok) throw new Error(`HeyGen ${res.status}`);
         const data = await res.json();
         const raw: any[] =
@@ -454,7 +650,6 @@ const AgentCreationForm: React.FC = () => {
           Array.isArray(data?.data?.avatars) ? data.data.avatars :
           Array.isArray(data?.avatars)       ? data.avatars : [];
         if (!raw.length) throw new Error('empty');
-
         const byName = new Map<string, AvatarOption>();
         raw.forEach((a: any, i: number) => {
           const id = a.avatar_id ?? a.id ?? a.pose_id ?? '';
@@ -469,38 +664,40 @@ const AgentCreationForm: React.FC = () => {
         setAvatars(Array.from(byName.values()).slice(0, 20));
         setAvatarSource('cdn');
       } catch {
-        setAvatars(HARDCODED_FALLBACKS);
-        setAvatarSource('fallback');
-      } finally {
-        setLoadingAvatars(false);
-      }
+        setAvatars(HARDCODED_FALLBACKS); setAvatarSource('fallback');
+      } finally { setLoadingAvatars(false); }
     };
     go();
   }, [hasManifest]);
 
-  // ── Target systems ──────────────────────────────────────────────────────────
   React.useEffect(() => {
     if (!formData.environment || !integrationIdForFilter) { setAvailableTargetSystems([]); return; }
     setLoadingTargetSystems(true);
     api.targetSystems.list({ environment: formData.environment, limit: 50 })
       .then((res: TargetSystem[] | TargetSystemsResponse) => {
         const systems = Array.isArray(res) ? res : (res as TargetSystemsResponse).systems ?? [];
-        setAvailableTargetSystems(
-          systems.filter(s => s.status === 'connected' && s.integration_id === integrationIdForFilter)
-        );
+        setAvailableTargetSystems(systems.filter(s => s.status === 'connected' && s.integration_id === integrationIdForFilter));
       })
       .catch(() => setAvailableTargetSystems([]))
       .finally(() => setLoadingTargetSystems(false));
   }, [formData.environment, integrationIdForFilter]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'notificationWindow' ? parseInt(value) || 0 : value,
-      ...(name === 'environment' ? { selectedTargetSystem: null } : {}),
     }));
+  };
+
+  // Separate handler for environment dropdown — also clears target system
+  const handleEnvironmentChange = (value: string) => {
+    setFormData(prev => ({ ...prev, environment: value, selectedTargetSystem: null }));
+  };
+
+  // Handler for target system dropdown
+  const handleTargetSystemChange = (system: TargetSystem | null) => {
+    setFormData(prev => ({ ...prev, selectedTargetSystem: system }));
   };
 
   const handleAvatarSelect = (id: string, name: string, img: string) => {
@@ -509,8 +706,7 @@ const AgentCreationForm: React.FC = () => {
       selectedAvatarId: id, selectedAvatarImg: img, selectedAvatarName: name,
       agentName:
         prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`)
-          ? `${name} Agent`
-          : prev.agentName,
+          ? `${name} Agent` : prev.agentName,
     }));
   };
 
@@ -521,10 +717,7 @@ const AgentCreationForm: React.FC = () => {
     setSubmitting(true); setError('');
     try {
       const resolvedIntegrationType =
-        formData.selectedTargetSystem.type?.trim() ||
-        integrationTypeFromNav?.trim()             ||
-        agentTypeId || '';
-
+        formData.selectedTargetSystem.type?.trim() || integrationTypeFromNav?.trim() || agentTypeId || '';
       const payload: AgentCreationPayload = {
         name: formData.agentName, type: agentTypeId ?? 'license', status: 'active',
         description: `${agentTypeId ?? 'License'} agent for ${formData.environment}`,
@@ -540,21 +733,22 @@ const AgentCreationForm: React.FC = () => {
           selectedAvatarName: formData.selectedAvatarName,
         },
       };
-      // ── CHANGE 2: just await the call, no need to capture returned agent id ──
       await api.llmRuntime.createAgent(payload);
       setShowSuccess(true);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create agent');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const selectedAvatarObj = avatars.find(a => a.id === formData.selectedAvatarId) ?? null;
+  const agentLabel = agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License';
 
-  const agentLabel = agentTypeId
-    ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1)
-    : 'License';
+  // Environment options for CustomDropdown
+  const ENV_OPTIONS: DropdownOption[] = [
+    { value: 'production',  label: 'Production'  },
+    { value: 'staging',     label: 'Staging'     },
+    { value: 'development', label: 'Development' },
+  ];
 
   return (
     <>
@@ -572,47 +766,191 @@ const AgentCreationForm: React.FC = () => {
         .acf-modal-in { animation: acf-fade 0.2s ease-out; }
 
         .acf-accent-bar {
-          height: 3px;
-          transform: scaleX(0);
-          transform-origin: left;
-          transition: transform 0.3s ease;
+          height: 3px; transform: scaleX(0);
+          transform-origin: left; transition: transform 0.3s ease;
         }
         .acf-card:hover .acf-accent-bar { transform: scaleX(1); }
 
+        /* ── Standard text inputs ── */
         .acf-input {
-          width: 100%;
-          padding: 10px 14px;
-          font-size: 13.5px;
-          font-family: inherit;
-          border: 1px solid #E5E7EB;
-          border-radius: 10px;
-          background: #fff;
-          color: #111;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
+          width: 100%; padding: 10px 14px; font-size: 13.5px; font-family: inherit;
+          border: 1px solid #E5E7EB; border-radius: 10px; background: #fff;
+          color: #111; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
         }
         .acf-input:hover  { border-color: #D1D5DB; }
         .acf-input:focus  { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-        .acf-input:disabled,
-        .acf-input[readonly] { background: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
+        .acf-input:disabled, .acf-input[readonly] { background: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
+
+        /* ── Custom dropdown trigger — same height/padding/radius as .acf-input ── */
+        .acf-dropdown-trigger {
+          padding: 10px 14px;
+          border: 1px solid #E5E7EB;
+          border-radius: 10px;
+          background: #fff;
+          outline: none;
+          font-family: inherit;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .acf-dropdown-trigger:hover:not(:disabled) {
+          border-color: #D1D5DB;
+        }
+        .acf-dropdown-trigger:focus,
+        .acf-dropdown-open {
+          border-color: #6366F1;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+        .acf-dropdown-active {
+          border-color: #D1D5DB;
+        }
+
+        /* ── Dropdown panel — rounded-2xl, soft shadow, fade-up ── */
+        .acf-dropdown-panel {
+          box-shadow: 0 8px 30px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+          animation: acf-dd-in 0.15s cubic-bezier(0.22,1,0.36,1);
+        }
+        @keyframes acf-dd-in {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
 
         .acf-label {
-          display: block;
-          font-size: 12.5px;
-          font-weight: 600;
-          color: #374151;
-          margin-bottom: 6px;
-          letter-spacing: 0.01em;
+          display: block; font-size: 12.5px; font-weight: 600;
+          color: #374151; margin-bottom: 6px; letter-spacing: 0.01em;
         }
 
-        @keyframes int-pulse-green {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.4; }
-        }
+        @keyframes int-pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .acf-pulse { animation: int-pulse-green 2s ease infinite; }
 
         .avatar-scroll::-webkit-scrollbar { display: none; }
-        .avatar-scroll { -ms-overflow-style:none; scrollbar-width:none; }
+        .avatar-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESPONSIVE RULES — AgentCreationForm
+           Follows the identical pattern used in AdminAgentControl
+           (aad-header-wrapper / aad-page-wrapper) and Agents
+           (ag-header-inner / ag-page-wrapper / ag-band-px).
+
+           Baseline 1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+           Tablet (768–1023px) → compressed
+           4K / ultrawide (2560px+) → expands gently
+        ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Header band inner wrapper ──────────────────────────────── */
+        .acf-header-wrapper {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-left: 48px;
+          padding-right: 48px;
+          padding-top: 40px;
+          padding-bottom: 32px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        /* ── Page content wrapper ────────────────────────────────────── */
+        .acf-page-wrapper {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-left: 48px;
+          padding-right: 48px;
+          padding-top: 40px;
+          padding-bottom: 80px;
+        }
+
+        /* ── H1 size ─────────────────────────────────────────────────── */
+        .acf-h1 { font-size: 2.25rem; }
+
+        /* ── Preview column width ────────────────────────────────────── */
+        /* Baseline 1920: 272px (matches Tailwind w-68) */
+        .acf-preview-col { width: 272px; flex-shrink: 0; }
+
+        /* ── Layout row gap ──────────────────────────────────────────── */
+        .acf-form-row { display: flex; gap: 24px; align-items: flex-start; }
+
+        /* Tablet: 768–1023 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .acf-header-wrapper {
+            max-width: 100%;
+            padding-left: 20px; padding-right: 20px;
+            padding-top: 20px; padding-bottom: 16px;
+          }
+          .acf-page-wrapper {
+            max-width: 100%;
+            padding-left: 20px; padding-right: 20px;
+            padding-top: 24px; padding-bottom: 48px;
+          }
+          .acf-h1           { font-size: 1.75rem; }
+          .acf-preview-col  { width: 200px; }
+          .acf-form-row     { gap: 16px; }
+        }
+
+        /* Small laptop: 1024–1279 (MacBook 13") */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .acf-header-wrapper {
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 28px; padding-bottom: 22px;
+          }
+          .acf-page-wrapper {
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 32px; padding-bottom: 60px;
+          }
+          .acf-h1           { font-size: 1.875rem; }
+          .acf-preview-col  { width: 220px; }
+          .acf-form-row     { gap: 16px; }
+        }
+
+        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .acf-header-wrapper {
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 32px; padding-bottom: 26px;
+          }
+          .acf-page-wrapper {
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 36px;
+          }
+          .acf-h1           { font-size: 2rem; }
+          .acf-preview-col  { width: 240px; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919 */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .acf-header-wrapper {
+            max-width: 1400px;
+            padding-left: 44px; padding-right: 44px;
+          }
+          .acf-page-wrapper {
+            max-width: 1400px;
+            padding-left: 44px; padding-right: 44px;
+          }
+        }
+
+        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+
+        /* 4K / ultrawide: 2560px+ */
+        @media (min-width: 2560px) {
+          .acf-header-wrapper {
+            max-width: 1920px;
+            padding-left: 80px; padding-right: 80px;
+            padding-top: 56px; padding-bottom: 44px;
+          }
+          .acf-page-wrapper {
+            max-width: 1920px;
+            padding-left: 80px; padding-right: 80px;
+            padding-top: 56px;
+          }
+          .acf-h1           { font-size: 3rem; }
+          .acf-preview-col  { width: 320px; }
+        }
       `}</style>
 
       <div className="acf-font min-h-screen bg-[#FAFAFA] text-[#111]">
@@ -640,12 +978,8 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 ))}
               </div>
-              {/* ── CHANGE 3: always navigate to /agents list, user opens agent when they want ── */}
               <button
-                onClick={() => {
-                  setShowSuccess(false);
-                  navigate('/agents');
-                }}
+                onClick={() => { setShowSuccess(false); navigate('/agents'); }}
                 className="w-full bg-[#111] hover:bg-[#222] text-white px-6 py-3 rounded-xl text-[13.5px] font-semibold transition-colors"
               >
                 View Agents
@@ -655,45 +989,39 @@ const AgentCreationForm: React.FC = () => {
         )}
 
         {/* ── Page Header ── */}
-        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-          <div className="max-w-[1200px] mx-auto pt-10 pb-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl">
-                    Create {agentLabel} Agent
-                  </h1>
-                  {integrationTypeFromNav && (
-                    <span className="self-center text-[11px] font-semibold tracking-[0.06em] uppercase text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
-                      {integrationTypeFromNav.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
-                  Configure your AI agent — choose an avatar, set the environment, and link a target system.
-                </p>
+        <div className="bg-white border-b border-gray-200">
+          <div className="acf-header-wrapper">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="acf-h1 font-bold leading-tight tracking-tight text-[#0A0A0A]">
+                  Create {agentLabel} Agent
+                </h1>
+                {integrationTypeFromNav && (
+                  <span className="self-center text-[11px] font-semibold tracking-[0.06em] uppercase text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                    {integrationTypeFromNav.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                  </span>
+                )}
               </div>
-              <button
-                onClick={() => navigate(-1)}
-                className="flex-shrink-0 mt-1 w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-all"
-              >
-                <FaTimes size={14} />
-              </button>
+              <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
+                Configure your AI agent — choose an avatar, set the environment, and link a target system.
+              </p>
             </div>
+            <button
+              onClick={() => navigate(-1)}
+              className="flex-shrink-0 mt-1 w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-all"
+            >
+              <FaTimes size={14} />
+            </button>
           </div>
         </div>
 
         {/* ── Content ── */}
-        <div className="max-w-[1200px] mx-auto px-12 pt-10 pb-20 max-md:px-5">
-          <div className="flex gap-6 items-start">
+        <div className="acf-page-wrapper">
+          <div className="acf-form-row">
 
             {/* ── Left: Form Card ── */}
             <div className="flex-1 min-w-0 acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              {/* Accent bar */}
-              <div
-                className="acf-accent-bar"
-                style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6)' }}
-              />
+              <div className="acf-accent-bar" style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6)' }} />
 
               <form onSubmit={handleSubmit} className="px-8 py-7 space-y-7">
                 {error && (
@@ -703,9 +1031,7 @@ const AgentCreationForm: React.FC = () => {
                 {/* 1. Avatar carousel */}
                 {loadingAvatars ? (
                   <div>
-                    <label className="acf-label">
-                      Choose Your Avatar <span className="text-red-500">*</span>
-                    </label>
+                    <label className="acf-label">Choose Your Avatar <span className="text-red-500">*</span></label>
                     <div className="flex gap-4 py-3 overflow-hidden">
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2" style={{ minWidth: 88 }}>
@@ -720,18 +1046,12 @@ const AgentCreationForm: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <AvatarCarousel
-                    avatars={avatars}
-                    selectedId={formData.selectedAvatarId}
-                    onSelect={handleAvatarSelect}
-                  />
+                  <AvatarCarousel avatars={avatars} selectedId={formData.selectedAvatarId} onSelect={handleAvatarSelect} />
                 )}
 
                 {/* 2. Agent Name */}
                 <div>
-                  <label className="acf-label">
-                    Agent Name <span className="text-red-500">*</span>
-                  </label>
+                  <label className="acf-label">Agent Name <span className="text-red-500">*</span></label>
                   <input
                     type="text" name="agentName" value={formData.agentName}
                     onChange={handleInputChange} required
@@ -743,29 +1063,22 @@ const AgentCreationForm: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 3. Environment */}
+                {/* 3. Environment — custom dropdown (replaces native <select>) */}
                 <div>
-                  <label className="acf-label">
-                    Environment <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="environment" value={formData.environment}
-                    onChange={handleInputChange} required
-                    className="acf-input cursor-pointer"
-                  >
-                    <option value="">Select Environment</option>
-                    <option value="production">Production</option>
-                    <option value="staging">Staging</option>
-                    <option value="development">Development</option>
-                  </select>
+                  <label className="acf-label">Environment <span className="text-red-500">*</span></label>
+                  <CustomDropdown
+                    label="Select Environment"
+                    value={formData.environment}
+                    options={ENV_OPTIONS}
+                    onChange={handleEnvironmentChange}
+                    required
+                  />
                 </div>
 
-                {/* 4. Target System */}
+                {/* 4. Target System — custom dropdown (replaces native <select>) */}
                 {formData.environment && (
                   <div>
-                    <label className="acf-label">
-                      Target System <span className="text-red-500">*</span>
-                    </label>
+                    <label className="acf-label">Target System <span className="text-red-500">*</span></label>
                     {loadingTargetSystems ? (
                       <div className="flex items-center gap-3 px-4 py-3 bg-[#FAFAFA] rounded-xl border border-gray-200">
                         <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
@@ -776,22 +1089,13 @@ const AgentCreationForm: React.FC = () => {
                         <p className="text-[13px] text-amber-700">No connected systems for <strong>{formData.environment}</strong>.</p>
                       </div>
                     ) : (
-                      <select
+                      <TargetSystemDropdown
                         value={formData.selectedTargetSystem?._id ?? formData.selectedTargetSystem?.id ?? ''}
-                        onChange={e => {
-                          const s = availableTargetSystems.find(sys => (sys._id ?? sys.id) === e.target.value);
-                          setFormData(p => ({ ...p, selectedTargetSystem: s ?? null }));
-                        }}
-                        required
-                        className="acf-input cursor-pointer"
-                      >
-                        <option value="">Select a target system…</option>
-                        {availableTargetSystems.map(s => {
-                          const id = s._id ?? s.id;
-                          return <option key={id} value={id}>{s.name} ({s.base_url ?? s.hostname ?? s.host ?? 'n/a'})</option>;
-                        })}
-                      </select>
+                        systems={availableTargetSystems}
+                        onChange={handleTargetSystemChange}
+                      />
                     )}
+                    {/* Selected system confirmation card */}
                     {formData.selectedTargetSystem && (
                       <div className="mt-2 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2.5">
                         <FaCheckCircle className="text-green-500 flex-shrink-0" size={14} />
@@ -812,13 +1116,10 @@ const AgentCreationForm: React.FC = () => {
                 {/* 5. Notification Window */}
                 {agentTypeId !== 'connection' && (
                   <div>
-                    <label className="acf-label">
-                      Notification Window (days) <span className="text-red-500">*</span>
-                    </label>
+                    <label className="acf-label">Notification Window (days) <span className="text-red-500">*</span></label>
                     <input
                       type="number" name="notificationWindow" value={formData.notificationWindow}
-                      onChange={handleInputChange} min="1" max="365" required
-                      className="acf-input"
+                      onChange={handleInputChange} min="1" max="365" required className="acf-input"
                     />
                     <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
                       <span>💡</span><span>Days before license expiry to start alerting</span>
@@ -863,7 +1164,7 @@ const AgentCreationForm: React.FC = () => {
             </div>
 
             {/* ── Right: Live Preview ── */}
-            <div className="hidden lg:flex flex-col w-68 2xl:w-72 flex-shrink-0 gap-4 sticky top-8">
+            <div className="acf-preview-col hidden lg:flex flex-col gap-4 sticky top-8">
               <div className="acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden" style={{ animationDelay: '0.1s' }}>
                 <div className="acf-accent-bar" style={{ background: '#6366F1' }} />
                 <div className="p-5">
@@ -876,13 +1177,12 @@ const AgentCreationForm: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[11.5px] text-gray-400">Selected</span>
-                        <span className="text-[12px] font-bold truncate ml-2" style={{ color: selectedAvatarObj.color }}>
-                          {selectedAvatarObj.name}
-                        </span>
+                        <span className="text-[12px] font-bold truncate ml-2" style={{ color: selectedAvatarObj.color }}>{selectedAvatarObj.name}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[11.5px] text-gray-400">Style</span>
-                        <span className="text-[12px] font-medium text-gray-600">👔 Formal</span>
+                        {/* 👔 emoji removed per user's modification */}
+                        <span className="text-[12px] font-medium text-gray-600"> Formal</span>
                       </div>
                       {(formData.selectedTargetSystem?.type || integrationTypeFromNav) && (
                         <div className="flex items-center justify-between">
@@ -894,14 +1194,7 @@ const AgentCreationForm: React.FC = () => {
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11.5px] text-gray-400">Source</span>
-                        <span className="text-[12px] font-medium text-gray-600">
-                          {selectedAvatarObj.img.startsWith('/avatars/') ? '📁 Local'
-                           : selectedAvatarObj.img.startsWith('http') ? '🌐 CDN'
-                           : '🔤 Initials'}
-                        </span>
-                      </div>
+                      {/* Source row removed per user's modification */}
                     </div>
                   )}
                 </div>

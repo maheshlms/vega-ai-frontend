@@ -114,15 +114,113 @@ const IntegrationsPage: React.FC = () => {
           50%       { opacity: 0.4; }
         }
         .int-pulse { animation: int-pulse-green 2s ease infinite; }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE RULES — IntegrationsPage.tsx
+           1920×1080 → exact current design (no changes)
+           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
+           Tablet (768–1023px) → compressed
+           4K / ultrawide (2560px+) → expands gently
+        ═══════════════════════════════════════════════════════ */
+
+        /* ── Band padding ── */
+        .int-band-px { padding-left: 48px; padding-right: 48px; }
+
+        /* ── Header inner ── */
+        .int-header-inner {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-top: 40px;
+          padding-bottom: 32px;
+        }
+
+        /* ── Filter toolbar inner ── */
+        .int-toolbar-inner {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          height: 56px;
+        }
+
+        /* ── Grid wrapper ── */
+        .int-grid-wrapper {
+          max-width: 1400px;
+          margin-left: auto;
+          margin-right: auto;
+          padding-left: 48px;
+          padding-right: 48px;
+          padding-top: 40px;
+          padding-bottom: 80px;
+        }
+
+        /* ── Card grid min-width ── */
+        .int-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+        /* ── H1 ── */
+        .int-h1 { font-size: 2.25rem; }
+
+        /* Tablet: 768–1023 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .int-band-px      { padding-left: 20px; padding-right: 20px; }
+          .int-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
+          .int-toolbar-inner{ max-width: 100%; }
+          .int-grid-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 24px; padding-bottom: 48px; }
+          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+          .int-h1           { font-size: 1.75rem !important; }
+        }
+
+        /* Small laptop: 1024–1279 (MacBook 13") */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .int-band-px      { padding-left: 28px; padding-right: 28px; }
+          .int-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
+          .int-toolbar-inner{ max-width: 1100px; }
+          .int-grid-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; }
+          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
+          .int-h1           { font-size: 1.875rem !important; }
+        }
+
+        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .int-band-px      { padding-left: 36px; padding-right: 36px; }
+          .int-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
+          .int-toolbar-inner{ max-width: 1280px; }
+          .int-grid-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
+          .int-h1           { font-size: 2rem !important; }
+        }
+
+        /* Large laptop / small desktop: 1440–1919 */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .int-band-px      { padding-left: 44px; padding-right: 44px; }
+          .int-header-inner { max-width: 1400px; }
+          .int-toolbar-inner{ max-width: 1400px; }
+          .int-grid-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+        }
+
+        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+
+        /* 4K / ultrawide: 2560px+ */
+        @media (min-width: 2560px) {
+          .int-band-px      { padding-left: 80px; padding-right: 80px; }
+          .int-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
+          .int-toolbar-inner{ max-width: 1920px; }
+          .int-grid-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; }
+          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
+          .int-h1           { font-size: 3rem !important; }
+        }
       `}</style>
 
       <div className="int-font min-h-screen bg-[#FAFAFA] text-[#111]">
 
         {/* ── Header ── */}
-        <div className="bg-white border-b border-gray-200 px-12 max-md:px-5">
-          <div className="max-w-[1400px] mx-auto pt-10 pb-8">
+        <div className="bg-white border-b border-gray-200 int-band-px">
+          <div className="int-header-inner">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl">
+              <h1 className="int-h1 text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] max-md:text-3xl">
                 Integrations Marketplace
               </h1>
               <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-gray-400 bg-gray-100 px-2 py-0.5 rounded self-center">
@@ -136,8 +234,8 @@ const IntegrationsPage: React.FC = () => {
         </div>
 
         {/* ── Sticky Toolbar ── */}
-        <div className="bg-white border-b border-gray-200 px-12 sticky top-0 z-20 max-md:px-5">
-          <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6 h-14">
+        <div className="bg-white border-b border-gray-200 int-band-px sticky top-0 z-20">
+          <div className="int-toolbar-inner">
             {/* Filter buttons */}
             <div className="flex items-center gap-0.5">
               {categories.map(cat => (
@@ -161,8 +259,8 @@ const IntegrationsPage: React.FC = () => {
         </div>
 
         {/* ── Grid ── */}
-        <div className="max-w-[1400px] mx-auto px-12 pt-10 pb-20 max-md:px-5 max-md:pt-6 max-md:pb-16">
-          <div className="grid gap-5 max-md:grid-cols-1"
+        <div className="int-grid-wrapper">
+          <div className="int-card-grid grid gap-5"
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
           >
             {filtered.length === 0 ? (
