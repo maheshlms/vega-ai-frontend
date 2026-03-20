@@ -65,6 +65,8 @@ interface PendingApproval {
   expires_at?: string;
   session_id?: string;
   action_type?: string;
+  user_display?: string;
+  approval_title?: string;
 }
 
 interface FileData {
@@ -879,10 +881,19 @@ const AgentChat: React.FC = () => {
       if (!response.ok) throw new Error(`Approval request failed: ${response.statusText}`);
       await response.json();
       const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
-      const approveText = isSSL ? '✓ SSL certificate update approved. Proceeding with activation...' : '✓ License approval confirmed. Proceeding with installation...';
-      const rejectText  = isSSL ? '✗ SSL certificate update rejected. Process aborted.' : '✗ License approval rejected. Process aborted.';
-      const successText = isSSL ? '✓ SSL certificate imported and activated successfully!' : '✓ License installation completed!';
-      const failText    = isSSL ? '✗ SSL certificate update failed' : '✗ License installation failed';
+      const isPDReset = pendingApproval.action_type === 'reset_pd_password';
+      const approveText = isSSL ? '✓ SSL certificate update approved. Proceeding with activation...'
+        : isPDReset ? '✓ Password reset approved. Proceeding...'
+        : '✓ License approval confirmed. Proceeding with installation...';
+      const rejectText = isSSL ? '✗ SSL certificate update rejected. Process aborted.'
+        : isPDReset ? '✗ Password reset rejected. Process aborted.'
+        : '✗ License approval rejected. Process aborted.';
+      const successText = isSSL ? '✓ SSL certificate imported and activated successfully!'
+        : isPDReset ? '✓ Password reset completed successfully!'
+        : '✓ License installation completed!';
+      const failText = isSSL ? '✗ SSL certificate update failed'
+        : isPDReset ? '✗ Password reset failed'
+        : '✗ License installation failed';
       const stripHtmlForSpeech = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
       if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
@@ -961,7 +972,7 @@ const AgentChat: React.FC = () => {
       const aiResponseText = data.message || 'I could not generate a response. Please try again.';
       if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
       if (data.approval_metadata?.approval_id && data.approval_metadata?.approval_method === 'button') {
-        setPendingApproval({ approval_id: data.approval_metadata.approval_id, filename: data.approval_metadata.filename || 'file', expires_at: data.approval_metadata.expires_at, session_id: data.session_id, action_type: data.approval_metadata.action_type });
+        setPendingApproval({ approval_id: data.approval_metadata.approval_id, filename: data.approval_metadata.filename || 'file', expires_at: data.approval_metadata.expires_at, session_id: data.session_id, action_type: data.approval_metadata.action_type, user_display: data.approval_metadata.user_display, approval_title: data.approval_metadata.approval_title });
       }
       setIsTyping(false);
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
@@ -1539,8 +1550,12 @@ const AgentChat: React.FC = () => {
                         <div className="agc-approval">
                           <div className="agc-approval-title">
                             🔐{' '}
-                            {pendingApproval.action_type === 'update_ssl_certificate'
+                            {pendingApproval.approval_title
+                              ? <>{pendingApproval.approval_title}</>
+                              : pendingApproval.action_type === 'update_ssl_certificate'
                               ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
+                              : pendingApproval.action_type === 'reset_pd_password'
+                              ? <>Approve password reset for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</>
                               : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
                             }
                           </div>
