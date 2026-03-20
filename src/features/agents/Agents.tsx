@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import { IconType } from 'react-icons';
 import { auth } from '../../utils/auth';
 import AgentToggleModal from './AgentToggleModal'; // ← shared component
+import avatarManifestData from '../../data/avatarManifest.json';
 
 // ─── Per-category accent tones ────────────────────────────────────────────────
 const CATEGORY_TONES: Record<string, { shadow: string; logoBg: string; headerBg: string }> = {
@@ -16,12 +17,7 @@ const CATEGORY_TONES: Record<string, { shadow: string; logoBg: string; headerBg:
   unknown:        { shadow: 'rgba(107,114,128,0.15)',logoBg: '#F9FAFB', headerBg: '#FAFAFA' },
 };
 
-let avatarManifest: Record<string, string> = {};
-try {
-  avatarManifest = require('../../data/avatarManifest.json');
-} catch {
-  // fall back to initials
-}
+const avatarManifest: Record<string, string> = avatarManifestData as Record<string, string>;
 
 function resolveAvatarImg(avatarId: string, storedImg: string): string {
   if (avatarId && avatarManifest[avatarId]) return avatarManifest[avatarId];

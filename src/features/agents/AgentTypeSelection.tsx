@@ -32,6 +32,7 @@ const AGENT_ACCENTS: Record<string, { border: string; shadow: string; headerBg: 
   ptmaster:    { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
   // pingdirectory
   'user-mgmt': { border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  'pwd-reset':  { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)',   headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
   schema:      { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
   replication: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
   backup:      { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
@@ -93,7 +94,8 @@ const AgentTypeSelection: React.FC = () => {
       title: "Ping Directory",
       subtitle: "Configure your directory services agent",
       agents: [
-        { id: "user-mgmt",    name: "User Management",    description: "Create, modify, and manage directory users",         icon: "👥", active: true },
+        { id: "user-mgmt",    name: "User Management",    description: "View, modify and enable/disable users",              icon: "👥", active: true },
+        { id: "pwd-reset",    name: "Password Reset",      description: "Reset passwords for directory users",               icon: "🔑", active: true },
         { id: "schema",       name: "Schema Config",      description: "Define and manage directory schema attributes",      icon: "📐", active: false },
         { id: "replication",  name: "Replication",        description: "Set up multi-master replication topology",           icon: "🔄", active: false },
         { id: "backup",       name: "Backup & Restore",   description: "Automated backup and recovery solutions",            icon: "💾", active: false },

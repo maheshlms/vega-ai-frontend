@@ -57,7 +57,6 @@ interface FormData {
   // PingDirectory / LDAP specific
   server_url: string;       // combined "ldap://host:port" field (matches screenshot)
   ldap_host: string;        // hostname only (derived from server_url)
-  ldap_port: number;        // plain LDAP port (default 389)
   ldaps_port: number;       // LDAPS port (default 636)
   base_dn: string;
   bind_dn: string;
@@ -89,15 +88,13 @@ interface SubmitData {
     client_id?: string;
     client_secret?: string;
     api_key?: string;
-    bind_dn?: string;
-    bind_password?: string;
+    token?: string;
   };
   environment: string;
   description: string;
   engine_port?: number;
   // extra per-type metadata
   server_url?: string;
-  ldap_port?: number;
   ldaps_port?: number;
   base_dn?: string;
   enable_ssl?: boolean;
@@ -161,26 +158,20 @@ const INTEGRATION_DEFAULTS: Record<string, IntegrationDefaults> = {
     },
   },
   PingDirectory: {
-    port: 636,
-    defaultAuthMethod: 'BasicAuth',
-    allowedAuthMethods: ['BasicAuth', 'BearerToken'],
+    port: 1443,
+    defaultAuthMethod: 'AssertionJwtExchange',
+    allowedAuthMethods: ['AssertionJwtExchange', 'BearerToken', 'BasicAuth'],
     placeholders: {
       host: 'e.g., directory.example.com',
-      port: '636',
-      ldap_port: '389',
-      ldaps_port: '636',
       base_dn: 'dc=example,dc=com',
-      bind_dn: 'cn=admin,dc=example,dc=com',
-      bind_password: 'Enter bind password',
+      username: 'cn=Directory Manager',
+      password: 'Enter bind password',
     },
     hints: {
       host: 'Hostname of your PingDirectory server',
-      port: 'LDAPS port (default 636)',
-      ldap_port: 'Non-SSL LDAP port (default 389)',
-      ldaps_port: 'SSL LDAP port (default 636)',
       base_dn: 'Root DN of your directory tree',
-      bind_dn: 'Distinguished Name used to bind/authenticate',
-      bind_password: 'Password for the bind DN (stored encrypted)',
+      username: 'Distinguished Name used to authenticate (e.g. cn=Directory Manager)',
+      password: 'Password for the bind account (stored encrypted)',
     },
   },
   PingOne: {
@@ -258,7 +249,6 @@ const INTEGRATION_DEFAULTS: Record<string, IntegrationDefaults> = {
     placeholders: {
       host: 'e.g., ldap.example.com',
       port: '636',
-      ldap_port: '389',
       ldaps_port: '636',
       base_dn: 'dc=example,dc=com',
       bind_dn: 'cn=admin,dc=example,dc=com',
@@ -266,7 +256,6 @@ const INTEGRATION_DEFAULTS: Record<string, IntegrationDefaults> = {
     },
     hints: {
       host: 'Hostname of your LDAP server',
-      ldap_port: 'Non-SSL LDAP port (default 389)',
       ldaps_port: 'SSL LDAP port (default 636)',
       base_dn: 'Root DN of your directory tree',
       bind_dn: 'Distinguished Name used to authenticate',
@@ -402,7 +391,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     // PingDirectory / LDAP
     server_url: '',
     ldap_host: '',
-    ldap_port: 389,
     ldaps_port: 636,
     base_dn: '',
     bind_dn: '',
@@ -503,9 +491,8 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         // Directory / LDAP fields
         server_url: system.base_url || '',
         ldap_host: host,
-        ldap_port: port === 636 ? 389 : port,  // assumption: LDAPS is 636, LDAP is 389 or other
         ldaps_port: port === 636 ? port : 636,
-        base_dn: (system as any).base_dn || '',
+        base_dn: (system as any).config?.base_dn || '',
         bind_dn: credentials.bind_dn || '',
         bind_password: credentials.bind_password || '',
         enable_ssl: false,
@@ -570,52 +557,10 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         ...prev,
         [name]: isCheckbox
           ? checked
-          : (name === 'port' || name === 'engine_port' || name === 'ldap_port' || name === 'ldaps_port')
+          : (name === 'port' || name === 'engine_port' || name === 'ldaps_port')
             ? (value === '' ? prev[name as keyof FormData] : (parseInt(value) || prev[name as keyof FormData]))
             : value,
       };
-
-      // When "Enable SSL" checkbox toggles, auto-update server_url port and port field
-      if (name === 'enable_ssl' && isDirectory(prev.type)) {
-        const newPort  = checked ? prev.ldaps_port : prev.ldap_port;
-        const protocol = checked ? 'ldaps' : 'ldap';
-        const hostPart = prev.ldap_host || 'localhost';
-        updated.server_url = `${protocol}://${hostPart}:${newPort}`;
-        updated.port = newPort;
-      }
-
-      // When server_url changes, parse it to keep ldap_host / port in sync
-      if (name === 'server_url') {
-        try {
-          const normalized = value.replace(/^ldaps?:\/\//i, match => {
-            updated.enable_ssl = match.toLowerCase().startsWith('ldaps');
-            return 'https://';
-          });
-          const parsed = new URL(normalized);
-          updated.ldap_host = parsed.hostname;
-          const parsedPort = parsed.port ? parseInt(parsed.port) : (updated.enable_ssl ? 636 : 389);
-          updated.port = parsedPort;
-          if (updated.enable_ssl) updated.ldaps_port = parsedPort;
-          else updated.ldap_port = parsedPort;
-        } catch { /* leave as-is if URL isn't valid yet */ }
-      }
-
-      // When ldap_host changes, keep server_url in sync
-      if (name === 'ldap_host' && isDirectory(prev.type)) {
-        const protocol = prev.enable_ssl ? 'ldaps' : 'ldap';
-        const p = prev.enable_ssl ? prev.ldaps_port : prev.ldap_port;
-        updated.server_url = `${protocol}://${value}:${p}`;
-      }
-
-      // When ldap_port or ldaps_port changes, update server_url accordingly
-      if ((name === 'ldap_port' || name === 'ldaps_port') && isDirectory(prev.type)) {
-        const relevantPort = name === 'ldap_port' ? !prev.enable_ssl : prev.enable_ssl;
-        if (relevantPort) {
-          const protocol = prev.enable_ssl ? 'ldaps' : 'ldap';
-          const host = prev.ldap_host || 'localhost';
-          updated.server_url = `${protocol}://${host}:${parseInt(value) || 0}`;
-        }
-      }
 
       return updated;
     });
@@ -712,20 +657,20 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         return;
       }
 
-      // Directory types use server_url instead of plain host
+      // Directory types validate host + auth credentials + base_dn
       if (isDirectory(formData.type)) {
         if (!formData.ldap_host) {
           setError('Directory Host is required');
           setLoading(false);
           return;
         }
-        if (!formData.server_url) {
-          setError('Server URL is required (e.g. ldap://localhost:389)');
+        if (formData.auth_method === 'BasicAuth' && (!formData.username || (!system && !formData.password))) {
+          setError('Username and Password are required');
           setLoading(false);
           return;
         }
-        if (formData.auth_method === 'BasicAuth' && (!formData.bind_dn || !formData.bind_password)) {
-          setError('Bind DN and Password are required');
+        if (formData.auth_method === 'BearerToken' && !system && !formData.client_secret) {
+          setError('Bearer Token is required');
           setLoading(false);
           return;
         }
@@ -733,23 +678,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
           setError('Base DN is required');
           setLoading(false);
           return;
-        }
-        if (formData.enable_ssl) {
-          if (!formData.ldaps_port) {
-            setError('LDAPS Port is required when SSL is enabled');
-            setLoading(false);
-            return;
-          }
-          if (formData.ssl_trust_mode === 'certificate' && !formData.ssl_certificate) {
-            setError('Server Certificate (PEM) is required for the selected trust mode');
-            setLoading(false);
-            return;
-          }
-          if (formData.ssl_trust_mode === 'trustStore' && !formData.ssl_truststore_path) {
-            setError('Trust Store Path is required for the selected trust mode');
-            setLoading(false);
-            return;
-          }
         }
       } else {
         if (!formData.host) {
@@ -846,10 +774,10 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         return mapping[method] || method.toLowerCase().replace(/\s+/g, '_');
       };
 
-      // For directory types use the server_url as-is; others build https://host:port
+      // For directory types build HTTPS admin URL (REST API runs on port 1443)
       let base_url: string;
       if (isDirectory(formData.type)) {
-        base_url = formData.server_url;
+        base_url = `https://${formData.ldap_host}:1443`;
       } else {
         const protocol = (formData.host.startsWith('https://') || formData.host.startsWith('http://')) ? '' : 'https://';
         const cleanHost = formData.host.replace(/^https?:\/\//, '');
@@ -859,11 +787,9 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
       /* credentials */
       let credentials: SubmitData['credentials'] = {};
       if (formData.auth_method === 'BasicAuth') {
-        if (isDirectory(formData.type)) {
-          credentials = { bind_dn: formData.bind_dn, bind_password: formData.bind_password };
-        } else {
-          credentials = { username: formData.username, password: formData.password };
-        }
+        credentials = { username: formData.username, password: formData.password };
+      } else if (isDirectory(formData.type) && formData.auth_method === 'BearerToken') {
+        credentials = { token: formData.client_secret };
       } else if (formData.auth_method === 'BearerToken' || formData.auth_method === 'ClientCredentials') {
         credentials = { client_id: formData.client_id, client_secret: formData.client_secret };
       } else if (formData.auth_method === 'APIKey') {
@@ -893,21 +819,10 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         submitData.engine_port = formData.engine_port;
       }
       if (isDirectory(formData.type)) {
-        submitData.server_url            = formData.server_url;
-        submitData.ldap_port             = formData.ldap_port;
-        submitData.ldaps_port            = formData.ldaps_port;
-        submitData.base_dn               = formData.base_dn;
-        submitData.enable_ssl            = formData.enable_ssl;
-        if (formData.enable_ssl) {
-          submitData.ssl_trust_mode      = formData.ssl_trust_mode;
-          if (formData.ssl_trust_mode === 'certificate') {
-            submitData.ssl_certificate   = formData.ssl_certificate;
-          }
-          if (formData.ssl_trust_mode === 'trustStore') {
-            submitData.ssl_truststore_path     = formData.ssl_truststore_path;
-            submitData.ssl_truststore_password = formData.ssl_truststore_password;
-          }
-        }
+        submitData.config = {
+          ...(submitData.config || {}),
+          base_dn: formData.base_dn,
+        };
       }
       if (formData.type === 'PingOne') {
         submitData.region         = formData.region;
@@ -1064,14 +979,10 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
 
   /* ─────────────────────────────────────────────────────────────────────── */
   /* Auth credential fields — rendered dynamically per auth method           */
-  /* Directory types (PingDirectory/LDAP) handle credentials inside          */
-  /* renderTypeSpecificFields to preserve the exact screenshot field order.  */
+  /* For directory types, renderAuthFields renders before renderTypeSpecific  */
+  /* so auth fields appear above the connection fields (Host, LDAP Port, DN). */
   /* ─────────────────────────────────────────────────────────────────────── */
   const renderAuthFields = () => {
-    // Directory types render their own credential fields (Bind DN / Password)
-    // in renderTypeSpecificFields to match the screenshot field ordering.
-    if (isDirectory(formData.type)) return null;
-
     switch (formData.auth_method) {
       case 'BasicAuth':
         /* All other types → username + password */
@@ -1103,6 +1014,47 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         );
 
       case 'BearerToken':
+        if (isDirectory(formData.type)) {
+          return (
+            <Field label="Bearer Token" required hint="Paste your directory bearer token" subLabel={system ? '(leave empty to keep existing)' : undefined}>
+              <textarea
+                name="client_secret" value={formData.client_secret} onChange={handleChange}
+                placeholder="Paste your bearer token here..."
+                rows={4} required={!system}
+                className={`${inputCls} font-mono`}
+              />
+              <SecureNote />
+            </Field>
+          );
+        }
+        return (
+          <>
+            <Field label="Client ID" required hint={hint('client_id')}>
+              <input
+                type="text" name="client_id" value={formData.client_id} onChange={handleChange}
+                placeholder={ph('client_id') || 'Enter client ID'} required
+                className={inputCls}
+              />
+              {system && (
+                <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
+                  <span>ℹ️</span>
+                  <span>Client ID is required - enter new client ID to replace existing</span>
+                </p>
+              )}
+            </Field>
+
+            <Field label="Client Secret" required hint={hint('client_secret')} subLabel={system ? '(leave empty to keep existing)' : undefined}>
+              <textarea
+                name="client_secret" value={formData.client_secret} onChange={handleChange}
+                placeholder={ph('client_secret') || 'Paste your client secret here...'}
+                rows={4} required={!system}
+                className={`${inputCls} font-mono`}
+              />
+              <SecureNote />
+            </Field>
+          </>
+        );
+
       case 'ClientCredentials':
         return (
           <>
@@ -1370,7 +1322,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
     if (isDirectory(t)) {
       return (
         <>
-          {/* ── Hostname ── */}
+          {/* ── Directory Host ── */}
           <Field
             label="Directory Host"
             required
@@ -1385,79 +1337,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               required
               className={inputCls}
             />
-          </Field>
-
-          {/* ── LDAP Port (plain, shown always) ── */}
-          <Field
-            label="LDAP Port (plain-text)"
-            hint="Non-SSL LDAP port — default is 389"
-          >
-            <input
-              type="number"
-              name="ldap_port"
-              value={formData.ldap_port}
-              onChange={handleChange}
-              placeholder="389"
-              min="1"
-              max="65535"
-              className={inputCls}
-            />
-          </Field>
-
-          {/* ── Server URL (auto-computed, read-only preview) ── */}
-          <Field
-            label="Server URL"
-            required
-            hint="Auto-built from Host and Port — or type directly to override"
-          >
-            <input
-              type="text"
-              name="server_url"
-              value={formData.server_url}
-              onChange={handleChange}
-              placeholder={formData.enable_ssl ? 'ldaps://directory.example.com:636' : 'ldap://directory.example.com:389'}
-              required
-              className={inputCls}
-            />
-          </Field>
-
-          {/* ── Bind DN ── */}
-          <Field
-            label="Bind DN"
-            required
-            hint="Distinguished Name used to authenticate with the directory"
-          >
-            <input
-              type="text"
-              name="bind_dn"
-              value={formData.bind_dn}
-              onChange={handleChange}
-              placeholder="cn=Directory Manager"
-              required
-              className={inputCls}
-            />
-          </Field>
-
-          {/* ── Bind Password ── */}
-          <Field
-            label="Password"
-            required
-            hint="Password for the Bind DN (stored encrypted)"
-            subLabel={system ? '(leave empty to keep existing)' : undefined}
-          >
-            <input
-              type="password"
-              name="bind_password"
-              value={formData.bind_password}
-              onChange={handleChange}
-              placeholder="Enter password"
-              required={!system}
-              className={inputCls}
-            />
-            <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
-              <span>🔒</span>
-              <span>Your password will be securely encrypted and stored</span>
-            </p>
           </Field>
 
           {/* ── Base DN ── */}
@@ -1476,148 +1355,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
               className={inputCls}
             />
           </Field>
-
-          {/* ── Enable SSL checkbox ── */}
-          <div className="flex items-start gap-3 pt-1 pb-1">
-            <div className="mt-0.5">
-              <input
-                type="checkbox"
-                id="enable_ssl"
-                name="enable_ssl"
-                checked={formData.enable_ssl}
-                onChange={handleChange}
-                className="tsf-checkbox rounded border-2 border-gray-300 focus:ring-2 focus:ring-purple-400 cursor-pointer accent-purple-600"
-              />
-            </div>
-            <div>
-              <label htmlFor="enable_ssl" className="tsf-field-label font-semibold text-gray-900 cursor-pointer select-none">
-                Enable SSL (LDAPS)
-              </label>
-              <p className="tsf-hint-text text-gray-500 mt-0.5">
-                💡 Enables an encrypted LDAPS connection. Additional SSL settings will appear below.
-              </p>
-            </div>
-          </div>
-
-          {/* ── LDAPS config panel — only visible when SSL is ON ── */}
-          {formData.enable_ssl && (
-            <div className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/60 to-indigo-50/40 rounded-xl tsf-ssl-panel">
-              {/* Section header */}
-              <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
-                <div className="tsf-ssl-icon bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs">🔐</span>
-                </div>
-                <h3 className="tsf-field-label font-bold text-purple-900">LDAPS / SSL Configuration</h3>
-              </div>
-
-              {/* LDAPS port */}
-              <Field
-                label="LDAPS Port"
-                required
-                hint="SSL-encrypted LDAP port — default is 636"
-              >
-                <input
-                  type="number"
-                  name="ldaps_port"
-                  value={formData.ldaps_port}
-                  onChange={handleChange}
-                  placeholder="636"
-                  min="1"
-                  max="65535"
-                  required
-                  className={inputCls}
-                />
-              </Field>
-
-              {/* Trust mode */}
-              <Field
-                label="Certificate Trust Mode"
-                required
-                hint="How the client should validate the server's SSL certificate"
-              >
-                <select
-                  name="ssl_trust_mode"
-                  value={formData.ssl_trust_mode}
-                  onChange={handleChange}
-                  required
-                  className={`${inputCls} cursor-pointer`}
-                >
-                  <option value="trustAll">Trust All (skip verification — dev only)</option>
-                  <option value="jvm">Use JVM Default Trust Store</option>
-                  <option value="certificate">Provide PEM Certificate</option>
-                  <option value="trustStore">Provide Trust Store (JKS / PKCS12)</option>
-                </select>
-              </Field>
-
-              {/* PEM certificate — only when trust mode = 'certificate' */}
-              {formData.ssl_trust_mode === 'certificate' && (
-                <Field
-                  label="Server Certificate (PEM)"
-                  required
-                  hint="Paste the PEM-encoded certificate of the directory server or its CA"
-                >
-                  <textarea
-                    name="ssl_certificate"
-                    value={formData.ssl_certificate}
-                    onChange={handleChange}
-                    placeholder={`-----BEGIN CERTIFICATE-----\nMIID…\n-----END CERTIFICATE-----`}
-                    rows={6}
-                    required
-                    className={`${inputCls} font-mono tsf-mono-sm`}
-                  />
-                </Field>
-              )}
-
-              {/* Trust store fields — only when trust mode = 'trustStore' */}
-              {formData.ssl_trust_mode === 'trustStore' && (
-                <>
-                  <Field
-                    label="Trust Store Path"
-                    required
-                    hint="Absolute path to the JKS or PKCS12 trust store file on the server"
-                  >
-                    <input
-                      type="text"
-                      name="ssl_truststore_path"
-                      value={formData.ssl_truststore_path}
-                      onChange={handleChange}
-                      placeholder="/etc/ssl/certs/ldap-truststore.jks"
-                      required
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field
-                    label="Trust Store Password"
-                    hint="Password to open the trust store (stored encrypted)"
-                    subLabel={system ? '(leave empty to keep existing)' : undefined}
-                  >
-                    <input
-                      type="password"
-                      name="ssl_truststore_password"
-                      value={formData.ssl_truststore_password}
-                      onChange={handleChange}
-                      placeholder="Enter trust store password"
-                      className={inputCls}
-                    />
-                    <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
-                      <span>🔒</span>
-                      <span>Trust store password will be securely encrypted</span>
-                    </p>
-                  </Field>
-                </>
-              )}
-
-              {/* Trust-all warning */}
-              {formData.ssl_trust_mode === 'trustAll' && (
-                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <span className="text-amber-500 text-base flex-shrink-0 mt-0.5">⚠️</span>
-                  <p className="tsf-hint-text text-amber-800 leading-relaxed">
-                    <strong>Not recommended for production.</strong> Trusting all certificates disables server identity verification and is vulnerable to man-in-the-middle attacks. Use a specific certificate or trust store in production environments.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </>
       );
     }
@@ -1970,11 +1707,14 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   </Field>
                 )}
 
-                {/* ── Per-integration extra fields (between Port and Auth) ── */}
-                {renderTypeSpecificFields()}
+                {/* ── Per-integration extra fields (between Port and Auth) — skip for directory ── */}
+                {!isDirectory(formData.type) && renderTypeSpecificFields()}
 
                 {/* ── Auth credential fields ── */}
                 {renderAuthFields()}
+
+                {/* ── Directory connection fields (rendered after auth for proper ordering) ── */}
+                {isDirectory(formData.type) && renderTypeSpecificFields()}
 
                 {/* ── Description ── */}
                 <Field label="Description" hint="Optional notes or documentation about this system">

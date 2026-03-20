@@ -20,7 +20,6 @@ import Agents from './features/agents/Agents';
 import AgentChat from './features/agents/AgentChat';
 import AgentCreationForm from './features/agents/AgentCreationForm';
 import AgentTypeSelection from './features/agents/AgentTypeSelection';
-import DirectoryAgentChat from './features/agents/DirectoryAgentChat';
 
 // Admin
 import AdminSidebar from './features/admin/AdminSidebar';
@@ -206,7 +205,6 @@ function AppContent() {
             <Route path="/agents/create/:agentTypeId" element={<ProtectedRoute><AgentCreationForm /></ProtectedRoute>} />
             <Route path="/agents/createagent" element={<ProtectedRoute><AgentCreationForm /></ProtectedRoute>} />
             <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
-            <Route path="/agents/directory/:agentTypeId" element={<DirectoryAgentChat />} />
 
             {/* Systems (admin only) */}
             <Route path="/systems" element={<ProtectedRoute><TargetSystemShow /></ProtectedRoute>} />
