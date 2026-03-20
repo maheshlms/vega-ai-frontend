@@ -1,4 +1,4 @@
-name: PR Docker Compose Validation
+name: CICD for Frontend - Development
 
 on:
   pull_request:
@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker-compose-up:
+  deploy-to-development:
+    
     name: Build and Start Services
-    runs-on: self-hosted
+    runs-on: [dev-runner]
 
     steps:
 
@@ -36,3 +37,5 @@ jobs:
 
       - name: Verify Services Running
         run: sudo docker compose ps
+
+  
