@@ -1700,8 +1700,9 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                     hint={hint('port') ?? `Default port for this integration is ${integDefaults.port}`}
                   >
                     <input
-                      type="number" name="port" value={formData.port} onChange={handleChange}
-                      placeholder={String(integDefaults.port)} min="1" max="65535"
+                      type="text" inputMode="numeric" pattern="[0-9]*"
+                      name="port" value={formData.port} onChange={handleChange}
+                      placeholder={String(integDefaults.port)}
                       className={inputCls}
                     />
                   </Field>

@@ -18,7 +18,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     { 
       id: 1, 
-      text: "Hi! I'm Vega AI. How can I assist you today?", 
+      text: "Hi! How can I assist you today?", 
       sender: 'bot',
       timestamp: new Date()
     }
