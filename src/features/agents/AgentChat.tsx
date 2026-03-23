@@ -401,7 +401,8 @@ const AgentChat: React.FC = () => {
   const { isDark } = useTheme();
 
   const [agent, setAgent] = useState<Agent | null>(preloadedAgent || null);
-  const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
+  // const [loadingAgent, setLoadingAgent] = useState<boolean>(!preloadedAgent);
+  const [loadingAgent, setLoadingAgent] = useState<boolean>(true);
   const [targetSystem, setTargetSystem] = useState<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -503,6 +504,19 @@ const AgentChat: React.FC = () => {
       if (guidedTimerRef.current) clearTimeout(guidedTimerRef.current);
     };
   }, []); // eslint-disable-line
+
+  // ── FIX: Re-show guided actions once agent finishes loading ───────────────
+  // On Azure (real network latency), the API response for agent data often
+  // arrives AFTER the 5-second timer fires. At that point agent.guided_actions
+  // is still undefined, so the panel renders empty. This effect re-triggers
+  // setShowGuidedActions(true) once loadingAgent flips to false and the agent
+  // actually has guided_actions — ensuring the panel always shows with real data.
+  useEffect(() => {
+    if (loadingAgent) return;
+    if (!agent?.guided_actions?.length) return;
+    if (isTypingRef.current || messagesRef.current.length > 0 || !showWelcomeRef.current) return;
+    setShowGuidedActions(true);
+  }, [loadingAgent, agent]); // eslint-disable-line
 
   const handleGuidedActionClick = useCallback((prompt: string) => {
     setInputValue(prompt);
