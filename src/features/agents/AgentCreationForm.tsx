@@ -610,6 +610,8 @@ const AgentCreationForm: React.FC = () => {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
+  // CHANGED: track the newly created agent's ID so we can navigate to its chat
+  const [createdAgentId, setCreatedAgentId] = React.useState<string>('');
   const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
   const [loadingTargetSystems, setLoadingTargetSystems] = React.useState(false);
 
@@ -729,7 +731,9 @@ const AgentCreationForm: React.FC = () => {
           selectedAvatarName: formData.selectedAvatarName,
         },
       };
-      await api.llmRuntime.createAgent(payload);
+      // CHANGED: capture the created agent's ID from the API response
+      const created = await api.llmRuntime.createAgent(payload);
+      setCreatedAgentId(created?.id ?? created?._id ?? '');
       setShowSuccess(true);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create agent');
@@ -1080,8 +1084,13 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 ))}
               </div>
+              {/* CHANGED: go to /agents list; newAgentId is stored in nav state so
+                  Agents.tsx can pass isNewAgent:true when user clicks that agent */}
               <button
-                onClick={() => { setShowSuccess(false); navigate('/agents'); }}
+                onClick={() => {
+                  setShowSuccess(false);
+                  navigate('/agents', { state: { newAgentId: createdAgentId } });
+                }}
                 className="w-full bg-[#111] hover:bg-[#222] text-white px-6 py-3 rounded-xl text-[13.5px] font-semibold transition-colors"
               >
                 View Agents

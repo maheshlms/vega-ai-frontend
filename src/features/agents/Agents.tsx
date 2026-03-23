@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { FaPlus } from "react-icons/fa6";
 import { GoPeople, GoGraph } from "react-icons/go";
 import { TiFlashOutline, TiTickOutline } from "react-icons/ti";
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../../utils/api';
 import { IconType } from 'react-icons';
 import { auth } from '../../utils/auth';
@@ -90,11 +90,11 @@ interface DashboardMetricsResponse {
 
 interface TargetSystemMap { [key: string]: string; }
 
-const CATEGORY_CONFIG: Record<string, { label: string; accent: string; tagline: string; icon: string }> = {
-  ping_federate:  { label: 'PingFederate',  accent: '#E9472A', tagline: 'Federation & SSO Agents',  icon: '🔐' },
-  ping_directory: { label: 'PingDirectory', accent: '#0A85C2', tagline: 'Directory & LDAP Agents',  icon: '📁' },
-  ping_one:       { label: 'PingOne',       accent: '#7C3AED', tagline: 'Cloud Identity Agents',    icon: '☁️' },
-  unknown:        { label: 'Other Agents',  accent: '#6B7280', tagline: 'Miscellaneous Agents',     icon: '🤖' },
+const CATEGORY_CONFIG: Record<string, { label: string; accent: string; tagline: string; icon: string; logo?: string }> = {
+  ping_federate:  { label: 'PingFederate',  accent: '#E9472A', tagline: 'Federation & SSO Agents',  icon: 'F', logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg' },
+  ping_directory: { label: 'PingDirectory', accent: '#0A85C2', tagline: 'Directory & LDAP Agents',  icon: 'D', logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg' },
+  ping_one:       { label: 'PingOne',       accent: '#7C3AED', tagline: 'Cloud Identity Agents',    icon: '1', logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg' },
+  unknown:        { label: 'Other Agents',  accent: '#6B7280', tagline: 'Miscellaneous Agents',     icon: '?' },
 };
 
 const resolveCategory = (input: string): string => {
@@ -445,8 +445,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({ categoryKey, agents, 
   return (
     <div className="mb-12">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: `${config.accent}18` }}>
-          {config.icon}
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: '#fff', border: '1px solid #e5e7eb' }}>
+          {config.logo
+            ? <img src={config.logo} alt={config.label} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            : <span style={{ color: config.accent, fontSize: 16, fontWeight: 800, lineHeight: 1 }}>{config.icon}</span>
+          }
         </div>
         <div>
           <div className="flex items-center gap-2">
@@ -491,6 +494,7 @@ const sortAgents = (list: Agent[]): Agent[] => [
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const Agents: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [agents,        setAgents]        = useState<Agent[]>([]);
   const [loading,       setLoading]       = useState<boolean>(true);
   const [error,         setError]         = useState<string>('');
@@ -724,11 +728,19 @@ const Agents: React.FC = () => {
   filteredAgents.forEach(a => { if (!grouped[a.category]) grouped[a.category] = []; grouped[a.category].push(a); });
   const activeCategories = categoryOrder.filter(k => grouped[k]?.length > 0);
 
+  // ── FIX: Always pass isNewAgent: false for existing agents navigated from
+  //    the agents list. The tour should ONLY show when isNewAgent is explicitly
+  //    set to true at agent creation time (in the creation flow, not here).
+  //    Removed the localStorage check that was causing the tour to fire for
+  //    ALL agents whenever localStorage had no entry (e.g. new tab, incognito).
+  // CHANGED: if AgentCreationForm put a newAgentId in location.state, pass
+  //    isNewAgent:true only for that specific agent so the tour fires once.
+  const newAgentId = (location.state as any)?.newAgentId ?? '';
   const handleNavigateToAgent = useCallback((agent: Agent) => {
-    const tourKey = `agentTourSeen_${agent.id}`;
-    const alreadySeen = localStorage.getItem(tourKey);
-    navigate(`/agents/${agent.id}/chat`, { state: { agent, isNewAgent: !alreadySeen } });
-  }, [navigate]);
+    navigate(`/agents/${agent.id}/chat`, {
+      state: { agent, isNewAgent: agent.id === newAgentId },
+    });
+  }, [navigate, newAgentId]);
 
   return (
     <>
@@ -808,12 +820,13 @@ const Agents: React.FC = () => {
         }
 
         /* ── Header band inner ── */
+        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper exactly */
         .ag-header-inner {
           max-width: 1400px;
           margin-left: auto;
           margin-right: auto;
-          padding-top: 40px;
-          padding-bottom: 32px;
+          padding-top: clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
           box-sizing: border-box;
           width: 100%;
         }
@@ -860,9 +873,10 @@ const Agents: React.FC = () => {
           gap: clamp(10px, 1vw, 16px);
         }
 
-        /* ── H1 size — fluid ── */
+        /* ── H1 size — fluid, matches aad-h1-resp exactly ── */
+        /* CHANGED: was hardcoded per-breakpoint; now uses the same clamp as aad-h1-resp */
         .ag-h1 {
-          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          font-size: clamp(22px, 2.5vw, 36px) !important;
           -webkit-font-smoothing: antialiased;
           text-rendering: optimizeLegibility;
         }
@@ -892,6 +906,7 @@ const Agents: React.FC = () => {
         @media (min-width: 768px) and (max-width: 1023px) {
           .ag-band-px      { padding-left: 16px; padding-right: 16px; }
           .ag-page-wrapper { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+          /* CHANGED: matches aad-header-wrapper tablet values */
           .ag-header-inner { max-width: 100%; padding-top: 16px; padding-bottom: 14px; }
           .ag-filter-inner { max-width: 100%; height: auto; min-height: 52px; padding-top: 6px; padding-bottom: 6px; }
           .ag-stats-inner  { max-width: 100%; }
@@ -902,7 +917,8 @@ const Agents: React.FC = () => {
           /* 2-column card grid on tablet */
           .ag-card-grid    { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
 
-          .ag-h1           { font-size: 1.5rem; }
+          /* CHANGED: matches aad-h1-resp tablet value */
+          .ag-h1           { font-size: 1.625rem !important; }
 
           /* Touch targets */
           .ag-filter-inner button { min-height: 44px; }
@@ -915,12 +931,14 @@ const Agents: React.FC = () => {
         @media (min-width: 1024px) and (max-width: 1279px) {
           .ag-band-px      { padding-left: 24px; padding-right: 24px; }
           .ag-page-wrapper { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; padding-bottom: 56px; }
+          /* CHANGED: matches aad-header-wrapper small-laptop values */
           .ag-header-inner { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
           .ag-filter-inner { max-width: 100%; }
           .ag-stats-inner  { max-width: 100%; }
           .ag-stats-grid   { gap: 12px; }
           .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important; gap: 14px !important; }
-          .ag-h1           { font-size: 1.75rem; }
+          /* CHANGED: matches aad-h1-resp small-laptop value */
+          .ag-h1           { font-size: 1.875rem !important; }
         }
 
         /* ════════════════════════════════════════
@@ -929,12 +947,14 @@ const Agents: React.FC = () => {
         @media (min-width: 1280px) and (max-width: 1439px) {
           .ag-band-px      { padding-left: 28px; padding-right: 28px; }
           .ag-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 64px; }
-          .ag-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 24px; }
+          /* CHANGED: matches aad-header-wrapper medium-laptop values */
+          .ag-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
           .ag-filter-inner { max-width: 1100px; }
           .ag-stats-inner  { max-width: 1100px; }
           .ag-stats-grid   { gap: 13px; }
           .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)) !important; }
-          .ag-h1           { font-size: 1.875rem; }
+          /* CHANGED: matches aad-h1-resp medium-laptop value */
+          .ag-h1           { font-size: 2rem !important; }
         }
 
         /* ════════════════════════════════════════
@@ -943,11 +963,13 @@ const Agents: React.FC = () => {
         @media (min-width: 1440px) and (max-width: 1919px) {
           .ag-band-px      { padding-left: 36px; padding-right: 36px; }
           .ag-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 72px; }
+          /* CHANGED: matches aad-header-wrapper large-laptop values */
           .ag-header-inner { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
           .ag-filter-inner { max-width: 1280px; }
           .ag-stats-inner  { max-width: 1280px; }
           .ag-stats-grid   { gap: 14px; }
-          .ag-h1           { font-size: 2rem; }
+          /* CHANGED: matches aad-h1-resp large-laptop value */
+          .ag-h1           { font-size: 2rem !important; }
         }
 
         /* ════════════════════════════════════════
@@ -956,12 +978,14 @@ const Agents: React.FC = () => {
         @media (min-width: 1920px) and (max-width: 2559px) {
           .ag-band-px      { padding-left: 48px; padding-right: 48px; }
           .ag-page-wrapper { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          /* CHANGED: matches aad-header-wrapper 1920px values */
           .ag-header-inner { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
           .ag-filter-inner { max-width: 1400px; }
           .ag-stats-inner  { max-width: 1400px; }
           .ag-stats-grid   { gap: 16px; }
           .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; gap: 20px !important; }
-          .ag-h1           { font-size: 2.25rem; }
+          /* CHANGED: matches aad-h1-resp 1920px value */
+          .ag-h1           { font-size: 2.25rem !important; }
         }
 
         /* ════════════════════════════════════════
@@ -970,12 +994,14 @@ const Agents: React.FC = () => {
         @media (min-width: 2560px) and (max-width: 3839px) {
           .ag-band-px      { padding-left: 48px; padding-right: 48px; }
           .ag-page-wrapper { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 100px; }
+          /* CHANGED: matches aad-header-wrapper QHD values */
           .ag-header-inner { max-width: 1600px; padding-top: 52px; padding-bottom: 40px; }
           .ag-filter-inner { max-width: 1600px; height: 64px; }
           .ag-stats-inner  { max-width: 1600px; padding-top: 20px; padding-bottom: 20px; }
           .ag-stats-grid   { gap: 20px; }
           .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; gap: 24px !important; }
-          .ag-h1           { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* CHANGED: matches aad-h1-resp QHD value */
+          .ag-h1           { font-size: 2.75rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
         }
 
         /* ════════════════════════════════════════
@@ -984,12 +1010,14 @@ const Agents: React.FC = () => {
         @media (min-width: 3840px) {
           .ag-band-px      { padding-left: 64px; padding-right: 64px; }
           .ag-page-wrapper { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 140px; }
-          .ag-header-inner { max-width: 2200px; padding-top: 72px; padding-bottom: 56px; }
+          /* CHANGED: matches aad-header-wrapper 4K values */
+          .ag-header-inner { max-width: 2200px; padding-top: 64px; padding-bottom: 48px; }
           .ag-filter-inner { max-width: 2200px; height: 72px; }
           .ag-stats-inner  { max-width: 2200px; padding-top: 28px; padding-bottom: 28px; }
           .ag-stats-grid   { gap: 28px; }
           .ag-card-grid    { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important; gap: 32px !important; }
-          .ag-h1           { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* CHANGED: matches aad-h1-resp 4K value */
+          .ag-h1           { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
           /* Scale up filter buttons at 4K */
           .ag-filter-inner button { font-size: 16px; padding: 10px 16px; }

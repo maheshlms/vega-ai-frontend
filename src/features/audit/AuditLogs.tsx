@@ -590,12 +590,13 @@ const AuditLogs: React.FC = () => {
         .al-band-px { padding-left: 48px; padding-right: 48px; }
 
         /* ── Header inner wrapper ── */
+        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper / ag-header-inner exactly */
         .al-header-inner {
           max-width: 1400px;
           margin-left: auto;
           margin-right: auto;
-          padding-top: 40px;
-          padding-bottom: 32px;
+          padding-top: clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
@@ -620,7 +621,8 @@ const AuditLogs: React.FC = () => {
         }
 
         /* ── H1 ── */
-        .al-h1 { font-size: 2.25rem; }
+        /* CHANGED: was 2.25rem hardcoded; now uses clamp() to match aad-h1-resp / ag-h1 exactly */
+        .al-h1 { font-size: clamp(22px, 2.5vw, 36px); }
 
         /* ── Filters toolbar: prevent overflow, allow wrap ── */
         .al-filters-row {
@@ -664,10 +666,12 @@ const AuditLogs: React.FC = () => {
         /* Tablet: 768–1023 */
         @media (min-width: 768px) and (max-width: 1023px) {
           .al-band-px        { padding-left: 16px; padding-right: 16px; }
-          .al-header-inner   { max-width: 100%; padding-top: 20px; padding-bottom: 16px; gap: 12px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner tablet values */
+          .al-header-inner   { max-width: 100%; padding-top: 16px; padding-bottom: 14px; gap: 12px; }
           .al-page-wrapper   { max-width: 100%; padding-left: 16px; padding-right: 16px; }
           .al-stats-grid     { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-          .al-h1             { font-size: 1.75rem !important; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 tablet value */
+          .al-h1             { font-size: 1.625rem !important; }
 
           /* Header action buttons: wrap and touch-friendly */
           .al-header-inner > div:last-child { flex-wrap: wrap; }
@@ -704,9 +708,11 @@ const AuditLogs: React.FC = () => {
         /* Small laptop: 1024–1279 (MacBook 13") */
         @media (min-width: 1024px) and (max-width: 1279px) {
           .al-band-px        { padding-left: 24px; padding-right: 24px; }
-          .al-header-inner   { max-width: 100%; padding-top: 28px; padding-bottom: 22px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner small-laptop values */
+          .al-header-inner   { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
           .al-page-wrapper   { max-width: 100%; padding-left: 24px; padding-right: 24px; }
           .al-stats-grid     { gap: 10px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 small-laptop value */
           .al-h1             { font-size: 1.875rem !important; }
           .al-filters-row    { gap: 10px; }
         }
@@ -714,14 +720,17 @@ const AuditLogs: React.FC = () => {
         /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
         @media (min-width: 1280px) and (max-width: 1439px) {
           .al-band-px        { padding-left: 28px; padding-right: 28px; }
-          .al-header-inner   { max-width: 1100px; padding-top: 32px; padding-bottom: 26px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner medium-laptop values */
+          .al-header-inner   { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
           .al-page-wrapper   { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 medium-laptop value */
           .al-h1             { font-size: 2rem !important; }
         }
 
         /* Large laptop / small desktop: 1440–1919 */
         @media (min-width: 1440px) and (max-width: 1919px) {
           .al-band-px        { padding-left: 36px; padding-right: 36px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner large-laptop values */
           .al-header-inner   { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
           .al-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
         }
@@ -729,19 +738,23 @@ const AuditLogs: React.FC = () => {
         /* Exact target: 1920×1080 — lock baseline */
         @media (min-width: 1920px) and (max-width: 2559px) {
           .al-band-px        { padding-left: 48px; padding-right: 48px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner 1920px values */
           .al-header-inner   { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
           .al-page-wrapper   { max-width: 1400px; padding-left: 48px; padding-right: 48px; }
           .al-stats-grid     { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 1920px value */
           .al-h1             { font-size: 2.25rem !important; }
         }
 
         /* QHD: 2560–3839px */
         @media (min-width: 2560px) and (max-width: 3839px) {
           .al-band-px        { padding-left: 64px; padding-right: 64px; }
-          .al-header-inner   { max-width: 1800px; padding-top: 56px; padding-bottom: 44px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner QHD values */
+          .al-header-inner   { max-width: 1800px; padding-top: 52px; padding-bottom: 40px; }
           .al-page-wrapper   { max-width: 1800px; padding-left: 64px; padding-right: 64px; }
           .al-stats-grid     { gap: 16px; }
-          .al-h1             { font-size: 3rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 QHD value */
+          .al-h1             { font-size: 2.75rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           /* Table: more spacious */
           .al-table-scroll table td,
           .al-table-scroll table th { padding-left: 28px; padding-right: 28px; font-size: 14px; }
@@ -757,10 +770,12 @@ const AuditLogs: React.FC = () => {
         /* 4K+: 3840px+ */
         @media (min-width: 3840px) {
           .al-band-px        { padding-left: 96px; padding-right: 96px; }
-          .al-header-inner   { max-width: 2400px; padding-top: 72px; padding-bottom: 56px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner 4K values */
+          .al-header-inner   { max-width: 2400px; padding-top: 64px; padding-bottom: 48px; }
           .al-page-wrapper   { max-width: 2400px; padding-left: 96px; padding-right: 96px; }
           .al-stats-grid     { gap: 20px; }
-          .al-h1             { font-size: 4rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 4K value */
+          .al-h1             { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           /* Table: much more spacious */
           .al-table-scroll table td,
           .al-table-scroll table th { padding-left: 36px; padding-right: 36px; font-size: 16px; }
@@ -1005,7 +1020,7 @@ const AuditLogs: React.FC = () => {
                             </div>
                             <div>
                               <div className="al-user-name">{displayName}</div>
-                              <div className="al-user-email">{email}</div>
+                              {/* email sub-line removed */}
                             </div>
                           </div>
                         </td>

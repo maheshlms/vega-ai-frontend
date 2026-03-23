@@ -611,15 +611,17 @@ export default function TargetSystemShow() {
         }
 
         /* ── Header section ── */
+        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper / ag-header-inner / al-header-inner exactly */
         .ts-header-section {
-          padding-top:    clamp(16px, 2vw, 36px);
-          padding-bottom: clamp(12px, 1.2vw, 24px);
+          padding-top:    clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
         }
 
-        /* ── H1 — fluid from 22px (tablet) to 34px (1920) ── */
+        /* ── H1 — fluid, matches aad-h1-resp / ag-h1 / al-h1 exactly ── */
+        /* CHANGED: was clamp(22px, 1.8vw, 34px); now matches the other pages */
         .ts-h1 {
-          font-size: clamp(22px, 1.8vw, 34px);
-          font-weight: 800;
+          font-size: clamp(22px, 2.5vw, 36px);
+          font-weight: 700;
           letter-spacing: -0.025em;
           line-height: 1.15;
           color: #030712;
@@ -788,6 +790,14 @@ export default function TargetSystemShow() {
             padding-right: 16px;
           }
 
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner tablet values */
+          .ts-header-section {
+            padding-top: 16px;
+            padding-bottom: 14px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 tablet value */
+          .ts-h1 { font-size: 1.625rem !important; }
+
           /* Stats: 2-column grid at tablet */
           .ts-stats-row {
             display: grid !important;
@@ -851,6 +861,14 @@ export default function TargetSystemShow() {
             padding-right: 24px;
           }
 
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner small-laptop values */
+          .ts-header-section {
+            padding-top: 24px;
+            padding-bottom: 20px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 small-laptop value */
+          .ts-h1 { font-size: 1.875rem !important; }
+
           /* Stat cards: keep in single row, allow natural compression */
           .ts-stats-row {
             flex-wrap: nowrap;
@@ -870,6 +888,14 @@ export default function TargetSystemShow() {
             padding-left: 28px;
             padding-right: 28px;
           }
+
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner medium-laptop values */
+          .ts-header-section {
+            padding-top: 28px;
+            padding-bottom: 22px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 medium-laptop value */
+          .ts-h1 { font-size: 2rem !important; }
         }
 
         /* ── Large laptop / 1440p: 1440–1919px ── */
@@ -879,12 +905,23 @@ export default function TargetSystemShow() {
             padding-left: 36px;
             padding-right: 36px;
           }
+
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner large-laptop values */
+          .ts-header-section {
+            padding-top: 36px;
+            padding-bottom: 28px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 large-laptop value */
+          .ts-h1 { font-size: 2rem !important; }
         }
 
         /* ── 1920px BASELINE — explicit lock ── */
         @media (min-width: 1920px) and (max-width: 2559px) {
           .ts-page-wrapper    { max-width: 1280px; padding-left: 32px; padding-right: 32px; }
-          .ts-h1              { font-size: 34px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 1920px values */
+          .ts-header-section  { padding-top: 40px; padding-bottom: 32px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 1920px value */
+          .ts-h1              { font-size: 2.25rem !important; }
           .ts-h1-sub          { font-size: 14px; }
           .ts-header-btn      { height: 40px; font-size: 13px; padding-left: 16px; padding-right: 16px; }
           .ts-stat-value      { font-size: 42px !important; }
@@ -907,8 +944,10 @@ export default function TargetSystemShow() {
             padding-left: 48px;
             padding-right: 48px;
           }
-          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-          .ts-header-section  { padding-top: clamp(36px, 2.5vw, 56px); padding-bottom: clamp(24px, 1.5vw, 36px); }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner QHD values */
+          .ts-header-section  { padding-top: 52px; padding-bottom: 40px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 QHD value */
+          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px) !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           .ts-stat-value      { font-size: clamp(42px, 3vw, 60px) !important; }
           .ts-stats-row       { gap: 20px; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; }
@@ -934,9 +973,11 @@ export default function TargetSystemShow() {
             padding-left: 64px;
             padding-right: 64px;
           }
-          .ts-h1              { font-size: 64px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-          .ts-h1-sub          { font-size: 22px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 4K values */
           .ts-header-section  { padding-top: 64px; padding-bottom: 48px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 4K value */
+          .ts-h1              { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ts-h1-sub          { font-size: 22px; }
           .ts-stat-value      { font-size: 72px !important; }
           .ts-stats-row       { gap: 28px; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 32px; }
@@ -1053,10 +1094,10 @@ export default function TargetSystemShow() {
           <div className="ts-page-wrapper">
             <div className="ts-header-inner flex items-start justify-between gap-6">
               <div>
-                <h1 className="ts-h1">
+                <h1 className="ts-h1 font-bold leading-tight tracking-tight text-[#0A0A0A]">
                   {integrationName ? `${integrationName} Systems` : 'Target Systems'}
                 </h1>
-                <p className="ts-h1-sub">
+                <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
                   {integrationName
                     ? `Manage target systems for ${integrationName}`
                     : 'Manage your connected systems and integrations'}
