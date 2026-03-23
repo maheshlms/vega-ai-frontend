@@ -6,6 +6,7 @@ import FloatingDots from '../../effects/FloatingDots';
 import { GoSun } from "react-icons/go";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { IoSettingsSharp } from "react-icons/io5";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 // import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
@@ -24,6 +25,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -416,14 +418,24 @@ const LoginPage: React.FC = () => {
                 <label className="lp-label font-medium mb-1 block" style={{ color: "var(--text-main)" }}>
                   Password
                 </label>
-                <InputField
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="lp-input w-full border rounded-md"
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <InputField
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="lp-input w-full border rounded-md"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {error && (
