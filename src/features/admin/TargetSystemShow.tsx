@@ -121,82 +121,152 @@ const DropdownFilter = ({
   );
 };
 
-/* ── CHANGED: LiveHealthIndicator now receives countdown from the service (0–300s)
-      and formats it as minutes when >= 60s.
-      Only other change: progress formula updated from /30 to /300.
-      Everything else — JSX, styles, animations — is identical to original. ── */
 const LiveHealthIndicator = ({
   countdown,
   isChecking,
   lastChecked,
   systemCount,
+  intervalMinutes,
 }: {
   countdown: number;
   isChecking: boolean;
   lastChecked: Date | null;
   systemCount: number;
+  intervalMinutes: number;
 }) => {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(String(intervalMinutes));
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync input when interval changes externally
+  useEffect(() => { setInputVal(String(intervalMinutes)); }, [intervalMinutes]);
+
+  // Close popover on click outside
+  useEffect(() => {
+    if (!popoverOpen) return;
+    const fn = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setPopoverOpen(false);
+        setInputVal(String(intervalMinutes));
+      }
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, [popoverOpen, intervalMinutes]);
+
+  const handleSave = () => {
+    const n = parseInt(inputVal, 10);
+    if (!isNaN(n) && n >= 3) {
+      healthCheckService.setIntervalMinutes(n);
+      setPopoverOpen(false);
+    }
+  };
+
   const timeStr = lastChecked
     ? lastChecked.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null;
 
-  // ── CHANGED: was ((30 - countdown) / 30) * 100, now uses 300s total
-  const progress = ((300 - countdown) / 300) * 100;
+  const totalSeconds = intervalMinutes * 60;
+  const progress = ((totalSeconds - countdown) / totalSeconds) * 100;
 
   return (
-    <div
-      className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border overflow-hidden"
-      style={{
-        background: isChecking ? '#eff6ff' : '#f8fafc',
-        borderColor: isChecking ? '#bfdbfe' : '#e2e8f0',
-        transition: 'background 0.4s, border-color 0.4s',
-        minWidth: 190,
-      }}
-    >
-      {/* Thin progress track along the bottom — fills up toward next check */}
-      {!isChecking && (
-        <span
-          className="absolute bottom-0 left-0 h-[2px] rounded-full transition-all duration-1000 ease-linear"
-          style={{
-            width: `${progress}%`,
-            background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-            opacity: 0.5,
-          }}
-        />
-      )}
-
-      {/* Animated dot */}
-      <span className="relative flex h-2 w-2 shrink-0">
-        <span
-          className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${isChecking ? 'animate-ping bg-blue-400' : ''}`}
-          style={!isChecking ? { animation: 'subtle-ping 2.5s ease-in-out infinite', background: '#4ade80' } : {}}
-        />
-        <span
-          className={`relative inline-flex rounded-full h-2 w-2 ${isChecking ? 'bg-blue-500' : 'bg-green-500'}`}
-        />
-      </span>
-
-      {/* Text */}
-      <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: isChecking ? '#2563eb' : '#64748b' }}>
-        {isChecking ? (
-          <>Checking {systemCount} system{systemCount !== 1 ? 's' : ''}…</>
-        ) : (
-          <span className="flex items-center gap-1">
-            <span style={{ color: '#22c55e' }}>Live</span>
-            {timeStr
-              ? <span style={{ color: '#94a3b8' }}>· {timeStr}</span>
-              : <span style={{ color: '#94a3b8' }}>· waiting…</span>
-            }
-            {/* ── CHANGED: show minutes when >= 60s, seconds when < 60s ── */}
-            <span
-  className="inline-flex items-center justify-center rounded-md px-1.5"
-  style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
->
-  {`${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`}
-</span>
-          </span>
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setPopoverOpen(o => !o)}
+        title="Configure interval"
+        className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border overflow-hidden hover:opacity-80 transition-opacity"
+        style={{
+          background: isChecking ? '#eff6ff' : '#f8fafc',
+          borderColor: isChecking ? '#bfdbfe' : '#e2e8f0',
+          transition: 'background 0.4s, border-color 0.4s',
+          minWidth: 190,
+          cursor: 'pointer',
+        }}
+      >
+        {/* Thin progress track along the bottom — fills up toward next check */}
+        {!isChecking && (
+          <span
+            className="absolute bottom-0 left-0 h-[2px] rounded-full transition-all duration-1000 ease-linear"
+            style={{
+              width: `${progress}%`,
+              background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+              opacity: 0.5,
+            }}
+          />
         )}
-      </span>
+
+        {/* Animated dot */}
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${isChecking ? 'animate-ping bg-blue-400' : ''}`}
+            style={!isChecking ? { animation: 'subtle-ping 2.5s ease-in-out infinite', background: '#4ade80' } : {}}
+          />
+          <span
+            className={`relative inline-flex rounded-full h-2 w-2 ${isChecking ? 'bg-blue-500' : 'bg-green-500'}`}
+          />
+        </span>
+
+        {/* Text */}
+        <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: isChecking ? '#2563eb' : '#64748b' }}>
+          {isChecking ? (
+            <>Checking {systemCount} system{systemCount !== 1 ? 's' : ''}…</>
+          ) : (
+            <span className="flex items-center gap-1">
+              <span style={{ color: '#22c55e' }}>Live</span>
+              {timeStr
+                ? <span style={{ color: '#94a3b8' }}>· {timeStr}</span>
+                : <span style={{ color: '#94a3b8' }}>· waiting…</span>
+              }
+              {/* Countdown display */}
+              <span
+                className="inline-flex items-center justify-center rounded-md px-1.5"
+                style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
+              >
+                {`${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`}
+              </span>
+            </span>
+          )}
+        </span>
+
+        {/* Chevron indicator */}
+        <FaChevronDown
+          size={8}
+          className={`transition-transform duration-200 ml-auto shrink-0 ${popoverOpen ? 'rotate-180' : ''}`}
+          style={{ color: '#94a3b8' }}
+        />
+      </button>
+
+      {/* Compact interval popover */}
+      {popoverOpen && (
+        <div
+          className="absolute top-full mt-2 right-0 bg-white rounded-xl border border-gray-200 shadow-lg z-50 p-3"
+          style={{ minWidth: 170 }}
+        >
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Check every</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={3}
+              step={1}
+              value={inputVal}
+              onChange={e => setInputVal(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSave()}
+              className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-[12px] font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent text-center"
+            />
+            <span className="text-[12px] text-gray-500 font-medium">min</span>
+            <button
+              onClick={handleSave}
+              className="ml-auto px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+            >
+              Save
+            </button>
+          </div>
+          {inputVal !== '' && parseInt(inputVal, 10) < 3 && (
+            <p className="text-[10px] text-red-500 mt-1.5">Minimum 3 minutes</p>
+          )}
+        </div>
+      )}
 
       <style>{`
         @keyframes subtle-ping {
@@ -1167,6 +1237,7 @@ export default function TargetSystemShow() {
                     isChecking={hcState.isRunning}
                     lastChecked={hcState.lastChecked}
                     systemCount={systems.length}
+                    intervalMinutes={hcState.intervalMinutes}
                   />
                 )}
                 <span className="ts-count-label text-gray-400 font-medium">

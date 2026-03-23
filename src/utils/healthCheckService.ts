@@ -34,15 +34,33 @@ export interface HealthCheckState {
   isRunning: boolean;                        // true while a batch check is in flight
   lastChecked: Date | null;                  // timestamp of last completed check
   countdown: number;                         // seconds until next scheduled check
+  intervalMinutes: number;                   // user-configured check interval in minutes
   results: SystemHealthResult[];             // results from last completed check
 }
 
 type Listener = (state: HealthCheckState) => void;
 
-/* ── Interval constant ──────────────────────────────────────────────────── */
+/* ── Interval constants ─────────────────────────────────────────────────── */
 
-const CHECK_INTERVAL_MS  = 5 * 60 * 1000;  // 5 minutes
-const COUNTDOWN_SECONDS  = CHECK_INTERVAL_MS / 1000; // 300
+const MIN_INTERVAL_MINUTES     = 3;
+const DEFAULT_INTERVAL_MINUTES = 5;
+const LS_INTERVAL_KEY          = 'hcs_interval_minutes';
+
+function loadIntervalMinutes(): number {
+  try {
+    const saved = localStorage.getItem(LS_INTERVAL_KEY);
+    if (saved) {
+      const n = parseInt(saved, 10);
+      if (!isNaN(n) && n >= MIN_INTERVAL_MINUTES) return n;
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_INTERVAL_MINUTES;
+}
+
+let _intervalMinutes = loadIntervalMinutes(); // read from localStorage at module load
+
+function getIntervalMs()      { return _intervalMinutes * 60 * 1000; }
+function getCountdownSeconds() { return _intervalMinutes * 60; }
 
 /* ── localStorage keys ──────────────────────────────────────────────────── */
 
@@ -55,7 +73,7 @@ let _intervalId:   ReturnType<typeof setInterval>  | null = null;
 let _tickerId:     ReturnType<typeof setInterval>  | null = null;
 let _isRunning     = false;
 let _lastChecked:  Date | null = null;
-let _countdown     = COUNTDOWN_SECONDS;
+let _countdown     = getCountdownSeconds();
 let _results:      SystemHealthResult[] = [];
 let _listeners:    Set<Listener> = new Set();
 
@@ -95,27 +113,28 @@ function loadSavedCountdown(): { countdown: number; lastChecked: Date | null } {
       }
 
       const remainingSeconds = Math.round(remainingMs / 1000);
-      return { countdown: Math.min(remainingSeconds, COUNTDOWN_SECONDS), lastChecked };
+      return { countdown: Math.min(remainingSeconds, getCountdownSeconds()), lastChecked };
     }
   } catch { /* ignore */ }
 
-  return { countdown: COUNTDOWN_SECONDS, lastChecked: null };
+  return { countdown: getCountdownSeconds(), lastChecked: null };
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 function notify() {
   const state: HealthCheckState = {
-    isRunning:   _isRunning,
-    lastChecked: _lastChecked,
-    countdown:   _countdown,
-    results:     _results,
+    isRunning:       _isRunning,
+    lastChecked:     _lastChecked,
+    countdown:       _countdown,
+    intervalMinutes: _intervalMinutes,
+    results:         _results,
   };
   _listeners.forEach(fn => fn(state));
 }
 
 function resetCountdown() {
-  _countdown = COUNTDOWN_SECONDS;
+  _countdown = getCountdownSeconds();
   saveCheckTimes();
   notify();
 }
@@ -194,7 +213,7 @@ function startInterval() {
     _countdown = 0;          // show 0 briefly before check starts
     notify();
     runCheck();
-  }, CHECK_INTERVAL_MS);
+  }, getIntervalMs());
 }
 
 function stopInterval() {
@@ -252,10 +271,11 @@ export function subscribe(listener: Listener): () => void {
   _listeners.add(listener);
   // Immediately push current state to the new subscriber
   listener({
-    isRunning:   _isRunning,
-    lastChecked: _lastChecked,
-    countdown:   _countdown,
-    results:     _results,
+    isRunning:       _isRunning,
+    lastChecked:     _lastChecked,
+    countdown:       _countdown,
+    intervalMinutes: _intervalMinutes,
+    results:         _results,
   });
   return () => _listeners.delete(listener);
 }
@@ -283,12 +303,37 @@ export async function runNow() {
 /**
  * Returns the current state snapshot (no subscription).
  */
+export function getIntervalMinutes(): number {
+  return _intervalMinutes;
+}
+
+/**
+ * Update the health-check polling interval (minimum 3 minutes).
+ * Persists to localStorage and immediately restarts timers with the new cadence.
+ */
+export function setIntervalMinutes(minutes: number) {
+  const clamped = Math.max(MIN_INTERVAL_MINUTES, Math.round(minutes));
+  _intervalMinutes = clamped;
+  try {
+    localStorage.setItem(LS_INTERVAL_KEY, String(clamped));
+  } catch { /* ignore */ }
+  // Restart timers with the new interval
+  stopTicker();
+  stopInterval();
+  _countdown = getCountdownSeconds();
+  saveCheckTimes();
+  notify();
+  startTicker();
+  startInterval();
+}
+
 export function getState(): HealthCheckState {
   return {
-    isRunning:   _isRunning,
-    lastChecked: _lastChecked,
-    countdown:   _countdown,
-    results:     _results,
+    isRunning:       _isRunning,
+    lastChecked:     _lastChecked,
+    countdown:       _countdown,
+    intervalMinutes: _intervalMinutes,
+    results:         _results,
   };
 }
 
@@ -308,5 +353,5 @@ export function destroy() {
   } catch { /* ignore */ }
 }
 
-const healthCheckService = { init, subscribe, registerSystemsGetter, runNow, getState, destroy };
+const healthCheckService = { init, subscribe, registerSystemsGetter, runNow, getState, getIntervalMinutes, setIntervalMinutes, destroy };
 export default healthCheckService;
