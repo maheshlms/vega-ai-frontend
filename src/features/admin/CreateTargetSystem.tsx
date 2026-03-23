@@ -165,12 +165,50 @@ const CreateTargetSystem: React.FC = () => {
           }
         }
 
+        /* ── QHD : 2560–3839px ───────────────────────────────────────────────
+           The >1920px block fires from 1921px but its 1800px max-width starts
+           to feel narrow by 2560px. Override here for spacious QHD layout.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          :root {
+            --cts-page-max-w:   2400px;
+            --cts-page-px:      96px;
+            --cts-header-pt:    72px;
+            --cts-header-pb:    56px;
+            --cts-back-fs:      20px;
+            --cts-back-mb:      24px;
+            --cts-h1-fs:        68px;
+            --cts-h1-mb:        16px;
+            --cts-subtitle-fs:  24px;
+            --cts-form-py:      72px;
+          }
+        }
+
+        /* ── 4K+ : ≥3840px ───────────────────────────────────────────────────
+           Maximum layout expansion — intentionally spacious, not a narrow strip.
+        ─────────────────────────────────────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          :root {
+            --cts-page-max-w:   3200px;
+            --cts-page-px:      128px;
+            --cts-header-pt:    96px;
+            --cts-header-pb:    72px;
+            --cts-back-fs:      26px;
+            --cts-back-mb:      32px;
+            --cts-h1-fs:        88px;
+            --cts-h1-mb:        20px;
+            --cts-subtitle-fs:  32px;
+            --cts-form-py:      96px;
+          }
+        }
+
         /* ── COMPONENT STYLES ────────────────────────────────────────────── */
         .cts-page-wrap {
           max-width: var(--cts-page-max-w);
           margin: 0 auto;
           padding-left: var(--cts-page-px);
           padding-right: var(--cts-page-px);
+          box-sizing: border-box;
         }
 
         .cts-header-inner {
@@ -181,15 +219,27 @@ const CreateTargetSystem: React.FC = () => {
         .cts-back-btn {
           font-size: var(--cts-back-fs);
           margin-bottom: var(--cts-back-mb);
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          box-sizing: border-box;
         }
 
         .cts-h1 {
           font-size: var(--cts-h1-fs);
           margin-bottom: var(--cts-h1-mb);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          line-height: 1.15;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .cts-subtitle {
           font-size: var(--cts-subtitle-fs);
+          line-height: 1.6;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .cts-form-wrap {

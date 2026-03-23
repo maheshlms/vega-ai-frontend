@@ -634,6 +634,126 @@ const SearchBox: React.FC<SearchBoxProps> = ({ icon: Icon }) => {
           to   { opacity: 1; transform: translateY(0); }
         }
         mark { background: #fef08a; color: #854d0e; border-radius: 2px; padding: 0 2px; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESPONSIVE RULES — SearchBox
+           Lives inside a navbar (constrained parent). The outer wrapper
+           already uses clamp(220px, 28vw, 420px) via inline style, which
+           handles smooth scaling. These rules address:
+             - Dropdown panel sizing at QHD / 4K
+             - Touch targets at tablet
+             - Result row text truncation safety
+             - Dropdown overflow-boundary safety
+             - Input height at tablet (smaller than lg Tailwind handles)
+           Baseline: 1920×1080 — no changes at this size.
+        ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Box-sizing safety ── */
+        .sb-root, .sb-root * { box-sizing: border-box; }
+
+        /* ── Result name / description: flex truncation fix ── */
+        .sb-result-text {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        /* ── Email / user_email in audit descriptions: break long strings ── */
+        .sb-result-desc {
+          overflow-wrap: break-word;
+          word-break: break-all;
+          min-width: 0;
+        }
+
+        /* ── Dropdown panel: never bleed off right edge ── */
+        .sb-dropdown {
+          max-width: calc(100vw - 8px);
+          right: auto;
+          left: 0;
+        }
+
+        /* ── Tablet: 768–1023px ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          /* Input: smaller touch-friendly height */
+          .sb-input {
+            height: 40px !important;
+            min-height: 44px;
+          }
+          /* Clear / Ctrl+K buttons: ensure 44×44 touch area */
+          .sb-clear-btn {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            right: 0;
+            padding: 0 12px;
+          }
+          /* Result rows: touch-friendly tap targets */
+          .sb-result-row {
+            min-height: 44px;
+          }
+          /* Recent search rows */
+          .sb-recent-row {
+            min-height: 44px;
+          }
+          /* Quick action rows */
+          .sb-quick-row {
+            min-height: 44px;
+          }
+          /* Dropdown: slightly narrower max-height on small screens */
+          .sb-dropdown-active  { max-height: clamp(240px, 50vh, 360px); }
+          .sb-dropdown-default { max-height: clamp(220px, 45vh, 320px); }
+        }
+
+        /* ── QHD: 2560–3839px ── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          /* Dropdown panel: wider, larger text */
+          .sb-dropdown {
+            border-radius: 16px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.12);
+          }
+          /* Result rows: more padding, larger text */
+          .sb-result-row {
+            padding-top: 10px;
+            padding-bottom: 10px;
+          }
+          .sb-result-name  { font-size: 15px !important; }
+          .sb-result-desc  { font-size: 12px !important; }
+          .sb-result-badge { font-size: 11px !important; padding: 2px 8px !important; }
+          /* Group headers */
+          .sb-group-label  { font-size: 11px !important; letter-spacing: 0.1em; }
+          /* Quick action rows */
+          .sb-quick-row    { padding-top: 10px; padding-bottom: 10px; }
+          .sb-quick-label  { font-size: 15px !important; }
+          /* Footer */
+          .sb-footer       { font-size: 12px !important; padding-top: 12px; padding-bottom: 12px; }
+          /* Input */
+          .sb-input        { height: 44px !important; font-size: 14px !important; }
+          /* Avatar */
+          .sb-avatar       { width: 36px !important; height: 36px !important; }
+        }
+
+        /* ── 4K+: 3840px+ ── */
+        @media (min-width: 3840px) {
+          .sb-dropdown {
+            border-radius: 20px;
+          }
+          .sb-result-row   { padding-top: 14px; padding-bottom: 14px; }
+          .sb-result-name  { font-size: 18px !important; }
+          .sb-result-desc  { font-size: 14px !important; }
+          .sb-result-badge { font-size: 13px !important; padding: 3px 10px !important; border-radius: 99px; }
+          .sb-group-label  { font-size: 13px !important; letter-spacing: 0.1em; }
+          .sb-quick-row    { padding-top: 14px; padding-bottom: 14px; }
+          .sb-quick-label  { font-size: 18px !important; }
+          .sb-footer       { font-size: 14px !important; padding-top: 16px; padding-bottom: 16px; }
+          .sb-input        { height: 56px !important; font-size: 16px !important; }
+          .sb-avatar       { width: 44px !important; height: 44px !important; }
+          /* Font smoothing at large sizes */
+          .sb-result-name, .sb-quick-label, .sb-group-label {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+        }
       `}</style>
     </div>
   );

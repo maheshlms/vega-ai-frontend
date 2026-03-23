@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  Award, ShieldCheck, Link2, Wrench, FileCode2, Coins, KeyRound,
+  Database, Lock, Users, RotateCcw, LayoutGrid, RefreshCw, HardDrive,
+  ShieldAlert, BarChart2, Search, Puzzle, Terminal, Fingerprint,
+  ShieldOff, UserPlus, LogIn, ScrollText, AlertTriangle, AppWindow, Workflow
+} from "lucide-react";
 
 interface Agent {
   id: string;
@@ -21,35 +27,64 @@ interface AgentTypesData {
 
 // Per-agent accent colours (mirrors IntegrationsPage card accents)
 const AGENT_ACCENTS: Record<string, { border: string; shadow: string; headerBg: string; logoBg: string }> = {
-  license:     { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  certificate: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  connection:  { border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  adapter:     { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  protocol:    { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  token:       { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)',   headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
-  oauth:       { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  datasources: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
-  ptmaster:    { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  // pingdirectory
-  'user-mgmt': { border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  'pwd-reset':  { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)',   headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
-  schema:      { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  replication: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  backup:      { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  security:    { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)',    headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
-  monitoring:  { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  indexing:    { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
-  plugins:     { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  'ldap-ops':  { border: '#6B7280', shadow: 'rgba(107,114,128,0.18)', headerBg: '#F9FAFB', logoBg: '#F3F4F6' },
-  // pingone
-  identity:    { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)',   headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
-  mfa:         { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)',    headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
-  provisioning:{ border: '#10B981', shadow: 'rgba(16,185,129,0.18)',   headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
-  'sso-config':{ border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)',   headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
-  policies:    { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)',   headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
-  'risk-mgmt': { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)',   headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
-  connectors:  { border: '#F97316', shadow: 'rgba(249,115,22,0.18)',   headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
-  workflows:   { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)',   headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  license: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  certificate: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  connection: { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  adapter: { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  protocol: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  token: { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)', headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
+  oauth: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  datasources: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  ptmaster: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  'user-mgmt': { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  'pwd-reset': { border: '#EC4899', shadow: 'rgba(236,72,153,0.18)', headerBg: '#FDF2F8', logoBg: '#FCE7F3' },
+  schema: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  replication: { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  backup: { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  security: { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)', headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
+  monitoring: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  indexing: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+  plugins: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  'ldap-ops': { border: '#6B7280', shadow: 'rgba(107,114,128,0.18)', headerBg: '#F9FAFB', logoBg: '#F3F4F6' },
+  identity: { border: '#8B5CF6', shadow: 'rgba(139,92,246,0.18)', headerBg: '#F5F3FF', logoBg: '#EDE9FE' },
+  mfa: { border: '#EF4444', shadow: 'rgba(239,68,68,0.18)', headerBg: '#FEF2F2', logoBg: '#FEE2E2' },
+  provisioning: { border: '#10B981', shadow: 'rgba(16,185,129,0.18)', headerBg: '#F0FDF4', logoBg: '#DCFCE7' },
+  'sso-config': { border: '#0EA5E9', shadow: 'rgba(14,165,233,0.18)', headerBg: '#F0F9FF', logoBg: '#E0F2FE' },
+  policies: { border: '#6366F1', shadow: 'rgba(99,102,241,0.18)', headerBg: '#F5F3FF', logoBg: '#EEF2FF' },
+  'risk-mgmt': { border: '#F59E0B', shadow: 'rgba(245,158,11,0.18)', headerBg: '#FFFBEB', logoBg: '#FEF3C7' },
+  connectors: { border: '#F97316', shadow: 'rgba(249,115,22,0.18)', headerBg: '#FFF7ED', logoBg: '#FFEDD5' },
+  workflows: { border: '#14B8A6', shadow: 'rgba(20,184,166,0.18)', headerBg: '#F0FDFA', logoBg: '#CCFBF1' },
+};
+
+// ── CHANGED: map each agent id to a lucide icon component ──
+const AGENT_ICONS: Record<string, React.ElementType> = {
+  license: Award,
+  certificate: ShieldCheck,
+  connection: Link2,
+  adapter: Wrench,
+  protocol: FileCode2,
+  token: Coins,
+  oauth: KeyRound,
+  datasources: Database,
+  ptmaster: Lock,
+  'user-mgmt': Users,
+  'pwd-reset': RotateCcw,
+  schema: LayoutGrid,
+  replication: RefreshCw,
+  backup: HardDrive,
+  security: ShieldAlert,
+  monitoring: BarChart2,
+  indexing: Search,
+  plugins: Puzzle,
+  'ldap-ops': Terminal,
+  identity: Fingerprint,
+  mfa: ShieldOff,
+  provisioning: UserPlus,
+  'sso-config': LogIn,
+  policies: ScrollText,
+  'risk-mgmt': AlertTriangle,
+  connectors: AppWindow,
+  workflows: Workflow,
 };
 
 const AgentTypeSelection: React.FC = () => {
@@ -79,45 +114,45 @@ const AgentTypeSelection: React.FC = () => {
       title: "Ping Federate",
       subtitle: "Select the type of agent you want to create",
       agents: [
-        { id: "license",     name: "License",       description: "License monitoring & renewal",              icon: "🎫", active: true },
-        { id: "certificate", name: "Certificate",   description: "SSL/TLS certificate management",            icon: "📄", active: true },
-        { id: "connection",  name: "SP Connection", description: "Service Provider connection setup",         icon: "🔗", active: true },
-        { id: "adapter",     name: "Adapter Config",description: "Configure authentication adapters",         icon: "🔧", active: false },
-        { id: "protocol",    name: "Protocol",      description: "Protocol handler configuration",            icon: "📋", active: false },
-        { id: "token",       name: "Token Mgmt",    description: "Token lifecycle management",                icon: "🎯", active: false },
-        { id: "oauth",       name: "OAuth/OIDC",    description: "OAuth 2.0 & OIDC setup",                   icon: "🔑", active: false },
-        { id: "datasources", name: "Data Sources",  description: "Configure data source connections",         icon: "🗄️", active: false },
-        { id: "ptmaster",    name: "PF Master",     description: "Primary authentication master",             icon: "🔐", active: false }
+        { id: "license", name: "License", description: "License monitoring & renewal", icon: "", active: true },
+        { id: "certificate", name: "Certificate", description: "SSL/TLS certificate management", icon: "", active: true },
+        { id: "connection", name: "SP Connection", description: "Service Provider connection setup", icon: "", active: true },
+        { id: "adapter", name: "Adapter Config", description: "Configure authentication adapters", icon: "", active: false },
+        { id: "protocol", name: "Protocol", description: "Protocol handler configuration", icon: "", active: false },
+        { id: "token", name: "Token Mgmt", description: "Token lifecycle management", icon: "", active: false },
+        { id: "oauth", name: "OAuth/OIDC", description: "OAuth 2.0 & OIDC setup", icon: "", active: false },
+        { id: "datasources", name: "Data Sources", description: "Configure data source connections", icon: "", active: false },
+        { id: "ptmaster", name: "PF Master", description: "Primary authentication master", icon: "", active: false }
       ]
     },
     pingdirectory: {
       title: "Ping Directory",
       subtitle: "Configure your directory services agent",
       agents: [
-        { id: "user-mgmt",    name: "User Management",    description: "View, modify and enable/disable users",              icon: "👥", active: true },
-        { id: "pwd-reset",    name: "Password Reset",      description: "Reset passwords for directory users",               icon: "🔑", active: true },
-        { id: "schema",       name: "Schema Config",      description: "Define and manage directory schema attributes",      icon: "📐", active: false },
-        { id: "replication",  name: "Replication",        description: "Set up multi-master replication topology",           icon: "🔄", active: false },
-        { id: "backup",       name: "Backup & Restore",   description: "Automated backup and recovery solutions",            icon: "💾", active: false },
-        { id: "security",     name: "Access Control",     description: "Configure ACLs and security policies",               icon: "🛡️", active: false },
-        { id: "monitoring",   name: "Performance Monitor",description: "Real-time performance metrics and alerts",           icon: "📊", active: false },
-        { id: "indexing",     name: "Index Management",   description: "Optimize search performance with indexes",           icon: "🔍", active: false },
-        { id: "plugins",      name: "Plugin Config",      description: "Extend functionality with custom plugins",           icon: "🧩", active: false },
-        { id: "ldap-ops",     name: "LDAP Operations",    description: "Advanced LDAP query and operation tools",            icon: "⚙️", active: false }
+        { id: "user-mgmt", name: "User Management", description: "View, modify and enable/disable users", icon: "", active: true },
+        { id: "pwd-reset", name: "Password Reset", description: "Reset passwords for directory users", icon: "", active: true },
+        { id: "schema", name: "Schema Config", description: "Define and manage directory schema attributes", icon: "", active: false },
+        { id: "replication", name: "Replication", description: "Set up multi-master replication topology", icon: "", active: false },
+        { id: "backup", name: "Backup & Restore", description: "Automated backup and recovery solutions", icon: "", active: false },
+        { id: "security", name: "Access Control", description: "Configure ACLs and security policies", icon: "", active: false },
+        { id: "monitoring", name: "Performance Monitor", description: "Real-time performance metrics and alerts", icon: "", active: false },
+        { id: "indexing", name: "Index Management", description: "Optimize search performance with indexes", icon: "", active: false },
+        { id: "plugins", name: "Plugin Config", description: "Extend functionality with custom plugins", icon: "", active: false },
+        { id: "ldap-ops", name: "LDAP Operations", description: "Advanced LDAP query and operation tools", icon: "", active: false }
       ]
     },
     pingone: {
       title: "Ping One",
       subtitle: "Set up your cloud identity platform agent",
       agents: [
-        { id: "identity",     name: "Identity Provider",  description: "Configure IdP settings and attributes",             icon: "🆔", active: true },
-        { id: "mfa",          name: "MFA Configuration",  description: "Multi-factor authentication policies",              icon: "🔐", active: false },
-        { id: "provisioning", name: "User Provisioning",  description: "Automated user lifecycle management",               icon: "👤", active: false },
-        { id: "sso-config",   name: "SSO Setup",          description: "Single sign-on for applications",                   icon: "🔑", active: false },
-        { id: "policies",     name: "Access Policies",    description: "Define fine-grained access control",                icon: "📋", active: false },
-        { id: "risk-mgmt",    name: "Risk Management",    description: "Adaptive authentication and risk scoring",          icon: "⚠️", active: false },
-        { id: "connectors",   name: "App Connectors",     description: "Integrate with SaaS applications",                  icon: "🔌", active: false },
-        { id: "workflows",    name: "Workflow Automation",description: "Build identity governance workflows",               icon: "🔄", active: false }
+        { id: "identity", name: "Identity Provider", description: "Configure IdP settings and attributes", icon: "", active: true },
+        { id: "mfa", name: "MFA Configuration", description: "Multi-factor authentication policies", icon: "", active: false },
+        { id: "provisioning", name: "User Provisioning", description: "Automated user lifecycle management", icon: "", active: false },
+        { id: "sso-config", name: "SSO Setup", description: "Single sign-on for applications", icon: "", active: false },
+        { id: "policies", name: "Access Policies", description: "Define fine-grained access control", icon: "", active: false },
+        { id: "risk-mgmt", name: "Risk Management", description: "Adaptive authentication and risk scoring", icon: "", active: false },
+        { id: "connectors", name: "App Connectors", description: "Integrate with SaaS applications", icon: "", active: false },
+        { id: "workflows", name: "Workflow Automation", description: "Build identity governance workflows", icon: "", active: false }
       ]
     }
   };
@@ -125,8 +160,8 @@ const AgentTypeSelection: React.FC = () => {
   const currentIntegration: IntegrationData =
     agentTypesData[integrationId] || agentTypesData.pingfederate;
 
-  const activeCount  = currentIntegration.agents.filter(a => a.active).length;
-  const totalCount   = currentIntegration.agents.length;
+  const activeCount = currentIntegration.agents.filter(a => a.active).length;
+  const totalCount = currentIntegration.agents.length;
 
   return (
     <>
@@ -162,15 +197,27 @@ const AgentTypeSelection: React.FC = () => {
 
         /* ═══════════════════════════════════════════════════════════════
            RESPONSIVE RULES — AgentTypeSelection
-           Follows the identical pattern used in AdminAgentControl
-           (aad-header-wrapper / aad-page-wrapper) and Agents
-           (ag-header-inner / ag-page-wrapper / ag-band-px).
-
            Baseline 1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .ats-font {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        /* ── Card body text: long strings won't overflow ── */
+        .ats-card p {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* ── Card name: flex child truncation guard ── */
+        .ats-card .flex.items-center.justify-between.gap-2 > span:first-child {
+          min-width: 0;
+        }
 
         /* ── Header band inner wrapper ──────────────────────────────── */
         .ats-header-wrapper {
@@ -179,6 +226,8 @@ const AgentTypeSelection: React.FC = () => {
           margin-right: auto;
           padding-top: 40px;
           padding-bottom: 32px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Toolbar band inner wrapper ─────────────────────────────── */
@@ -190,6 +239,8 @@ const AgentTypeSelection: React.FC = () => {
           align-items: center;
           justify-content: flex-end;
           height: 48px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Page content wrapper ────────────────────────────────────── */
@@ -201,69 +252,112 @@ const AgentTypeSelection: React.FC = () => {
           padding-right: 48px;
           padding-top: 40px;
           padding-bottom: 80px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Outer band horizontal padding ─────────────────────────── */
         .ats-band-px {
-          padding-left: 48px;
-          padding-right: 48px;
+          padding-left: clamp(16px, 3.33vw, 48px);
+          padding-right: clamp(16px, 3.33vw, 48px);
         }
 
-        /* ── H1 size ─────────────────────────────────────────────────── */
-        .ats-h1 { font-size: 2.25rem; }
+        /* ── H1 size — fluid ─────────────────────────────────────────── */
+        .ats-h1 {
+          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
 
-        /* ── Card grid min column width ──────────────────────────────── */
+        /* ── Card grid ── */
         .ats-card-grid {
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 18vw, 260px), 1fr));
         }
 
-        /* Tablet: 768–1023px */
+        /* ════════════════════════════
+           TABLET: 768–1023px
+        ════════════════════════════ */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .ats-band-px         { padding-left: 20px; padding-right: 20px; }
-          .ats-header-wrapper  { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
-          .ats-toolbar-wrapper { max-width: 100%; }
-          .ats-page-wrapper    { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 24px; padding-bottom: 48px; }
-          .ats-h1              { font-size: 1.75rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+          .ats-band-px         { padding-left: 16px; padding-right: 16px; }
+          .ats-header-wrapper  { max-width: 100%; padding-top: 16px; padding-bottom: 14px; }
+          .ats-toolbar-wrapper { max-width: 100%; height: 44px; }
+          .ats-page-wrapper    { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+          .ats-h1              { font-size: 1.5rem; }
+          .ats-card-grid       { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+
+          /* Touch targets */
+          .ats-band-px button  { min-height: 44px; }
         }
 
-        /* Small laptop: 1024–1279px (MacBook 13") */
+        /* ════════════════════════════
+           SMALL LAPTOP: 1024–1279px
+        ════════════════════════════ */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .ats-band-px         { padding-left: 28px; padding-right: 28px; }
-          .ats-header-wrapper  { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
-          .ats-toolbar-wrapper { max-width: 1100px; }
-          .ats-page-wrapper    { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 60px; }
-          .ats-h1              { font-size: 1.875rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
+          .ats-band-px         { padding-left: 24px; padding-right: 24px; }
+          .ats-header-wrapper  { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
+          .ats-toolbar-wrapper { max-width: 100%; }
+          .ats-page-wrapper    { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; padding-bottom: 56px; }
+          .ats-h1              { font-size: 1.75rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important; }
         }
 
-        /* Laptop: 1280–1439px (MacBook 14/15", typical 1366/1440) */
+        /* ════════════════════════════
+           MEDIUM LAPTOP: 1280–1439px
+        ════════════════════════════ */
         @media (min-width: 1280px) and (max-width: 1439px) {
+          .ats-band-px         { padding-left: 28px; padding-right: 28px; }
+          .ats-header-wrapper  { max-width: 1100px; padding-top: 28px; padding-bottom: 24px; }
+          .ats-toolbar-wrapper { max-width: 1100px; }
+          .ats-page-wrapper    { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 64px; }
+          .ats-h1              { font-size: 1.875rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)) !important; }
+        }
+
+        /* ════════════════════════════
+           LARGE LAPTOP: 1440–1919px
+        ════════════════════════════ */
+        @media (min-width: 1440px) and (max-width: 1919px) {
           .ats-band-px         { padding-left: 36px; padding-right: 36px; }
-          .ats-header-wrapper  { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
+          .ats-header-wrapper  { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
           .ats-toolbar-wrapper { max-width: 1280px; }
-          .ats-page-wrapper    { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
+          .ats-page-wrapper    { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 72px; }
           .ats-h1              { font-size: 2rem; }
         }
 
-        /* Large laptop / small desktop: 1440–1919px */
-        @media (min-width: 1440px) and (max-width: 1919px) {
-          .ats-band-px         { padding-left: 44px; padding-right: 44px; }
-          .ats-header-wrapper  { max-width: 1400px; }
-          .ats-toolbar-wrapper { max-width: 1400px; }
-          .ats-page-wrapper    { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+        /* ════════════════════════════
+           1920px BASELINE LOCK
+        ════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .ats-band-px         { padding-left: 48px; padding-right: 48px; }
+          .ats-header-wrapper  { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
+          .ats-toolbar-wrapper { max-width: 1400px; height: 48px; }
+          .ats-page-wrapper    { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          .ats-h1              { font-size: 2.25rem; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* ════════════════════════════
+           QHD: 2560–3839px
+        ════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .ats-band-px         { padding-left: 48px; padding-right: 48px; }
+          .ats-header-wrapper  { max-width: 1600px; padding-top: 52px; padding-bottom: 40px; }
+          .ats-toolbar-wrapper { max-width: 1600px; height: 56px; }
+          .ats-page-wrapper    { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 100px; }
+          .ats-h1              { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; gap: 24px !important; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .ats-band-px         { padding-left: 80px; padding-right: 80px; }
-          .ats-header-wrapper  { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .ats-toolbar-wrapper { max-width: 1920px; }
-          .ats-page-wrapper    { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; }
-          .ats-h1              { font-size: 3rem; }
-          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
+        /* ════════════════════════════
+           4K+: 3840px+
+        ════════════════════════════ */
+        @media (min-width: 3840px) {
+          .ats-band-px         { padding-left: 64px; padding-right: 64px; }
+          .ats-header-wrapper  { max-width: 2200px; padding-top: 72px; padding-bottom: 56px; }
+          .ats-toolbar-wrapper { max-width: 2200px; height: 68px; }
+          .ats-page-wrapper    { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 140px; }
+          .ats-h1              { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ats-card-grid       { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important; gap: 32px !important; }
         }
       `}</style>
 
@@ -303,13 +397,14 @@ const AgentTypeSelection: React.FC = () => {
 
         {/* ── Grid ── */}
         <div className="ats-page-wrapper">
-          <div
-            className="ats-card-grid grid gap-5"
-          >
+          <div className="ats-card-grid grid gap-5">
             {currentIntegration.agents.map((agent) => {
               const isHovered = hoveredId === agent.id;
-              const accent    = AGENT_ACCENTS[agent.id];
-              const isActive  = agent.active;
+              const accent = AGENT_ACCENTS[agent.id];
+              const isActive = agent.active;
+
+              // ── CHANGED: resolve lucide icon component for this agent ──
+              const IconComponent = AGENT_ICONS[agent.id];
 
               const cardStyle: React.CSSProperties = isHovered && accent && isActive ? {
                 borderColor: accent.border,
@@ -338,7 +433,7 @@ const AgentTypeSelection: React.FC = () => {
                   {/* Accent bar */}
                   <div className="ats-accent-bar" style={accentBarStyle} />
 
-                  {/* Icon zone */}
+                  {/* Icon zone — CHANGED: renders lucide icon instead of emoji */}
                   <div
                     className="flex items-center justify-center border-b border-gray-100 min-h-[140px] px-7 py-8 transition-colors duration-200"
                     style={{ background: isHovered && accent && isActive ? accent.headerBg : '#FAFAFA' }}
@@ -351,7 +446,16 @@ const AgentTypeSelection: React.FC = () => {
                           : { background: '#fff' }
                       }
                     >
-                      <span className="text-4xl select-none">{agent.icon}</span>
+                      {IconComponent && (
+                        <IconComponent
+                          size={32}
+                          strokeWidth={1.5}
+                          style={{
+                            color: accent ? accent.border : '#9CA3AF',
+                            transition: 'color 0.2s ease',
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -362,12 +466,12 @@ const AgentTypeSelection: React.FC = () => {
                         <span className="text-[15px] font-semibold text-[#0A0A0A] tracking-tight leading-tight">
                           {agent.name}
                         </span>
-                        {isActive && (
+                        {/* {isActive && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[10.5px] font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                             <span className="ats-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                             Available
                           </span>
-                        )}
+                        )} */}
                       </div>
                       <p className="text-[12.5px] text-gray-500 leading-relaxed font-normal m-0">
                         {agent.description}

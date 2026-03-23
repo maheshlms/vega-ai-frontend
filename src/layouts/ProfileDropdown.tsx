@@ -253,6 +253,143 @@ const ProfileDropdown: React.FC = () => {
         .animate-slideDown {
           animation: slideDown 0.2s ease-out;
         }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESPONSIVE RULES — ProfileDropdown
+           This component lives inside a navbar — it is NOT a full-page
+           container. vw-based clamp() is avoided inside the dropdown
+           panel (edge case 13: constrained parent context).
+           Baseline: 1920×1080. Tailwind classes are NOT changed.
+        ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Trigger button: touch target safety at tablet ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          /* The trigger button must meet 44×44 touch target minimum */
+          .pd-trigger {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          /* Logout button: touch-friendly */
+          .pd-logout-btn {
+            min-height: 44px;
+          }
+          /* Menu item buttons: touch-friendly */
+          .pd-menu-item {
+            min-height: 44px;
+          }
+          /* Dropdown panel: prevent right-side overflow on narrow screens */
+          .pd-panel {
+            max-width: calc(100vw - 16px);
+          }
+          /* Email: allow break on very long addresses */
+          .pd-email {
+            overflow-wrap: break-word;
+            word-break: break-all;
+          }
+        }
+
+        /* ── Dropdown panel: QHD step-up ── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .pd-panel {
+            width: 400px !important;
+            border-radius: 14px;
+          }
+          .pd-panel-header {
+            padding: 20px 24px;
+          }
+          .pd-panel-header h3 {
+            font-size: 17px;
+          }
+          .pd-panel-header p {
+            font-size: 13px;
+          }
+          .pd-panel-header .pd-badge {
+            font-size: 12px;
+            padding: 3px 8px;
+          }
+          .pd-panel-avatar {
+            width: 64px !important;
+            height: 64px !important;
+          }
+          .pd-panel-close {
+            font-size: 28px;
+          }
+          .pd-menu-item {
+            padding: 14px 20px;
+            font-size: 14px;
+          }
+          .pd-logout-section {
+            padding: 14px 20px;
+          }
+          .pd-logout-btn {
+            font-size: 14px;
+            padding: 12px 20px;
+          }
+        }
+
+        /* ── Dropdown panel: 4K step-up ── */
+        @media (min-width: 3840px) {
+          .pd-panel {
+            width: 520px !important;
+            border-radius: 18px;
+          }
+          .pd-panel-header {
+            padding: 28px 32px;
+          }
+          .pd-panel-header h3 {
+            font-size: 22px;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+          .pd-panel-header p {
+            font-size: 16px;
+          }
+          .pd-panel-header .pd-badge {
+            font-size: 14px;
+            padding: 4px 10px;
+            border-radius: 6px;
+          }
+          .pd-panel-avatar {
+            width: 80px !important;
+            height: 80px !important;
+          }
+          .pd-panel-close {
+            font-size: 36px;
+          }
+          .pd-menu-item {
+            padding: 18px 28px;
+            font-size: 17px;
+          }
+          .pd-logout-section {
+            padding: 18px 28px;
+          }
+          .pd-logout-btn {
+            font-size: 17px;
+            padding: 16px 28px;
+            border-radius: 12px;
+          }
+        }
+
+        /* ── Email overflow safety at all sizes ── */
+        .pd-email {
+          overflow-wrap: break-word;
+          word-break: break-all;
+          min-width: 0;
+        }
+
+        /* ── Name truncation safety ── */
+        .pd-name {
+          min-width: 0;
+        }
+
+        /* ── Ensure dropdown never clips beyond viewport right edge ── */
+        .pd-panel {
+          right: 0;
+          max-width: calc(100vw - 8px);
+        }
       `}</style>
     </div>
   );

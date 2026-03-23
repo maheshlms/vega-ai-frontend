@@ -30,10 +30,10 @@ function friendlyName(id: string): string {
 }
 
 const COLORS = [
-  '#6366f1','#818cf8','#10b981','#34d399','#f59e0b','#fbbf24',
-  '#ef4444','#fca5a5','#8b5cf6','#a78bfa','#06b6d4','#67e8f9',
-  '#ec4899','#f9a8d4','#84cc16','#bef264','#f97316','#fdba74',
-  '#14b8a6','#5eead4',
+  '#6366f1', '#818cf8', '#10b981', '#34d399', '#f59e0b', '#fbbf24',
+  '#ef4444', '#fca5a5', '#8b5cf6', '#a78bfa', '#06b6d4', '#67e8f9',
+  '#ec4899', '#f9a8d4', '#84cc16', '#bef264', '#f97316', '#fdba74',
+  '#14b8a6', '#5eead4',
 ];
 
 interface AvatarOption {
@@ -58,14 +58,14 @@ function buildAvatarListFromManifest(): AvatarOption[] {
 
   const byName = new Map<string, { id: string; img: string }>();
   for (const id of formal) {
-    const img   = avatarManifest[id];
+    const img = avatarManifest[id];
     const first = extractFirstName(id);
     const existing = byName.get(first);
     if (!existing) {
       byName.set(first, { id, img });
     } else {
       const existingLocal = existing.img.startsWith('/avatars/');
-      const newLocal      = img.startsWith('/avatars/');
+      const newLocal = img.startsWith('/avatars/');
       if (newLocal && !existingLocal) byName.set(first, { id, img });
     }
   }
@@ -76,7 +76,7 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     .slice(0, 20)
     .map(([, { id, img }], i) => ({
       id, img,
-      name:  friendlyName(id),
+      name: friendlyName(id),
       color: COLORS[i % COLORS.length],
     }));
 }
@@ -99,8 +99,8 @@ if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
     const existing = document.head.querySelector(`link[rel="preload"][href="${avatar.img}"]`);
     if (!existing) {
       const link = document.createElement('link');
-      link.rel  = 'preload';
-      link.as   = 'image';
+      link.rel = 'preload';
+      link.as = 'image';
       link.href = avatar.img;
       // fetchpriority attribute on the link element (Chromium 101+)
       (link as any).fetchPriority = 'high';
@@ -115,15 +115,15 @@ if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
 }
 
 const HARDCODED_FALLBACKS: AvatarOption[] = [
-  { id: 'Marianne_ProfessionalLook_public',   name: 'Marianne',   img: '', color: '#6366f1' },
-  { id: 'Katya_ProfessionalLook_public',      name: 'Katya',      img: '', color: '#10b981' },
+  { id: 'Marianne_ProfessionalLook_public', name: 'Marianne', img: '', color: '#6366f1' },
+  { id: 'Katya_ProfessionalLook_public', name: 'Katya', img: '', color: '#10b981' },
   { id: 'Alessandra_ProfessionalLook_public', name: 'Alessandra', img: '', color: '#f59e0b' },
-  { id: 'Tyler_ProfessionalLook_public',      name: 'Tyler',      img: '', color: '#fca5a5' },
-  { id: 'Anna_public_3_20240108',             name: 'Anna',       img: '', color: '#8b5cf6' },
-  { id: 'Eric_public_pro1_20230608',          name: 'Eric',       img: '', color: '#06b6d4' },
-  { id: 'Susan_public_2_20240328',            name: 'Susan',      img: '', color: '#ec4899' },
-  { id: 'Shelly_public_20240408',             name: 'Shelly',     img: '', color: '#f97316' },
-  { id: 'Wayne_20240711_public',              name: 'Wayne',      img: '', color: '#14b8a6' },
+  { id: 'Tyler_ProfessionalLook_public', name: 'Tyler', img: '', color: '#fca5a5' },
+  { id: 'Anna_public_3_20240108', name: 'Anna', img: '', color: '#8b5cf6' },
+  { id: 'Eric_public_pro1_20230608', name: 'Eric', img: '', color: '#06b6d4' },
+  { id: 'Susan_public_2_20240328', name: 'Susan', img: '', color: '#ec4899' },
+  { id: 'Shelly_public_20240408', name: 'Shelly', img: '', color: '#f97316' },
+  { id: 'Wayne_20240711_public', name: 'Wayne', img: '', color: '#14b8a6' },
 ];
 
 interface TargetSystem {
@@ -419,9 +419,8 @@ const AvatarCircleImage: React.FC<{
           // @ts-ignore — fetchPriority is valid HTML but TS types lag
           fetchPriority="high"
           decoding="sync"
-          className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${
-            state === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${state === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
           onLoad={onLoad}
           onError={onError}
         />
@@ -465,9 +464,8 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
           <img src={avatar.img} alt={avatar.name} loading="eager"
             // @ts-ignore
             fetchPriority="high"
-            className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-all duration-400 ${
-              state === 'loaded' ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-            }`}
+            className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-all duration-400 ${state === 'loaded' ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+              }`}
             onLoad={onLoad} onError={onError}
           />
         </>
@@ -476,12 +474,12 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
         style={{ background: `linear-gradient(to top, ${avatar.color}f0 0%, ${avatar.color}88 60%, transparent 100%)` }}>
         <p className="text-white font-bold text-xl leading-tight drop-shadow-sm">{avatar.name}</p>
         {/* 👔 emoji removed per user's modification */}
-        <p className="text-white/80 text-sm mt-0.5"> Formal look</p>
+        {/* <p className="text-white/80 text-sm mt-0.5"> Formal look</p> */}
       </div>
-      <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
+      {/* <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
         style={{ background: '#6366f1dd', backdropFilter: 'blur(8px)' }}>
         Formal
-      </div>
+      </div> */}
       {/* Cached/CDN badge removed per user's modification */}
     </div>
   );
@@ -493,8 +491,8 @@ const AvatarCarousel: React.FC<{
   onSelect: (id: string, name: string, img: string) => void;
 }> = ({ avatars, selectedId, onSelect }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const rafRef    = React.useRef<number>(0);
-  const [canLeft,  setCanLeft]  = React.useState(false);
+  const rafRef = React.useRef<number>(0);
+  const [canLeft, setCanLeft] = React.useState(false);
   const [canRight, setCanRight] = React.useState(true);
 
   // ── Force-preload every avatar image via JS Image() objects ──────────────
@@ -516,7 +514,7 @@ const AvatarCarousel: React.FC<{
     rafRef.current = requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setCanLeft(p  => { const n = el.scrollLeft > 2;                                   return p !== n ? n : p; });
+      setCanLeft(p => { const n = el.scrollLeft > 2; return p !== n ? n : p; });
       setCanRight(p => { const n = el.scrollLeft < el.scrollWidth - el.clientWidth - 2; return p !== n ? n : p; });
     });
   }, []);
@@ -571,9 +569,8 @@ const AvatarCarousel: React.FC<{
                   className="flex flex-col items-center gap-1.5 flex-shrink-0 group transition-all duration-200"
                   style={{ minWidth: 84 }}>
                   <div
-                    className={`relative w-[68px] h-[68px] rounded-full overflow-hidden transition-all duration-300 ${
-                      isSelected ? 'scale-110' : 'hover:scale-105'
-                    }`}
+                    className={`relative w-[68px] h-[68px] rounded-full overflow-hidden transition-all duration-300 ${isSelected ? 'scale-110' : 'hover:scale-105'
+                      }`}
                     style={isSelected
                       ? { boxShadow: `0 0 0 3px white, 0 0 0 5px ${avatar.color}, 0 6px 20px ${avatar.color}44` }
                       : { border: '2px solid #e5e7eb', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
@@ -581,9 +578,8 @@ const AvatarCarousel: React.FC<{
                     <div className="absolute top-0 left-0 text-white text-[8px] font-black px-1 py-0.5 rounded-br-md z-30 leading-none"
                       style={{ background: '#6366f1' }}>F</div>
                   </div>
-                  <span className={`text-[10px] font-medium leading-tight text-center w-[80px] truncate transition-colors ${
-                    isSelected ? 'text-indigo-600 font-semibold' : 'text-gray-500 group-hover:text-gray-800'
-                  }`}>
+                  <span className={`text-[10px] font-medium leading-tight text-center w-[80px] truncate transition-colors ${isSelected ? 'text-indigo-600 font-semibold' : 'text-gray-500 group-hover:text-gray-800'
+                    }`}>
                     {avatar.name}
                   </span>
                 </button>
@@ -611,19 +607,21 @@ const AgentCreationForm: React.FC = () => {
   const integrationIdForFilter = locState?.integrationId;
   const integrationTypeFromNav = locState?.integrationType ?? '';
 
-  const [showSuccess,            setShowSuccess]            = React.useState(false);
-  const [submitting,             setSubmitting]             = React.useState(false);
-  const [error,                  setError]                  = React.useState('');
+  const [showSuccess, setShowSuccess] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
+  // CHANGED: track the newly created agent's ID so we can navigate to its chat
+  const [createdAgentId, setCreatedAgentId] = React.useState<string>('');
   const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
-  const [loadingTargetSystems,   setLoadingTargetSystems]   = React.useState(false);
+  const [loadingTargetSystems, setLoadingTargetSystems] = React.useState(false);
 
   const hasManifest = MANIFEST_AVATARS.length > 0;
 
-  const [avatars,        setAvatars]        = React.useState<AvatarOption[]>(
+  const [avatars, setAvatars] = React.useState<AvatarOption[]>(
     hasManifest ? MANIFEST_AVATARS : []
   );
   const [loadingAvatars, setLoadingAvatars] = React.useState(!hasManifest);
-  const [avatarSource,   setAvatarSource]   = React.useState<'local' | 'cdn' | 'fallback'>(() => {
+  const [avatarSource, setAvatarSource] = React.useState<'local' | 'cdn' | 'fallback'>(() => {
     if (!hasManifest) return 'fallback';
     return MANIFEST_AVATARS.some(a => a.img.startsWith('/avatars/')) ? 'local' : 'cdn';
   });
@@ -646,9 +644,9 @@ const AgentCreationForm: React.FC = () => {
         if (!res.ok) throw new Error(`HeyGen ${res.status}`);
         const data = await res.json();
         const raw: any[] =
-          Array.isArray(data?.data)          ? data.data :
-          Array.isArray(data?.data?.avatars) ? data.data.avatars :
-          Array.isArray(data?.avatars)       ? data.avatars : [];
+          Array.isArray(data?.data) ? data.data :
+            Array.isArray(data?.data?.avatars) ? data.data.avatars :
+              Array.isArray(data?.avatars) ? data.avatars : [];
         if (!raw.length) throw new Error('empty');
         const byName = new Map<string, AvatarOption>();
         raw.forEach((a: any, i: number) => {
@@ -705,15 +703,15 @@ const AgentCreationForm: React.FC = () => {
       ...prev,
       selectedAvatarId: id, selectedAvatarImg: img, selectedAvatarName: name,
       agentName:
-        prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`)
-          ? `${name} Agent` : prev.agentName,
+        prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`) || avatars.some(a => prev.agentName === a.name)
+          ? name : prev.agentName,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.selectedTargetSystem) { setError('Please select a target system'); return; }
-    if (!formData.selectedAvatarId)     { setError('Please select an avatar');       return; }
+    if (!formData.selectedAvatarId) { setError('Please select an avatar'); return; }
     setSubmitting(true); setError('');
     try {
       const resolvedIntegrationType =
@@ -733,7 +731,9 @@ const AgentCreationForm: React.FC = () => {
           selectedAvatarName: formData.selectedAvatarName,
         },
       };
-      await api.llmRuntime.createAgent(payload);
+      // CHANGED: capture the created agent's ID from the API response
+      const created = await api.llmRuntime.createAgent(payload);
+      setCreatedAgentId(created?.id ?? created?._id ?? '');
       setShowSuccess(true);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create agent');
@@ -745,8 +745,8 @@ const AgentCreationForm: React.FC = () => {
 
   // Environment options for CustomDropdown
   const ENV_OPTIONS: DropdownOption[] = [
-    { value: 'production',  label: 'Production'  },
-    { value: 'staging',     label: 'Staging'     },
+    { value: 'production', label: 'Production' },
+    { value: 'staging', label: 'Staging' },
     { value: 'development', label: 'Development' },
   ];
 
@@ -826,15 +826,28 @@ const AgentCreationForm: React.FC = () => {
 
         /* ═══════════════════════════════════════════════════════════════
            RESPONSIVE RULES — AgentCreationForm
-           Follows the identical pattern used in AdminAgentControl
-           (aad-header-wrapper / aad-page-wrapper) and Agents
-           (ag-header-inner / ag-page-wrapper / ag-band-px).
-
            Baseline 1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
+           All breakpoints scale proportionally from baseline.
         ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .acf-font {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-dropdown: 50;
+          --z-modal:    100;
+        }
+
+        /* ── Success modal: scales at all breakpoints ── */
+        .acf-modal-in > div {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
 
         /* ── Header band inner wrapper ──────────────────────────────── */
         .acf-header-wrapper {
@@ -849,6 +862,8 @@ const AgentCreationForm: React.FC = () => {
           align-items: flex-start;
           justify-content: space-between;
           gap: 16px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── Page content wrapper ────────────────────────────────────── */
@@ -860,96 +875,187 @@ const AgentCreationForm: React.FC = () => {
           padding-right: 48px;
           padding-top: 40px;
           padding-bottom: 80px;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         /* ── H1 size ─────────────────────────────────────────────────── */
-        .acf-h1 { font-size: 2.25rem; }
+        .acf-h1 {
+          font-size: clamp(1.5rem, 2vw, 2.25rem);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
 
         /* ── Preview column width ────────────────────────────────────── */
-        /* Baseline 1920: 272px (matches Tailwind w-68) */
-        .acf-preview-col { width: 272px; flex-shrink: 0; }
+        .acf-preview-col {
+          width: clamp(200px, 18vw, 272px);
+          flex-shrink: 0;
+        }
 
         /* ── Layout row gap ──────────────────────────────────────────── */
-        .acf-form-row { display: flex; gap: 24px; align-items: flex-start; }
+        .acf-form-row {
+          display: flex;
+          gap: clamp(14px, 1.5vw, 24px);
+          align-items: flex-start;
+        }
 
-        /* Tablet: 768–1023 */
+        /* ── Form card inner padding ─────────────────────────────────── */
+        .acf-card form {
+          padding-left: clamp(16px, 2.5vw, 32px);
+          padding-right: clamp(16px, 2.5vw, 32px);
+        }
+
+        /* ── Input/dropdown font scales smoothly ─────────────────────── */
+        .acf-input,
+        .acf-dropdown-trigger {
+          font-size: clamp(12px, 0.85vw, 13.5px);
+        }
+
+        /* ── Label scales smoothly ───────────────────────────────────── */
+        .acf-label {
+          font-size: clamp(11px, 0.75vw, 12.5px);
+        }
+
+        /* ── Tablet: 768–1023px ──────────────────────────────────────── */
         @media (min-width: 768px) and (max-width: 1023px) {
           .acf-header-wrapper {
             max-width: 100%;
-            padding-left: 20px; padding-right: 20px;
-            padding-top: 20px; padding-bottom: 16px;
+            padding-left: 16px; padding-right: 16px;
+            padding-top: 18px; padding-bottom: 14px;
           }
           .acf-page-wrapper {
             max-width: 100%;
-            padding-left: 20px; padding-right: 20px;
-            padding-top: 24px; padding-bottom: 48px;
+            padding-left: 16px; padding-right: 16px;
+            padding-top: 20px; padding-bottom: 40px;
           }
-          .acf-h1           { font-size: 1.75rem; }
-          .acf-preview-col  { width: 200px; }
-          .acf-form-row     { gap: 16px; }
+          .acf-h1         { font-size: 1.5rem; }
+          /* Stack preview below form on tablet — hidden lg:flex handles this via Tailwind */
+          .acf-preview-col { width: 180px; }
+          .acf-form-row   { gap: 12px; }
+
+          /* Touch targets */
+          .acf-dropdown-trigger,
+          .acf-input { min-height: 44px; }
+
+          /* Success modal full-width on tablet */
+          .acf-modal-in > div {
+            width: calc(100vw - 32px);
+            max-width: 100%;
+          }
         }
 
-        /* Small laptop: 1024–1279 (MacBook 13") */
+        /* ── Small laptop: 1024–1279px ───────────────────────────────── */
         @media (min-width: 1024px) and (max-width: 1279px) {
           .acf-header-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 28px; padding-bottom: 22px;
+            max-width: 100%;
+            padding-left: 24px; padding-right: 24px;
+            padding-top: 24px; padding-bottom: 20px;
           }
           .acf-page-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 32px; padding-bottom: 60px;
+            max-width: 100%;
+            padding-left: 24px; padding-right: 24px;
+            padding-top: 28px; padding-bottom: 56px;
           }
-          .acf-h1           { font-size: 1.875rem; }
-          .acf-preview-col  { width: 220px; }
-          .acf-form-row     { gap: 16px; }
+          .acf-h1          { font-size: 1.75rem; }
+          .acf-preview-col { width: 210px; }
+          .acf-form-row    { gap: 16px; }
         }
 
-        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        /* ── Medium laptop: 1280–1439px ──────────────────────────────── */
         @media (min-width: 1280px) and (max-width: 1439px) {
           .acf-header-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 32px; padding-bottom: 26px;
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 30px; padding-bottom: 24px;
           }
           .acf-page-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 36px;
+            max-width: 1100px;
+            padding-left: 28px; padding-right: 28px;
+            padding-top: 32px; padding-bottom: 64px;
           }
-          .acf-h1           { font-size: 2rem; }
-          .acf-preview-col  { width: 240px; }
+          .acf-h1          { font-size: 1.875rem; }
+          .acf-preview-col { width: 232px; }
+          .acf-form-row    { gap: 18px; }
         }
 
-        /* Large laptop / small desktop: 1440–1919 */
+        /* ── Large laptop: 1440–1919px ───────────────────────────────── */
         @media (min-width: 1440px) and (max-width: 1919px) {
           .acf-header-wrapper {
-            max-width: 1400px;
-            padding-left: 44px; padding-right: 44px;
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 36px; padding-bottom: 28px;
           }
           .acf-page-wrapper {
-            max-width: 1400px;
-            padding-left: 44px; padding-right: 44px;
+            max-width: 1280px;
+            padding-left: 36px; padding-right: 36px;
+            padding-top: 36px; padding-bottom: 72px;
           }
+          .acf-h1          { font-size: 2rem; }
+          .acf-preview-col { width: 252px; }
+          .acf-form-row    { gap: 22px; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
-
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
+        /* ── 1920px BASELINE LOCK ─────────────────────────────────────── */
+        @media (min-width: 1920px) and (max-width: 2559px) {
           .acf-header-wrapper {
-            max-width: 1920px;
-            padding-left: 80px; padding-right: 80px;
-            padding-top: 56px; padding-bottom: 44px;
+            max-width: 1400px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 40px; padding-bottom: 32px;
           }
           .acf-page-wrapper {
-            max-width: 1920px;
-            padding-left: 80px; padding-right: 80px;
-            padding-top: 56px;
+            max-width: 1400px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 40px; padding-bottom: 80px;
           }
-          .acf-h1           { font-size: 3rem; }
-          .acf-preview-col  { width: 320px; }
+          .acf-h1          { font-size: 2.25rem; }
+          .acf-preview-col { width: 272px; }
+          .acf-form-row    { gap: 24px; }
+        }
+
+        /* ── QHD: 2560–3839px ────────────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .acf-header-wrapper {
+            max-width: 1600px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 52px; padding-bottom: 42px;
+          }
+          .acf-page-wrapper {
+            max-width: 1600px;
+            padding-left: 48px; padding-right: 48px;
+            padding-top: 52px; padding-bottom: 100px;
+          }
+          .acf-h1          { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-preview-col { width: 320px; }
+          .acf-form-row    { gap: 32px; }
+          .acf-input,
+          .acf-dropdown-trigger { font-size: 15px; padding: 12px 16px; }
+          .acf-label       { font-size: 13.5px; }
+        }
+
+        /* ── 4K+: 3840px+ ────────────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          .acf-header-wrapper {
+            max-width: 2200px;
+            padding-left: 64px; padding-right: 64px;
+            padding-top: 72px; padding-bottom: 56px;
+          }
+          .acf-page-wrapper {
+            max-width: 2200px;
+            padding-left: 64px; padding-right: 64px;
+            padding-top: 72px; padding-bottom: 140px;
+          }
+          .acf-h1          { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-preview-col { width: 420px; }
+          .acf-form-row    { gap: 48px; }
+          .acf-input,
+          .acf-dropdown-trigger { font-size: 18px; padding: 14px 20px; border-radius: 14px; }
+          .acf-label       { font-size: 16px; margin-bottom: 10px; }
+          .acf-card form   { padding-left: 48px; padding-right: 48px; }
+
+          /* Success modal: scale up at 4K */
+          .acf-modal-in > div { max-width: 680px; }
         }
       `}</style>
 
@@ -966,9 +1072,9 @@ const AgentCreationForm: React.FC = () => {
               <p className="text-[13.5px] text-gray-500 mb-6">Your agent is now active and monitoring.</p>
               <div className="bg-[#FAFAFA] rounded-xl border border-gray-200 p-4 mb-6 text-left space-y-3">
                 {([
-                  ['Avatar',        selectedAvatarObj?.name ?? ''],
-                  ['Agent Name',    formData.agentName],
-                  ['Environment',   formData.environment],
+                  ['Avatar', selectedAvatarObj?.name ?? ''],
+                  ['Agent Name', formData.agentName],
+                  ['Environment', formData.environment],
                   ['Target System', formData.selectedTargetSystem?.name ?? ''],
                   ...(agentTypeId !== 'connection' ? [['Notification Window', `${formData.notificationWindow} days`]] : []),
                 ] as [string, string][]).map(([label, value], i) => (
@@ -978,8 +1084,13 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 ))}
               </div>
+              {/* CHANGED: go to /agents list; newAgentId is stored in nav state so
+                  Agents.tsx can pass isNewAgent:true when user clicks that agent */}
               <button
-                onClick={() => { setShowSuccess(false); navigate('/agents'); }}
+                onClick={() => {
+                  setShowSuccess(false);
+                  navigate('/agents', { state: { newAgentId: createdAgentId } });
+                }}
                 className="w-full bg-[#111] hover:bg-[#222] text-white px-6 py-3 rounded-xl text-[13.5px] font-semibold transition-colors"
               >
                 View Agents
@@ -1059,7 +1170,7 @@ const AgentCreationForm: React.FC = () => {
                     className="acf-input"
                   />
                   <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
-                    <span>💡</span><span>Auto-filled from avatar — edit anytime</span>
+                    <span>💡</span><span>Taken from your avatar — change it anytime</span>
                   </p>
                 </div>
 

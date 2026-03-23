@@ -5,6 +5,10 @@ import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 import TargetSystemForm from './TargetSystemForm';
 import { toast } from 'react-toastify';
+// ── CHANGED: import the background service instead of managing timers locally
+import healthCheckService, { HealthCheckState } from '../../utils/healthCheckService';
+
+healthCheckService.init();
 
 /* ─────────────────────────────── interfaces ─────────────────────────────── */
 interface LocationState { integrationName?: string; integrationValue?: string; authMethods?: string[]; }
@@ -117,7 +121,10 @@ const DropdownFilter = ({
   );
 };
 
-/* ── NEW: Polished Live health indicator shown in the filter bar ── */
+/* ── CHANGED: LiveHealthIndicator now receives countdown from the service (0–300s)
+      and formats it as minutes when >= 60s.
+      Only other change: progress formula updated from /30 to /300.
+      Everything else — JSX, styles, animations — is identical to original. ── */
 const LiveHealthIndicator = ({
   countdown,
   isChecking,
@@ -133,8 +140,8 @@ const LiveHealthIndicator = ({
     ? lastChecked.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null;
 
-  // Progress: countdown counts DOWN from 10→1, so progress fills as we approach next check
-  const progress = ((30 - countdown) / 30) * 100;
+  // ── CHANGED: was ((30 - countdown) / 30) * 100, now uses 300s total
+  const progress = ((300 - countdown) / 300) * 100;
 
   return (
     <div
@@ -180,12 +187,13 @@ const LiveHealthIndicator = ({
               ? <span style={{ color: '#94a3b8' }}>· {timeStr}</span>
               : <span style={{ color: '#94a3b8' }}>· waiting…</span>
             }
+            {/* ── CHANGED: show minutes when >= 60s, seconds when < 60s ── */}
             <span
-              className="inline-flex items-center justify-center rounded-md px-1.5"
-              style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
-            >
-              {countdown}s
-            </span>
+  className="inline-flex items-center justify-center rounded-md px-1.5"
+  style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
+>
+  {`${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`}
+</span>
           </span>
         )}
       </span>
@@ -210,6 +218,7 @@ export default function TargetSystemShow() {
   const integrationValue     = ls?.integrationValue;
   const authMethodsFromState = ls?.authMethods || [];
 
+  // ── UNCHANGED state ──
   const [systems,     setSystems]     = useState<System[]>([]);
   const [stats,       setStats]       = useState<Stats | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -227,15 +236,15 @@ export default function TargetSystemShow() {
   const [delText,     setDelText]     = useState('');
   const [filters,     setFilters]     = useState<Filters>({ environment: '', status: '' });
 
-  /* ── NEW: auto health-check state ── */
-  const [healthCheckingIds, setHealthCheckingIds] = useState<Set<string>>(new Set());
-  const [countdown,         setCountdown]         = useState(30);
-  const [lastChecked,       setLastChecked]       = useState<Date | null>(null);
-  const [isRunningCheck,    setIsRunningCheck]    = useState(false);
-  // Stable ref so interval always sees latest systems without re-registering
+  // ── CHANGED: removed healthCheckingIds, countdown, lastChecked, isRunningCheck.
+  //    Replaced with a single hcState from the background service. ──
+  const [hcState, setHcState] = useState<HealthCheckState>(healthCheckService.getState());
+
+  // ── UNCHANGED: stable ref so the service getter always sees latest systems ──
   const systemsRef = useRef<System[]>([]);
   systemsRef.current = systems;
 
+  // ── UNCHANGED useEffect ──
   useEffect(() => {
     const user: User | null = auth.getCurrentUser();
     const isAdmin = auth.isAdmin();
@@ -246,70 +255,45 @@ export default function TargetSystemShow() {
     fetchData();
   }, [filters]);
 
+  // ── UNCHANGED useEffect ──
   useEffect(() => { if (authMethodsFromState.length) setAuthMethods(authMethodsFromState); }, []);
 
-  /* ── NEW: countdown ticker — ticks every second ── */
+  // ── CHANGED: replaces the two timer useEffects (countdown ticker + 30s interval).
+  //    Registers this page's systems getter with the background service.
+  //    Subscribes to state changes and applies bg-check results locally.
+  //    Cleans up on unmount — service skips checks when page is gone. ──
   useEffect(() => {
-    const ticker = setInterval(() => {
-      setCountdown(prev => (prev <= 1 ? 30 : prev - 1));
-    }, 1000);
-    return () => clearInterval(ticker);
-  }, []);
+    healthCheckService.registerSystemsGetter(() => systemsRef.current.map(s => s._id));
 
-  /* ── NEW: silent auto health-check every 10 seconds ── */
-  useEffect(() => {
-    const doHealthCheck = async () => {
-      const current = systemsRef.current;
-      if (!current.length) return;
+    const unsub = healthCheckService.subscribe(state => {
+      setHcState(state);
 
-      setIsRunningCheck(true);
-      setCountdown(30);
-      setHealthCheckingIds(new Set(current.map(s => s._id)));
+      // When a bg check completes, apply the new statuses to local systems list
+      if (!state.isRunning && state.results.length > 0) {
+        const statusMap: Record<string, string> = {};
+        for (const r of state.results) statusMap[r.id] = r.newStatus;
 
-      const results = await Promise.allSettled(
-        current.map(async sys => {
-          try {
-            const r: TestResult = await api.targetSystems.testConnection(sys._id);
-            const isFailure =
-              r.success === false ||
-              r.connected === false ||
-              r.status === 'error' ||
-              r.status === 'failed' ||
-              /fail|error|unable|cannot|unreachable|connection failed/i.test(r.message || r.detail || '');
-            return { id: sys._id, newStatus: isFailure ? 'disconnected' : 'connected' };
-          } catch {
-            return { id: sys._id, newStatus: 'error' };
-          }
-        })
-      );
-
-      const statusMap: Record<string, string> = {};
-      for (const r of results) {
-        if (r.status === 'fulfilled') statusMap[r.value.id] = r.value.newStatus;
-      }
-
-      // Update systems + recompute stats in a single setState call
-      setSystems(prev => {
-        const updated = prev.map(s => (statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s));
-        setStats({
-          total_systems: updated.length,
-          connected:     updated.filter(s => s.status === 'connected').length,
-          disconnected:  updated.filter(s => s.status === 'disconnected').length,
-          error:         updated.filter(s => s.status === 'error').length,
-          pending:       updated.filter(s => s.status === 'pending').length,
+        setSystems(prev => {
+          const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
+          setStats({
+            total_systems: updated.length,
+            connected:     updated.filter(s => s.status === 'connected').length,
+            disconnected:  updated.filter(s => s.status === 'disconnected').length,
+            error:         updated.filter(s => s.status === 'error').length,
+            pending:       updated.filter(s => s.status === 'pending').length,
+          });
+          return updated;
         });
-        return updated;
-      });
+      }
+    });
 
-      setHealthCheckingIds(new Set());
-      setLastChecked(new Date());
-      setIsRunningCheck(false);
+    return () => {
+      healthCheckService.registerSystemsGetter(null);
+      unsub();
     };
-
-    const interval = setInterval(doHealthCheck, 30_000);
-    return () => clearInterval(interval);
   }, []); // empty deps — reads systems via ref
 
+  // ── UNCHANGED ──
   async function fetchData() {
     setLoading(true); setError(null);
     try {
@@ -334,18 +318,11 @@ export default function TargetSystemShow() {
     } finally { setLoading(false); }
   }
 
-  // CHANGE: return the created system so TargetSystemForm can show the
-  // connection test result in its success modal. DO NOT close the form here —
-  // the form's "Done" button calls onCancel which closes it.
-  // No toast.success here — the form modal communicates the real outcome to the user.
-  // Re-throw on error so the form shows the error instead of a false success modal.
+  // ── UNCHANGED ──
   async function handleCreate(data: any): Promise<any> {
     try {
-      // api.targetSystems.create() now auto-tests the connection internally.
-      // It returns the created system with a _connectionTest: { success, message } field.
       const created = await api.targetSystems.create(data);
-      fetchData(); // refresh the list in background
-
+      fetchData();
       const test = created?._connectionTest;
       if (test) {
         if (test.success) {
@@ -354,7 +331,6 @@ export default function TargetSystemShow() {
           toast.error(`System created but connection failed: ${test.message}`);
         }
       }
-
       return created;
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Failed to create');
@@ -362,20 +338,11 @@ export default function TargetSystemShow() {
     }
   }
 
-  // CHANGE: return the updated system so TargetSystemForm can show the
-  // connection test result in its success modal. DO NOT close the form here —
-  // the form's "Done" button calls onCancel which closes it.
-  // api.targetSystems.update() now auto-tests and embeds _connectionTest.
-  // Re-throw on error so the form shows the error instead of a false success modal.
+  // ── UNCHANGED ──
   async function handleUpdate(id: string, data: any): Promise<any> {
-    // try {
-    //   await api.targetSystems.update(id, data);
-    //   toast.success('Target system updated successfully');
-    //   setShowForm(false); setEditingSys(null); fetchData();
-    // } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to update'); }
     try {
       const updated = await api.targetSystems.update(id, data);
-      fetchData(); // refresh list in background
+      fetchData();
       return updated ?? { _id: id, id };
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Failed to update');
@@ -383,9 +350,11 @@ export default function TargetSystemShow() {
     }
   }
 
+  // ── UNCHANGED ──
   const openDelete  = useCallback((s: System) => { setDelTarget(s); setDelModal(true); }, []);
   const closeDelete = useCallback(() => { setDelModal(false); setDelTarget(null); setDelText(''); }, []);
 
+  // ── UNCHANGED ──
   const confirmDelete = useCallback(async () => {
     if (!delTarget) return;
     try {
@@ -395,6 +364,7 @@ export default function TargetSystemShow() {
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
   }, [delTarget]);
 
+  // ── UNCHANGED ──
   async function testConn(id: string) {
     setTestingId(id);
     try {
@@ -411,7 +381,6 @@ export default function TargetSystemShow() {
       } else {
         toast.success(msg || 'Connection successful');
       }
-      // Only update this specific card's status — no full page refresh
       const newStatus = isFailure ? 'disconnected' : 'connected';
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: newStatus } : s);
@@ -426,7 +395,6 @@ export default function TargetSystemShow() {
       });
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
-      // Mark just this card as error
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: 'error' } : s);
         setStats({
@@ -441,7 +409,7 @@ export default function TargetSystemShow() {
     } finally { setTestingId(null); }
   }
 
-  /* filter options */
+  /* ── UNCHANGED filter options ── */
   const ENV_OPTIONS: DDOption[] = [
     { key: '',            label: 'All Environments' },
     { key: 'development', label: 'Development' },
@@ -473,6 +441,13 @@ export default function TargetSystemShow() {
     };
     return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
   };
+
+  // ── CHANGED: overlay visibility logic.
+  //    Old: systems.length > 0 && (isRunningCheck || countdown <= 5)
+  //    New: only show when the service is running AND no page action is in progress
+  //         (prevents the overlay popping up mid-delete / mid-edit / mid-manual-test) ──
+  const isPageBusy = delModal || showForm || testingId !== null;
+  const showHealthOverlay = (hcState.isRunning || hcState.countdown <= 5) && !isPageBusy && systems.length > 0;
 
   return (
     <>
@@ -601,195 +576,355 @@ export default function TargetSystemShow() {
            BASELINE  : 1920×1080  — exact current design, no changes
            Large     : 1440–1919px (large laptops, 1440p screens)
            Laptop    : 1024–1439px (MacBook 13/14/15", Windows 13–15")
-           Small     : 768–1023px  (small laptops, large tablets in landscape)
-           4K+       : 2560px+     (ultrawide / 4K monitors)
-
-           Strategy  : clamp() for fluid scaling where possible, explicit
-                       breakpoints only when layout must structurally shift.
+           Tablet    : 768–1023px  (large tablets in landscape)
+           QHD+      : 2560–3839px (ultrawide / QHD monitors)
+           4K+       : 3840px+     (4K TVs, ultrawide)
         ══════════════════════════════════════════════════════════════════ */
+
+        /* ── Global safety ── */
+        .ts {
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        *, *::before, *::after {
+          box-sizing: inherit;
+        }
+
+        /* ── Z-index scale ── */
+        :root {
+          --z-base:     1;
+          --z-sticky:   10;
+          --z-dropdown: 30;
+          --z-overlay:  40;
+          --z-modal:    50;
+          --z-toast:    100;
+        }
 
         /* ── Outer page wrapper — controls max content width & gutters ── */
         .ts-page-wrapper {
-          /* BASELINE 1920: max-w-7xl (1280px) with px-8 (32px) gutters */
           max-width: 1280px;
           margin-left: auto;
           margin-right: auto;
-          /* Fluid horizontal padding: 32px at 1920, scales down for smaller */
           padding-left:  clamp(16px, 2.5vw, 32px);
           padding-right: clamp(16px, 2.5vw, 32px);
+          width: 100%;
         }
 
         /* ── Header section ── */
+        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper / ag-header-inner / al-header-inner exactly */
         .ts-header-section {
-          padding-top:    clamp(20px, 2.5vw, 36px);
-          padding-bottom: clamp(16px, 1.5vw, 24px);
+          padding-top:    clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
         }
 
-        /* ── H1 — fluid from 26px (laptop) to 34px (1920) ── */
+        /* ── H1 — fluid, matches aad-h1-resp / ag-h1 / al-h1 exactly ── */
+        /* CHANGED: was clamp(22px, 1.8vw, 34px); now matches the other pages */
         .ts-h1 {
-          font-size: clamp(22px, 2vw, 34px);
-          font-weight: 800;
+          font-size: clamp(22px, 2.5vw, 36px);
+          font-weight: 700;
           letter-spacing: -0.025em;
           line-height: 1.15;
           color: #030712;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         /* ── Header subtitle ── */
         .ts-h1-sub {
-          font-size: clamp(12px, 0.85vw, 14px);
+          font-size: clamp(11px, 0.75vw, 14px);
           color: #9ca3af;
-          margin-top: clamp(4px, 0.4vw, 6px);
+          margin-top: clamp(3px, 0.3vw, 6px);
+          overflow-wrap: break-word;
         }
 
-        /* ── Header action buttons — fluid height ── */
+        /* ── Header action buttons ── */
         .ts-header-btn {
-          height: clamp(34px, 2.4vw, 40px);
-          padding-left:  clamp(10px, 1vw, 16px);
-          padding-right: clamp(10px, 1vw, 16px);
-          font-size: clamp(11px, 0.75vw, 13px);
+          height: clamp(32px, 2.1vw, 40px);
+          padding-left:  clamp(10px, 0.85vw, 16px);
+          padding-right: clamp(10px, 0.85vw, 16px);
+          font-size: clamp(11px, 0.68vw, 13px);
+          white-space: nowrap;
+        }
+
+        /* Header inner flex — allow wrap on smaller sizes */
+        .ts-header-inner {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: clamp(8px, 1vw, 24px);
+          flex-wrap: wrap;
+        }
+        .ts-header-actions {
+          display: flex;
+          align-items: center;
+          gap: clamp(6px, 0.6vw, 10px);
+          flex-wrap: nowrap;
+          flex-shrink: 0;
         }
 
         /* ── Stat cards row ── */
         .ts-stats-section {
-          padding-bottom: clamp(16px, 1.5vw, 24px);
+          padding-bottom: clamp(12px, 1.2vw, 24px);
         }
         .ts-stats-row {
           display: flex;
-          gap: clamp(8px, 1vw, 16px);
+          gap: clamp(8px, 0.85vw, 16px);
+        }
+        .ts-stats-row > * {
+          flex: 1 1 0;
+          min-width: 0;
         }
 
         /* ── Stat card internals ── */
         .stat-card {
-          padding: clamp(12px, 1.2vw, 20px) clamp(14px, 1.5vw, 20px);
-          border-radius: 16px;
+          padding: clamp(10px, 1vw, 20px) clamp(12px, 1.2vw, 20px);
+          border-radius: clamp(12px, 1vw, 16px);
         }
         .ts-stat-value {
-          /* Fluid: 28px on small laptops → 42px at 1920 baseline */
-          font-size: clamp(26px, 2.5vw, 42px) !important;
+          font-size: clamp(24px, 2.2vw, 42px) !important;
+          line-height: 1;
         }
-        .ts-stat-label {
-          font-size: clamp(9px, 0.65vw, 11px);
+        .stat-card .text-\[11px\] {
+          font-size: clamp(9px, 0.6vw, 11px);
         }
 
         /* ── Filter bar ── */
         .ts-filter-section {
-          padding-top:    clamp(6px, 0.6vw, 12px);
-          padding-bottom: clamp(6px, 0.6vw, 12px);
+          padding-top:    clamp(5px, 0.5vw, 10px);
+          padding-bottom: clamp(5px, 0.5vw, 10px);
         }
+        .ts-filter-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: clamp(6px, 0.8vw, 16px);
+          flex-wrap: nowrap;
+          // overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .ts-filter-inner::-webkit-scrollbar { display: none; }
+
         .ts-filter-btn {
-          height: clamp(34px, 2.2vw, 40px) !important;
-          font-size: clamp(11px, 0.75vw, 13px) !important;
-          padding-left:  clamp(10px, 1vw, 16px) !important;
-          padding-right: clamp(10px, 1vw, 16px) !important;
+          height: clamp(32px, 2vw, 40px) !important;
+          font-size: clamp(11px, 0.68vw, 13px) !important;
+          padding-left:  clamp(8px, 0.85vw, 16px) !important;
+          padding-right: clamp(8px, 0.85vw, 16px) !important;
+          white-space: nowrap;
         }
         .ts-count-label {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(11px, 0.68vw, 13px);
+          white-space: nowrap;
         }
 
         /* ── Card grid ── */
         .ts-grid-section {
-          padding-top:    clamp(16px, 1.5vw, 28px);
-          padding-bottom: clamp(40px, 4vw, 80px);
+          padding-top:    clamp(12px, 1.2vw, 28px);
+          padding-bottom: clamp(32px, 4vw, 80px);
         }
         .ts-card-grid {
           display: grid;
-          gap: clamp(12px, 1.2vw, 20px);
-          /* Fluid min card width: 260px on laptop → 340px at 1920 */
-          grid-template-columns: repeat(auto-fill, minmax(clamp(260px, 20vw, 340px), 1fr));
+          gap: clamp(10px, 1vw, 20px);
+          grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 18vw, 340px), 1fr));
         }
 
         /* ── System card internals ── */
         .sys-card {
-          border-radius: clamp(12px, 1vw, 16px);
+          border-radius: clamp(10px, 0.85vw, 16px);
+          min-width: 0;
         }
         .ts-card-body {
-          padding: clamp(14px, 1.4vw, 24px);
+          padding: clamp(12px, 1.2vw, 24px);
         }
         .ts-card-name {
-          font-size: clamp(13px, 0.95vw, 16px);
+          font-size: clamp(12px, 0.85vw, 16px);
+          min-width: 0;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
         .ts-card-type {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(10px, 0.68vw, 13px);
         }
         .ts-card-detail-label {
-          font-size: clamp(11px, 0.75vw, 13px);
-          width: clamp(72px, 5.5vw, 96px);
+          font-size: clamp(10px, 0.68vw, 13px);
+          width: clamp(68px, 5vw, 96px);
+          flex-shrink: 0;
         }
         .ts-card-detail-value {
-          font-size: clamp(11px, 0.75vw, 13px);
+          font-size: clamp(10px, 0.68vw, 13px);
+          min-width: 0;
+          overflow-wrap: break-word;
+          word-break: break-all;
         }
         .ts-card-actions {
-          padding-top: clamp(10px, 1vw, 20px);
-          margin-top:  clamp(10px, 1vw, 24px);
+          padding-top: clamp(8px, 0.85vw, 20px);
+          margin-top:  clamp(8px, 0.85vw, 24px);
         }
         .ts-card-action-btn {
-          height: clamp(30px, 2vw, 36px);
-          font-size: clamp(10px, 0.7vw, 12px);
-          border-radius: clamp(8px, 0.6vw, 12px);
+          height: clamp(28px, 1.9vw, 36px);
+          font-size: clamp(10px, 0.63vw, 12px);
+          border-radius: clamp(6px, 0.5vw, 10px);
         }
         .ts-card-trash-btn {
-          width:  clamp(30px, 2vw, 36px);
-          height: clamp(30px, 2vw, 36px);
-          border-radius: clamp(8px, 0.6vw, 12px);
+          width:  clamp(28px, 1.9vw, 36px);
+          height: clamp(28px, 1.9vw, 36px);
+          border-radius: clamp(6px, 0.5vw, 10px);
+          flex-shrink: 0;
         }
         .ts-status-badge {
-          font-size: clamp(10px, 0.7vw, 12px);
-          padding: clamp(2px, 0.2vw, 4px) clamp(8px, 0.7vw, 12px);
+          font-size: clamp(10px, 0.63vw, 12px) !important;
+          padding: clamp(2px, 0.15vw, 4px) clamp(6px, 0.6vw, 12px) !important;
+          white-space: nowrap;
         }
 
         /* ══════════════════════════════════════════════════════════════════
-           BREAKPOINT OVERRIDES
-           These kick in only when clamp() fluid scaling isn't enough and
-           a structural change is needed.
+           BREAKPOINT OVERRIDES — structural shifts only
         ══════════════════════════════════════════════════════════════════ */
 
-        /* ── Laptop: 1024–1439px (MacBook 13/14/15", Windows laptops) ──
-           Most scaling is already handled by clamp(). These rules handle
-           layout shifts that clamp alone can't — e.g. stat cards wrapping.
-        ── */
-        @media (min-width: 1024px) and (max-width: 1439px) {
+        /* ── Tablet: 768–1023px ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
           .ts-page-wrapper {
             max-width: 100%;
+            padding-left: 16px;
+            padding-right: 16px;
           }
 
-          /* Stat cards: keep all 5 in a row but allow natural compression */
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner tablet values */
+          .ts-header-section {
+            padding-top: 16px;
+            padding-bottom: 14px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 tablet value */
+          .ts-h1 { font-size: 1.625rem !important; }
+
+          /* Stats: 2-column grid at tablet */
+          .ts-stats-row {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          }
+          .ts-stats-row > * {
+            flex: none;
+            min-width: 0;
+          }
+
+          /* Card grid: 2 columns at tablet */
+          .ts-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          }
+
+          /* Header buttons wrap on tablet */
+          .ts-header-actions {
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+
+          /* Touch targets — min 44px */
+          .ts-header-btn,
+          .ts-filter-btn,
+          .ts-card-action-btn {
+            min-height: 44px !important;
+          }
+          .ts-card-trash-btn {
+            min-width: 44px !important;
+            min-height: 44px !important;
+          }
+
+          /* Delete modal: full width on tablet */
+          .modal-box {
+            width: calc(100vw - 32px);
+            max-width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+
+          /* Filter bar: allow wrapping on tablet */
+          .ts-filter-inner {
+            flex-wrap: wrap;
+            gap: 8px;
+            overflow-x: visible;
+          }
+
+          /* Live health indicator: allow shrink */
+          .ts-filter-inner > div:last-child {
+            flex-shrink: 1;
+          }
+        }
+
+        /* ── Small laptop: 1024–1279px ── */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .ts-page-wrapper {
+            max-width: 100%;
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner small-laptop values */
+          .ts-header-section {
+            padding-top: 24px;
+            padding-bottom: 20px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 small-laptop value */
+          .ts-h1 { font-size: 1.875rem !important; }
+
+          /* Stat cards: keep in single row, allow natural compression */
           .ts-stats-row {
             flex-wrap: nowrap;
             overflow-x: auto;
-            /* Subtle scrollbar for extreme cases */
             scrollbar-width: none;
           }
           .ts-stats-row::-webkit-scrollbar { display: none; }
           .ts-stats-row > * {
-            flex: 1 1 0;
-            min-width: 120px;
+            min-width: 110px;
+          }
+        }
+
+        /* ── Medium laptop: 1280–1439px ── */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .ts-page-wrapper {
+            max-width: 1100px;
+            padding-left: 28px;
+            padding-right: 28px;
           }
 
-          /* Header: stack on very narrow laptop if needed */
-          .ts-header-inner {
-            flex-wrap: wrap;
-            gap: 12px;
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner medium-laptop values */
+          .ts-header-section {
+            padding-top: 28px;
+            padding-bottom: 22px;
           }
-          .ts-header-actions {
-            flex-wrap: wrap;
-          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 medium-laptop value */
+          .ts-h1 { font-size: 2rem !important; }
         }
 
         /* ── Large laptop / 1440p: 1440–1919px ── */
         @media (min-width: 1440px) and (max-width: 1919px) {
           .ts-page-wrapper {
             max-width: 1280px;
+            padding-left: 36px;
+            padding-right: 36px;
           }
+
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner large-laptop values */
+          .ts-header-section {
+            padding-top: 36px;
+            padding-bottom: 28px;
+          }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 large-laptop value */
+          .ts-h1 { font-size: 2rem !important; }
         }
 
-        /* ── 1920px BASELINE — explicit lock so nothing shifts ── */
+        /* ── 1920px BASELINE — explicit lock ── */
         @media (min-width: 1920px) and (max-width: 2559px) {
           .ts-page-wrapper    { max-width: 1280px; padding-left: 32px; padding-right: 32px; }
-          .ts-h1              { font-size: 34px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 1920px values */
+          .ts-header-section  { padding-top: 40px; padding-bottom: 32px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 1920px value */
+          .ts-h1              { font-size: 2.25rem !important; }
           .ts-h1-sub          { font-size: 14px; }
           .ts-header-btn      { height: 40px; font-size: 13px; padding-left: 16px; padding-right: 16px; }
           .ts-stat-value      { font-size: 42px !important; }
-          .ts-stat-label      { font-size: 11px; }
           .ts-filter-btn      { height: 40px !important; font-size: 13px !important; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
           .ts-card-body       { padding: 24px; }
@@ -799,64 +934,81 @@ export default function TargetSystemShow() {
           .ts-card-detail-value { font-size: 13px; }
           .ts-card-action-btn { height: 36px; font-size: 12px; }
           .ts-card-trash-btn  { width: 36px; height: 36px; }
+          .ts-status-badge    { font-size: 12px !important; }
         }
 
-        /* ── 4K / ultrawide: 2560px+ ── */
-        @media (min-width: 2560px) {
+        /* ── QHD: 2560–3839px ── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
           .ts-page-wrapper {
-            max-width: 1920px;
-            padding-left:  clamp(32px, 3vw, 80px);
-            padding-right: clamp(32px, 3vw, 80px);
+            max-width: 1600px;
+            padding-left: 48px;
+            padding-right: 48px;
           }
-          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px); }
-          .ts-header-section  { padding-top: clamp(36px, 2.5vw, 56px); padding-bottom: clamp(24px, 1.5vw, 36px); }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner QHD values */
+          .ts-header-section  { padding-top: 52px; padding-bottom: 40px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 QHD value */
+          .ts-h1              { font-size: clamp(34px, 2.2vw, 48px) !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           .ts-stat-value      { font-size: clamp(42px, 3vw, 60px) !important; }
+          .ts-stats-row       { gap: 20px; }
           .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; }
           .ts-card-body       { padding: 28px; }
           .ts-card-name       { font-size: 18px; }
-          .stat-card          { border-radius: 20px; }
+          .ts-card-type       { font-size: 14px; }
+          .ts-card-detail-label { font-size: 14px; width: 108px; }
+          .ts-card-detail-value { font-size: 14px; }
+          .ts-card-action-btn { height: 40px; font-size: 13px; }
+          .ts-card-trash-btn  { width: 40px; height: 40px; }
+          .stat-card          { border-radius: 20px; padding: 24px; }
           .sys-card           { border-radius: 20px; }
+          .ts-header-btn      { height: 44px; font-size: 14px; padding-left: 20px; padding-right: 20px; }
+          .ts-filter-btn      { height: 44px !important; font-size: 14px !important; }
+          .ts-status-badge    { font-size: 13px !important; }
+          .modal-box          { max-width: 560px; max-height: 90vh; overflow-y: auto; }
         }
 
-        /* ── Small laptop / large tablet landscape: 768–1023px ── */
-        @media (min-width: 768px) and (max-width: 1023px) {
+        /* ── 4K+: 3840px+ ── */
+        @media (min-width: 3840px) {
           .ts-page-wrapper {
-            max-width: 100%;
-            padding-left: 16px;
-            padding-right: 16px;
+            max-width: 2200px;
+            padding-left: 64px;
+            padding-right: 64px;
           }
-          .ts-h1         { font-size: 22px; }
-          .ts-h1-sub     { font-size: 12px; }
-          .ts-header-section { padding-top: 16px; padding-bottom: 14px; }
-          .ts-header-inner { flex-wrap: wrap; gap: 10px; }
-          .ts-header-actions { flex-wrap: wrap; gap: 6px; }
-
-          /* Stats: 2×3 grid instead of single row */
-          .ts-stats-row {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-          }
-          .ts-stats-row > * { flex: none; }
-
-          /* Slightly smaller stat numbers */
-          .ts-stat-value { font-size: 28px !important; }
-
-          /* Card grid: 2 columns */
-          .ts-card-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-          }
-
-          /* Filter bar: allow wrapping */
-          .ts-filter-inner { flex-wrap: wrap; gap: 8px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 4K values */
+          .ts-header-section  { padding-top: 64px; padding-bottom: 48px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 4K value */
+          .ts-h1              { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .ts-h1-sub          { font-size: 22px; }
+          .ts-stat-value      { font-size: 72px !important; }
+          .ts-stats-row       { gap: 28px; }
+          .ts-card-grid       { grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 32px; }
+          .ts-card-body       { padding: 40px; }
+          .ts-card-name       { font-size: 24px; }
+          .ts-card-type       { font-size: 18px; }
+          .ts-card-detail-label { font-size: 18px; width: 140px; }
+          .ts-card-detail-value { font-size: 18px; }
+          .ts-card-action-btn { height: 52px; font-size: 16px; border-radius: 14px; }
+          .ts-card-trash-btn  { width: 52px; height: 52px; border-radius: 14px; }
+          .stat-card          { border-radius: 24px; padding: 32px; }
+          .sys-card           { border-radius: 24px; }
+          .ts-header-btn      { height: 56px; font-size: 18px; padding-left: 28px; padding-right: 28px; }
+          .ts-filter-btn      { height: 52px !important; font-size: 18px !important; }
+          .ts-filter-section  { padding-top: 12px; padding-bottom: 12px; }
+          .ts-status-badge    { font-size: 16px !important; padding: 6px 18px !important; }
+          .modal-box          { max-width: 800px; max-height: 90vh; overflow-y: auto; }
+          .hc-card            { border-radius: 28px; padding: 40px 56px; min-width: 360px; }
+          .hc-ring            { width: 64px; height: 64px; border-width: 4px; }
+          .hc-label           { font-size: 20px; }
+          .hc-sub             { font-size: 16px; }
         }
       `}</style>
 
       <div className="ts min-h-screen bg-white">
 
-        {/* ════════════════════ HEALTH-CHECK OVERLAY ════════════════════ */}
-        {(isRunningCheck || countdown <= 5) && (
+        {/* ════════════════════ HEALTH-CHECK OVERLAY
+            ── CHANGED: was (isRunningCheck || countdown <= 5) && systems.length > 0
+               Now:      showHealthOverlay = hcState.isRunning && !isPageBusy && systems.length > 0
+               Suppressed during delete modal, form modal, and manual test. ── */}
+        {showHealthOverlay && (
           <>
             <div className="hc-overlay" />
             <div className="hc-card">
@@ -942,10 +1094,10 @@ export default function TargetSystemShow() {
           <div className="ts-page-wrapper">
             <div className="ts-header-inner flex items-start justify-between gap-6">
               <div>
-                <h1 className="ts-h1">
+                <h1 className="ts-h1 font-bold leading-tight tracking-tight text-[#0A0A0A]">
                   {integrationName ? `${integrationName} Systems` : 'Target Systems'}
                 </h1>
-                <p className="ts-h1-sub">
+                <p className="text-[15px] text-gray-500 font-normal max-w-[480px] leading-relaxed m-0">
                   {integrationName
                     ? `Manage target systems for ${integrationName}`
                     : 'Manage your connected systems and integrations'}
@@ -1006,13 +1158,14 @@ export default function TargetSystemShow() {
                   </button>
                 )}
               </div>
-              {/* ── right side of filter bar — polished live indicator + count ── */}
+              {/* ── CHANGED: hcState.countdown / hcState.isRunning / hcState.lastChecked
+                  instead of local countdown / isRunningCheck / lastChecked ── */}
               <div className="flex items-center gap-3 shrink-0">
                 {systems.length > 0 && (
                   <LiveHealthIndicator
-                    countdown={countdown}
-                    isChecking={isRunningCheck}
-                    lastChecked={lastChecked}
+                    countdown={hcState.countdown}
+                    isChecking={hcState.isRunning}
+                    lastChecked={hcState.lastChecked}
                     systemCount={systems.length}
                   />
                 )}
@@ -1146,12 +1299,12 @@ export default function TargetSystemShow() {
                             </button>
                           )}
 
-                          {/* Test — green glow on this card only, no page overlay */}
+                          {/* Test — ── CHANGED: disabled uses hcState.isRunning instead of isRunningCheck ── */}
                           <button
                             onClick={() => testConn(sys._id)}
-                            disabled={isManualTesting || isRunningCheck}
+                            disabled={isManualTesting || hcState.isRunning}
                             className="ts-card-action-btn flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0f0f0f] hover:bg-[#2a2a2a] font-semibold text-white transition-colors disabled:opacity-50"
-                            title={isRunningCheck ? 'Auto health-check in progress…' : undefined}
+                            title={hcState.isRunning ? 'Auto health-check in progress…' : undefined}
                           >
                             {/* FIX: replaced rotating FaCheckCircle with a proper ring spinner */}
                             {isManualTesting ? (

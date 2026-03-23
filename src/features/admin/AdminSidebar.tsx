@@ -264,6 +264,224 @@ const AdminSidebar: React.FC = () => {
           .adm-sb-card-desc { font-size: 0.75rem !important; }
           .adm-sb-info-btn  { width: 1.75rem !important; height: 1.75rem !important; top: 0.75rem !important; right: 0.75rem !important; }
         }
+
+        /* ─── Extended breakpoints per responsive spec ───────────────────────── */
+
+        /* Large tablet landscape: 768px–1023px
+           Cards wrap to a 2-column grid to avoid overflow or unreadably small sizes.
+           Touch targets meet 44px minimum. Container gets side padding. */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .adm-sb-heading   { font-size: clamp(1.125rem, 2.5vw, 1.375rem) !important; }
+          .adm-sb-cards     {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: clamp(0.75rem, 1.5vw, 1rem) !important;
+            margin-top: clamp(1rem, 2vw, 1.25rem) !important;
+          }
+          .adm-sb-card      {
+            width: 100% !important;
+            height: clamp(10rem, 18vw, 12.5rem) !important;
+          }
+          .adm-sb-icon-wrap {
+            width: clamp(2.75rem, 5vw, 3.25rem) !important;
+            height: clamp(2.75rem, 5vw, 3.25rem) !important;
+            margin-bottom: clamp(0.625rem, 1.2vw, 0.875rem) !important;
+            border-radius: 0.75rem !important;
+          }
+          .adm-sb-icon      { font-size: clamp(0.9rem, 1.8vw, 1.125rem) !important; }
+          .adm-sb-card-title      { font-size: clamp(0.875rem, 1.8vw, 1rem) !important; }
+          .adm-sb-card-title-info { font-size: clamp(0.8125rem, 1.6vw, 0.9375rem) !important; }
+          .adm-sb-card-sub  { font-size: clamp(0.6875rem, 1.3vw, 0.75rem) !important; margin-top: 0.25rem !important; }
+          .adm-sb-card-desc { font-size: clamp(0.6875rem, 1.3vw, 0.75rem) !important; line-height: 1.5 !important; }
+          .adm-sb-info-btn  {
+            width: 2.75rem !important;
+            height: 2.75rem !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+            top: 0.5rem !important;
+            right: 0.5rem !important;
+          }
+        }
+
+        /* Small laptop: 1024px–1279px
+           Cards stay in a flex row; enforce flex: 1 1 0 with min-width guard.
+           Container padding added for breathing room. */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .adm-sb-heading   { font-size: clamp(1.25rem, 2vw, 1.5rem) !important; }
+          .adm-sb-cards     {
+            flex-wrap: nowrap !important;
+            gap: clamp(0.875rem, 1.5vw, 1.25rem) !important;
+            margin-top: clamp(1.125rem, 2vw, 1.5rem) !important;
+          }
+          .adm-sb-card      {
+            flex: 1 1 0 !important;
+            min-width: 13rem !important;
+            width: auto !important;
+            height: clamp(11rem, 16vw, 13rem) !important;
+          }
+          .adm-sb-icon-wrap {
+            width: clamp(3rem, 4.5vw, 3.5rem) !important;
+            height: clamp(3rem, 4.5vw, 3.5rem) !important;
+            margin-bottom: clamp(0.75rem, 1.2vw, 1rem) !important;
+          }
+          .adm-sb-icon      { font-size: clamp(1rem, 1.8vw, 1.25rem) !important; }
+          .adm-sb-card-title      { font-size: clamp(0.9375rem, 1.6vw, 1.0625rem) !important; }
+          .adm-sb-card-title-info { font-size: clamp(0.875rem, 1.5vw, 1rem) !important; }
+          .adm-sb-card-sub  { font-size: clamp(0.75rem, 1.2vw, 0.8125rem) !important; }
+          .adm-sb-card-desc { font-size: clamp(0.75rem, 1.2vw, 0.8125rem) !important; }
+          .adm-sb-info-btn  { width: clamp(1.75rem, 2.5vw, 2rem) !important; height: clamp(1.75rem, 2.5vw, 2rem) !important; }
+        }
+
+        /* Medium laptop: 1280px–1439px
+           Container max-width 1100px, cards scale smoothly. */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .adm-sb-heading   { font-size: clamp(1.5rem, 1.8vw, 1.75rem) !important; }
+          .adm-sb-cards     {
+            flex-wrap: nowrap !important;
+            gap: clamp(1rem, 1.5vw, 1.25rem) !important;
+            margin-top: clamp(1.25rem, 2vw, 1.5rem) !important;
+          }
+          .adm-sb-card      {
+            flex: 1 1 0 !important;
+            min-width: 15rem !important;
+            width: auto !important;
+            height: clamp(12rem, 15vw, 14rem) !important;
+          }
+          .adm-sb-icon-wrap {
+            width: clamp(3.25rem, 4vw, 3.75rem) !important;
+            height: clamp(3.25rem, 4vw, 3.75rem) !important;
+            margin-bottom: clamp(0.875rem, 1.3vw, 1rem) !important;
+          }
+          .adm-sb-icon      { font-size: clamp(1.125rem, 1.7vw, 1.375rem) !important; }
+          .adm-sb-card-title      { font-size: clamp(1rem, 1.5vw, 1.125rem) !important; }
+          .adm-sb-card-title-info { font-size: clamp(0.9375rem, 1.4vw, 1rem) !important; }
+          .adm-sb-card-sub  { font-size: clamp(0.75rem, 1.1vw, 0.8125rem) !important; }
+          .adm-sb-card-desc { font-size: clamp(0.75rem, 1.1vw, 0.8125rem) !important; }
+          .adm-sb-info-btn  { width: clamp(1.875rem, 2.2vw, 2.125rem) !important; height: clamp(1.875rem, 2.2vw, 2.125rem) !important; }
+        }
+
+        /* Large laptop: 1440px–1919px
+           Container max-width 1280px, smooth scaling toward 1920px baseline. */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .adm-sb-heading   { font-size: clamp(1.75rem, 1.8vw, 2.25rem) !important; }
+          .adm-sb-cards     {
+            flex-wrap: nowrap !important;
+            gap: clamp(1.25rem, 1.5vw, 1.75rem) !important;
+            margin-top: clamp(1.5rem, 2vw, 2.25rem) !important;
+          }
+          .adm-sb-card      {
+            flex: 1 1 0 !important;
+            min-width: 17rem !important;
+            width: auto !important;
+            height: clamp(13rem, 15vw, 16rem) !important;
+          }
+          .adm-sb-icon-wrap {
+            width: clamp(3.5rem, 3.5vw, 4.25rem) !important;
+            height: clamp(3.5rem, 3.5vw, 4.25rem) !important;
+            margin-bottom: clamp(1rem, 1.3vw, 1.375rem) !important;
+          }
+          .adm-sb-icon      { font-size: clamp(1.25rem, 1.5vw, 1.625rem) !important; }
+          .adm-sb-card-title      { font-size: clamp(1.0625rem, 1.3vw, 1.25rem) !important; }
+          .adm-sb-card-title-info { font-size: clamp(1rem, 1.2vw, 1.125rem) !important; }
+          .adm-sb-card-sub  { font-size: clamp(0.8125rem, 1vw, 0.875rem) !important; }
+          .adm-sb-card-desc { font-size: clamp(0.8125rem, 1vw, 0.875rem) !important; }
+          .adm-sb-info-btn  { width: clamp(2rem, 1.8vw, 2.25rem) !important; height: clamp(2rem, 1.8vw, 2.25rem) !important; }
+        }
+
+        /* QHD: 2560px–3839px
+           Expand container, increase all sizes — clamp() ceilings hit at 1920px
+           so we must explicitly override for QHD to avoid narrow-strip feel. */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .adm-sb-heading   { font-size: 3rem !important; }
+          .adm-sb-cards     {
+            flex-wrap: nowrap !important;
+            gap: 2.5rem !important;
+            margin-top: 3rem !important;
+          }
+          .adm-sb-card      {
+            flex: 1 1 0 !important;
+            min-width: 26rem !important;
+            width: auto !important;
+            height: 22rem !important;
+          }
+          .adm-sb-icon-wrap {
+            width: 6rem !important;
+            height: 6rem !important;
+            margin-bottom: 2rem !important;
+            border-radius: 1.25rem !important;
+          }
+          .adm-sb-icon      { font-size: 2.5rem !important; }
+          .adm-sb-card-title      { font-size: 1.875rem !important; }
+          .adm-sb-card-title-info { font-size: 1.625rem !important; }
+          .adm-sb-card-sub  { font-size: 1.125rem !important; margin-top: 0.75rem !important; }
+          .adm-sb-card-desc { font-size: 1.125rem !important; }
+          .adm-sb-info-btn  { width: 3.25rem !important; height: 3.25rem !important; }
+        }
+
+        /* 4K and ultrawide: 3840px+
+           Maximum layout expansion — intentionally spacious, never cramped. */
+        @media (min-width: 3840px) {
+          .adm-sb-heading   { font-size: 4rem !important; }
+          .adm-sb-cards     {
+            flex-wrap: nowrap !important;
+            gap: 3.5rem !important;
+            margin-top: 4rem !important;
+          }
+          .adm-sb-card      {
+            flex: 1 1 0 !important;
+            min-width: 34rem !important;
+            width: auto !important;
+            height: 28rem !important;
+          }
+          .adm-sb-icon-wrap {
+            width: 8rem !important;
+            height: 8rem !important;
+            margin-bottom: 2.5rem !important;
+            border-radius: 1.5rem !important;
+          }
+          .adm-sb-icon      { font-size: 3.25rem !important; }
+          .adm-sb-card-title      { font-size: 2.5rem !important; }
+          .adm-sb-card-title-info { font-size: 2.125rem !important; }
+          .adm-sb-card-sub  { font-size: 1.5rem !important; margin-top: 1rem !important; }
+          .adm-sb-card-desc { font-size: 1.5rem !important; }
+          .adm-sb-info-btn  { width: 4.25rem !important; height: 4.25rem !important; }
+        }
+
+        /* ─── Global safety rules applied at all breakpoints ─────────────────── */
+
+        /* Prevent horizontal overflow on the root wrapper */
+        .adm-sb-card {
+          box-sizing: border-box;
+          min-width: 0;
+        }
+
+        /* Ensure card text containers never force overflow */
+        .adm-sb-card .relative.z-10 {
+          min-width: 0;
+          width: 100%;
+        }
+
+        /* Prevent long words from blowing out card widths */
+        .adm-sb-card-title,
+        .adm-sb-card-title-info,
+        .adm-sb-card-sub,
+        .adm-sb-card-desc {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* Heading font smoothing for large sizes on high-DPI displays */
+        .adm-sb-heading {
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          line-height: 1.2;
+        }
+
+        /* Line height uses unitless ratio so it scales with font-size at all breakpoints */
+        .adm-sb-card-title,
+        .adm-sb-card-title-info { line-height: 1.25; }
+        .adm-sb-card-sub        { line-height: 1.4; }
+        .adm-sb-card-desc       { line-height: 1.5; }
       `}</style>
     </div>
   );

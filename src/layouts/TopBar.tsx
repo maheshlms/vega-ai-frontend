@@ -83,9 +83,76 @@ const TopBar: React.FC = () => {
 
         /* Exact target: 1920×1080 — px-6 = 24px default already matches */
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .tb-navbar { padding-left: 80px; padding-right: 80px; }
+        /* QHD: 2560–3839px */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .tb-navbar {
+            padding-left: 80px;
+            padding-right: 80px;
+            height: 80px;
+          }
+          /* Logo: scale up proportionally */
+          .tb-navbar .flex-shrink-0:first-child img {
+            height: 48px;
+          }
+          /* Right action gap: more breathing room */
+          .tb-navbar .flex-shrink-0:last-child {
+            gap: 24px;
+          }
+          /* Center search: more side padding */
+          .tb-navbar .flex-1 {
+            padding-left: 32px;
+            padding-right: 32px;
+          }
+        }
+
+        /* 4K+: 3840px+ */
+        @media (min-width: 3840px) {
+          .tb-navbar {
+            padding-left: 120px;
+            padding-right: 120px;
+            height: 100px;
+          }
+          /* Logo: scale up further */
+          .tb-navbar .flex-shrink-0:first-child img {
+            height: 64px;
+          }
+          /* Right action gap */
+          .tb-navbar .flex-shrink-0:last-child {
+            gap: 36px;
+          }
+          /* Center search: generous side padding */
+          .tb-navbar .flex-1 {
+            padding-left: 48px;
+            padding-right: 48px;
+          }
+        }
+
+        /* ── Box-sizing safety ── */
+        .tb-navbar, .tb-navbar * { box-sizing: border-box; }
+
+        /* ── Tablet: 768–1023px touch targets ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .tb-navbar {
+            padding-left: 12px;
+            padding-right: 12px;
+            gap: 8px;
+          }
+          /* Right action buttons: ensure touch target */
+          .tb-navbar .flex-shrink-0:last-child {
+            gap: 8px;
+          }
+          .tb-navbar .flex-shrink-0:last-child > * {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          /* Center search: minimal padding on tablet */
+          .tb-navbar .flex-1 {
+            padding-left: 8px;
+            padding-right: 8px;
+          }
         }
       `}</style>
     </div>

@@ -148,6 +148,8 @@ const AdvancedIntegrations: React.FC = () => {
           --section-h2-fs:  16px;
           --section-h2-mb:  16px;
           --grid-cols:      3;     /* lg default */
+          --card-min-w:     180px;
+          --card-max-w:     240px;
         }
 
         /* ── LARGE DESKTOP / 4K : >1920px ───────────────────────── */
@@ -175,6 +177,8 @@ const AdvancedIntegrations: React.FC = () => {
             --section-h2-fs:  24px;
             --section-h2-mb:  24px;
             --grid-cols:      5;
+            --card-min-w:     260px;
+            --card-max-w:     360px;
           }
         }
 
@@ -203,6 +207,8 @@ const AdvancedIntegrations: React.FC = () => {
             --section-h2-fs:  14px;
             --section-h2-mb:  14px;
             --grid-cols:      3;
+            --card-min-w:     160px;
+            --card-max-w:     220px;
           }
         }
 
@@ -231,6 +237,8 @@ const AdvancedIntegrations: React.FC = () => {
             --section-h2-fs:  13px;
             --section-h2-mb:  12px;
             --grid-cols:      3;
+            --card-min-w:     150px;
+            --card-max-w:     200px;
           }
         }
 
@@ -259,6 +267,68 @@ const AdvancedIntegrations: React.FC = () => {
             --section-h2-fs:  13px;
             --section-h2-mb:  12px;
             --grid-cols:      2;
+            --card-min-w:     140px;
+            --card-max-w:     100%;
+          }
+        }
+
+        /* ── QHD : 2560–3839px ───────────────────────────────────── */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          :root {
+            --page-px:        96px;
+            --page-py:        64px;
+            --header-px:      96px;
+            --header-py:      64px;
+            --section-mb:     80px;
+            --section-gap:    40px;
+            --card-p:         40px;
+            --card-logo-h:    100px;
+            --card-logo-fs:   40px;
+            --card-title-fs:  24px;
+            --card-title-mb:  14px;
+            --badge-px:       16px;
+            --badge-py:       6px;
+            --badge-fs:       18px;
+            --verified-fs:    18px;
+            --verified-icon:  18px;
+            --h1-fs:          60px;
+            --h1-icon:        26px;
+            --subtitle-fs:    24px;
+            --section-h2-fs:  30px;
+            --section-h2-mb:  30px;
+            --grid-cols:      5;
+            --card-min-w:     300px;
+            --card-max-w:     420px;
+          }
+        }
+
+        /* ── 4K+ : ≥3840px ───────────────────────────────────────── */
+        @media (min-width: 3840px) {
+          :root {
+            --page-px:        128px;
+            --page-py:        80px;
+            --header-px:      128px;
+            --header-py:      80px;
+            --section-mb:     100px;
+            --section-gap:    52px;
+            --card-p:         52px;
+            --card-logo-h:    130px;
+            --card-logo-fs:   52px;
+            --card-title-fs:  30px;
+            --card-title-mb:  18px;
+            --badge-px:       20px;
+            --badge-py:       8px;
+            --badge-fs:       22px;
+            --verified-fs:    22px;
+            --verified-icon:  22px;
+            --h1-fs:          80px;
+            --h1-icon:        34px;
+            --subtitle-fs:    30px;
+            --section-h2-fs:  38px;
+            --section-h2-mb:  38px;
+            --grid-cols:      6;
+            --card-min-w:     380px;
+            --card-max-w:     540px;
           }
         }
 
@@ -267,10 +337,12 @@ const AdvancedIntegrations: React.FC = () => {
           border-bottom: 1px solid #e5e7eb;
           background: #fff;
           padding: var(--header-py) var(--header-px);
+          box-sizing: border-box;
         }
 
         .ai-page-content {
           padding: var(--page-py) var(--page-px);
+          box-sizing: border-box;
         }
 
         .ai-section {
@@ -282,6 +354,9 @@ const AdvancedIntegrations: React.FC = () => {
           font-weight: 600;
           color: #111827;
           margin-bottom: var(--section-h2-mb);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          line-height: 1.3;
         }
 
         .ai-grid {
@@ -293,55 +368,86 @@ const AdvancedIntegrations: React.FC = () => {
         /* Single card always takes only as many columns as it needs */
         .ai-grid-auto {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 240px));
+          grid-template-columns: repeat(auto-fill, minmax(var(--card-min-w), var(--card-max-w)));
           gap: var(--section-gap);
         }
 
         .integration-card {
           padding: var(--card-p);
+          box-sizing: border-box;
+          min-width: 0;
         }
 
         .card-logo-wrapper {
           height: var(--card-logo-h);
           margin-bottom: 16px;
+          min-width: 0;
         }
 
         .card-logo-text {
           font-size: var(--card-logo-fs);
+          overflow-wrap: break-word;
+          word-break: break-word;
+          text-align: center;
+          line-height: 1.2;
         }
 
         .card-title {
           font-size: var(--card-title-fs);
           margin-bottom: var(--card-title-mb);
+          line-height: 1.4;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
 
         .badge-pill {
           padding: var(--badge-py) var(--badge-px);
           font-size: var(--badge-fs);
+          line-height: 1.4;
+          white-space: nowrap;
         }
 
         .badge-text {
           font-size: var(--verified-fs);
+          line-height: 1.4;
         }
 
         .verified-icon {
           font-size: var(--verified-icon) !important;
+          flex-shrink: 0;
         }
 
         .h1-text {
           font-size: var(--h1-fs);
           font-weight: 700;
           color: #111827;
+          line-height: 1.2;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
 
         .h1-icon {
           font-size: var(--h1-icon);
           color: #9ca3af;
+          flex-shrink: 0;
         }
 
         .subtitle-text {
           font-size: var(--subtitle-fs);
           color: #6b7280;
+          line-height: 1.5;
+        }
+
+        /* ── Touch targets at tablet ─────────────────────────────── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .integration-card {
+            min-height: 44px;
+          }
+        }
+
+        /* ── Global safety ───────────────────────────────────────── */
+        .min-h-screen {
+          box-sizing: border-box;
         }
       `}</style>
 
