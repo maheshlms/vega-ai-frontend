@@ -14,13 +14,13 @@ interface IntegrationItem {
 }
 
 const STATIC_INTEGRATIONS: IntegrationItem[] = [
-  { id: '1',  value: 'pingfederate',    name: 'Ping Federate',         description: 'Enterprise federation & SSO server',         logo: '/logos/pingfederate.png',    verified: true, status: 'connected',   badges: ['SSO', 'Enterprise'],  auth_methods: ['basic_auth', 'bearer_token'] },
+  { id: '1',  value: 'pingfederate',    name: 'Ping Federate',         description: 'Enterprise federation & SSO server',         logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',    verified: true, status: 'connected',   badges: ['SSO', 'Enterprise'],  auth_methods: ['basic_auth', 'bearer_token'] },
   { id: '2',  value: 'okta',            name: 'Okta',                  description: 'Identity management & SSO platform',         logo: '/logos/okta.png',            verified: true, status: 'Coming Soon', badges: ['Cloud', 'Auth'],       auth_methods: ['oauth2'] },
   { id: '3',  value: 'keycloak',        name: 'Keycloak',              description: 'Open source identity & access management',   logo: '/logos/keycloak.png',        verified: true, status: 'Coming Soon', badges: ['IAM', 'Open Source'],  auth_methods: ['oauth2', 'bearer_token'] },
-  { id: '4',  value: 'pingdirectory',   name: 'Ping Directory',        description: 'High-performance directory server',          logo: '/logos/pingdirectory.png',   verified: true, status: 'connected',   badges: ['LDAP', 'Directory'],   auth_methods: ['basic_auth'] },
+  { id: '4',  value: 'pingdirectory',   name: 'Ping Directory',        description: 'High-performance directory server',          logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',   verified: true, status: 'connected',   badges: ['LDAP', 'Directory'],   auth_methods: ['basic_auth'] },
   { id: '5',  value: 'activedirectory', name: 'Active Directory',      description: 'Microsoft domain & identity services',       logo: '/logos/activedirectory.png', verified: true, status: 'Coming Soon', badges: ['Domain', 'Microsoft'], auth_methods: ['basic_auth'] },
   { id: '6',  value: 'aws',             name: 'AWS Directory',         description: 'Amazon Web Services directory services',     logo: '/logos/aws.png',             verified: true, status: 'Coming Soon', badges: ['AWS', 'Cloud'],        auth_methods: ['bearer_token'] },
-  { id: '7',  value: 'pingone',         name: 'Ping One',              description: 'Cloud identity-as-a-service platform',      logo: '/logos/pingone.png',         verified: true, status: 'connected',   badges: ['SaaS', 'IDaaS'],       auth_methods: ['oauth2'] },
+  { id: '7',  value: 'pingone',         name: 'Ping One',              description: 'Cloud identity-as-a-service platform',      logo: 'https://www.pingidentity.com/content/dam/ping-6-2-assets/topnav-json-configs/Ping-Logo.svg',         verified: true, status: 'connected',   badges: ['SaaS', 'IDaaS'],       auth_methods: ['oauth2'] },
   { id: '8',  value: 'azure',           name: 'Azure AD',              description: 'Microsoft cloud identity & access',         logo: '/logos/azure.png',           verified: true, status: 'Coming Soon', badges: ['Cloud', 'Microsoft'],  auth_methods: ['oauth2'] },
   { id: '9',  value: 'googlecloud',     name: 'Google Cloud Identity', description: 'Google cloud identity platform',            logo: '/logos/googlecloud.png',     verified: true, status: 'Coming Soon', badges: ['IDaaS', 'Google'],     auth_methods: ['oauth2'] },
   { id: '10', value: 'britive',         name: 'Britive',               description: 'Cloud privilege access management',         logo: '/logos/britive.png',         verified: true, status: 'Coming Soon', badges: ['Cloud', 'Auth'],       auth_methods: ['oauth2', 'api_key'] },
@@ -115,27 +115,73 @@ const IntegrationsPage: React.FC = () => {
         }
         .int-pulse { animation: int-pulse-green 2s ease infinite; }
 
-        /* ═══════════════════════════════════════════════════════
-           RESPONSIVE RULES — IntegrationsPage.tsx
-           1920×1080 → exact current design (no changes)
-           Laptop (1024–1919px, incl. MacBook 13/14/15") → scales down
-           Tablet (768–1023px) → compressed
-           4K / ultrawide (2560px+) → expands gently
-        ═══════════════════════════════════════════════════════ */
+        /* ══════════════════════════════════════════════════════════════════
+           GLOBAL GUARDS
+        ══════════════════════════════════════════════════════════════════ */
 
-        /* ── Band padding ── */
-        .int-band-px { padding-left: 48px; padding-right: 48px; }
+        /* box-sizing: border-box globally — prevents overflow at 1920px */
+        .int-font *, .int-font *::before, .int-font *::after {
+          box-sizing: border-box;
+        }
 
-        /* ── Header inner ── */
+        /* All images: fluid by default — never overflow their container */
+        .int-font img {
+          max-width: 100%;
+          height: auto;
+        }
+
+        /* Prevent page-level horizontal scrollbar */
+        .int-font.min-h-screen {
+          overflow-x: hidden;
+        }
+
+        /* Font smoothing on headings — critical at 4K where subpixel rendering shifts */
+        .int-font h1, .int-font h2, .int-font h3 {
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
+
+        /* Dynamic text overflow guard — card names and descriptions */
+        .int-font .int-card p,
+        .int-font .int-card span:not(.int-pulse):not(.w-1\\.5) {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* min-width: 0 on flex children that contain wrapping text (edge case 6) */
+        .int-font .int-card .flex.flex-col {
+          min-width: 0;
+        }
+
+        /* Unitless line-heights so they scale with font size (edge case 17) */
+        .int-font h1 { line-height: 1.15; }
+        .int-font p  { line-height: 1.6;  }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BAND PADDING — fluid via clamp()
+           Scales from 16px (768px) to 48px (1920px baseline)
+        ══════════════════════════════════════════════════════════════════ */
+        .int-band-px {
+          padding-left:  clamp(16px, 3.5vw, 48px);
+          padding-right: clamp(16px, 3.5vw, 48px);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           HEADER INNER — fluid padding
+        ══════════════════════════════════════════════════════════════════ */
         .int-header-inner {
           max-width: 1400px;
           margin-left: auto;
           margin-right: auto;
-          padding-top: 40px;
-          padding-bottom: 32px;
+          padding-top:    clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
         }
 
-        /* ── Filter toolbar inner ── */
+        /* ══════════════════════════════════════════════════════════════════
+           FILTER TOOLBAR INNER
+           flex-wrap: nowrap prevents the toolbar from pushing content down
+           overflow-x: auto with hidden scrollbar is the safety net (edge case 4)
+        ══════════════════════════════════════════════════════════════════ */
         .int-toolbar-inner {
           max-width: 1400px;
           margin-left: auto;
@@ -144,73 +190,139 @@ const IntegrationsPage: React.FC = () => {
           align-items: center;
           justify-content: space-between;
           gap: 24px;
-          height: 56px;
+          height: clamp(48px, 3.5vw, 56px);
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
         }
+        .int-toolbar-inner::-webkit-scrollbar { display: none; }
 
-        /* ── Grid wrapper ── */
+        /* ══════════════════════════════════════════════════════════════════
+           GRID WRAPPER — fluid padding
+        ══════════════════════════════════════════════════════════════════ */
         .int-grid-wrapper {
           max-width: 1400px;
           margin-left: auto;
           margin-right: auto;
-          padding-left: 48px;
-          padding-right: 48px;
-          padding-top: 40px;
-          padding-bottom: 80px;
+          padding-left:  clamp(16px, 3.5vw, 48px);
+          padding-right: clamp(16px, 3.5vw, 48px);
+          padding-top:    clamp(24px, 2.5vw, 40px);
+          padding-bottom: clamp(48px, 5vw, 80px);
         }
 
-        /* ── Card grid min-width ── */
-        .int-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        /* ══════════════════════════════════════════════════════════════════
+           CARD GRID — fluid auto-fill
+           clamp() floors at 220px (tablet), max at 260px (1920 baseline)
+           Only tablet gets a hardcoded 2-col via breakpoint (edge case 3)
+        ══════════════════════════════════════════════════════════════════ */
+        .int-card-grid {
+          grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 17vw, 260px), 1fr));
+        }
 
-        /* ── H1 ── */
-        .int-h1 { font-size: 2.25rem; }
+        /* ══════════════════════════════════════════════════════════════════
+           H1 — fluid scaling
+           clamp: 1.75rem at 768px → 2.25rem at 1920px baseline
+        ══════════════════════════════════════════════════════════════════ */
+        .int-h1 {
+          font-size: clamp(1.75rem, 2.2vw, 2.25rem);
+        }
 
-        /* Tablet: 768–1023 */
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Tablet 768–1023px
+           Structural changes: 2-col grid, compressed spacing, touch targets
+        ══════════════════════════════════════════════════════════════════ */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .int-band-px      { padding-left: 20px; padding-right: 20px; }
-          .int-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
-          .int-toolbar-inner{ max-width: 100%; }
-          .int-grid-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; padding-top: 24px; padding-bottom: 48px; }
-          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-          .int-h1           { font-size: 1.75rem !important; }
+          .int-band-px       { padding-left: 16px; padding-right: 16px; }
+          .int-header-inner  { max-width: 100%; padding-top: 18px; padding-bottom: 14px; }
+          .int-toolbar-inner { max-width: 100%; height: 52px; }
+          .int-grid-wrapper  { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+
+          /* Force exactly 2 columns at tablet (edge case 3) */
+          .int-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+          .int-h1 { font-size: 1.625rem !important; }
+
+          /* Touch targets: min 44px on filter buttons (edge case 18) */
+          .int-toolbar-inner button { min-height: 44px; min-width: 44px; }
         }
 
-        /* Small laptop: 1024–1279 (MacBook 13") */
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Small laptop 1024–1279px
+        ══════════════════════════════════════════════════════════════════ */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .int-band-px      { padding-left: 28px; padding-right: 28px; }
-          .int-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
-          .int-toolbar-inner{ max-width: 1100px; }
-          .int-grid-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; }
-          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
-          .int-h1           { font-size: 1.875rem !important; }
+          .int-band-px       { padding-left: 24px; padding-right: 24px; }
+          .int-header-inner  { max-width: 100%; padding-top: 26px; padding-bottom: 20px; }
+          .int-toolbar-inner { max-width: 100%; }
+          .int-grid-wrapper  { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important; }
+          .int-h1            { font-size: 1.875rem !important; }
         }
 
-        /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Medium laptop 1280–1439px
+        ══════════════════════════════════════════════════════════════════ */
         @media (min-width: 1280px) and (max-width: 1439px) {
-          .int-band-px      { padding-left: 36px; padding-right: 36px; }
-          .int-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
-          .int-toolbar-inner{ max-width: 1280px; }
-          .int-grid-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
-          .int-h1           { font-size: 2rem !important; }
+          .int-band-px       { padding-left: 28px; padding-right: 28px; }
+          .int-header-inner  { max-width: 1100px; padding-top: 30px; padding-bottom: 24px; }
+          .int-toolbar-inner { max-width: 1100px; }
+          .int-grid-wrapper  { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
+          .int-h1            { font-size: 2rem !important; }
         }
 
-        /* Large laptop / small desktop: 1440–1919 */
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Large laptop 1440–1919px
+        ══════════════════════════════════════════════════════════════════ */
         @media (min-width: 1440px) and (max-width: 1919px) {
-          .int-band-px      { padding-left: 44px; padding-right: 44px; }
-          .int-header-inner { max-width: 1400px; }
-          .int-toolbar-inner{ max-width: 1400px; }
-          .int-grid-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+          .int-band-px       { padding-left: 36px; padding-right: 36px; }
+          .int-header-inner  { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
+          .int-toolbar-inner { max-width: 1280px; }
+          .int-grid-wrapper  { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important; }
+          .int-h1            { font-size: 2.1rem !important; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: 1920px BASELINE LOCK
+           Pixel-perfect match to original design — nothing changes here
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .int-band-px       { padding-left: 48px; padding-right: 48px; }
+          .int-header-inner  { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
+          .int-toolbar-inner { max-width: 1400px; height: 56px; }
+          .int-grid-wrapper  { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; }
+          .int-h1            { font-size: 2.25rem !important; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .int-band-px      { padding-left: 80px; padding-right: 80px; }
-          .int-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .int-toolbar-inner{ max-width: 1920px; }
-          .int-grid-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; padding-top: 56px; }
-          .int-card-grid    { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
-          .int-h1           { font-size: 3rem !important; }
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: QHD 2560–3839px
+           clamp() values all hit ceiling at 1920px — must explicitly expand.
+           max-width 1800px so content feels spacious, not like a narrow strip.
+           (edge case 1)
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .int-band-px       { padding-left: 64px; padding-right: 64px; }
+          .int-header-inner  { max-width: 1800px; padding-top: 52px; padding-bottom: 40px; }
+          .int-toolbar-inner { max-width: 1800px; height: 64px; }
+          .int-grid-wrapper  { max-width: 1800px; padding-left: 64px; padding-right: 64px; padding-top: 52px; padding-bottom: 96px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
+          .int-h1            { font-size: 2.75rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: 4K / Ultrawide 3840px+
+           Intentionally spacious — max-width 2400px, large type.
+           Page must feel designed for this size, not a narrow column.
+           (edge case 1)
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 3840px) {
+          .int-band-px       { padding-left: 80px; padding-right: 80px; }
+          .int-header-inner  { max-width: 2400px; padding-top: 64px; padding-bottom: 48px; }
+          .int-toolbar-inner { max-width: 2400px; height: 72px; }
+          .int-grid-wrapper  { max-width: 2400px; padding-left: 80px; padding-right: 80px; padding-top: 56px; padding-bottom: 120px; }
+          .int-card-grid     { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important; }
+          .int-h1            { font-size: 3.25rem !important; }
         }
       `}</style>
 
@@ -318,12 +430,12 @@ const IntegrationsPage: React.FC = () => {
                         <span className="text-[15px] font-semibold text-[#0A0A0A] tracking-tight leading-tight">
                           {item.name}
                         </span>
-                        {item.verified && (
+                        {/* {item.verified && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[10.5px] font-semibold text-green-700 whitespace-nowrap flex-shrink-0">
                             <span className="int-pulse w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                             Certified
                           </span>
-                        )}
+                        )} */}
                       </div>
                       <p className="text-[12.5px] text-gray-500 leading-relaxed font-normal m-0">
                         {item.description}

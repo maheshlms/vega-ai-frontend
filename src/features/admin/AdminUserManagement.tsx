@@ -357,6 +357,130 @@ const MINIMAL_STYLES = `
     }
   }
 
+  /* ── QHD : 2560–3839px ───────────────────────────────────────────────
+     clamp() ceilings all hit at 1920px; the >1920px block fires from
+     1921px but its body-max-w of 1600px starts to feel narrow by 2560px.
+     Override here for intentionally spacious QHD layout.
+  ─────────────────────────────────────────────────────────────────────── */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    :root {
+      --nav-px:         96px;
+      --nav-h:          88px;
+      --body-px:        96px;
+      --body-py:        72px;
+      --body-pb:        112px;
+      --body-max-w:     1800px;
+      --header-gap:     32px;
+      --header-icon-sz: 88px;
+      --header-icon-br: 24px;
+      --header-icon-fs: 38px;
+      --h1-fs:          52px;
+      --h1-mb:          10px;
+      --subtitle-fs:    20px;
+      --stats-gap:      28px;
+      --stats-mb:       40px;
+      --stat-p:         32px 36px;
+      --stat-label-fs:  14px;
+      --stat-value-fs:  46px;
+      --stat-sub-fs:    16px;
+      --toolbar-gap:    18px;
+      --toolbar-mb:     26px;
+      --search-p:       15px 20px;
+      --search-fs:      18px;
+      --filter-p:       15px 46px 15px 18px;
+      --filter-fs:      17px;
+      --result-fs:      17px;
+      --btn-add-p:      18px 36px;
+      --btn-add-fs:     18px;
+      --table-th-p:     18px 28px;
+      --table-th-fs:    14px;
+      --table-td-p:     20px 28px;
+      --table-td-fs:    18px;
+      --avatar-sz:      58px;
+      --avatar-fs:      18px;
+      --avatar-gap:     18px;
+      --user-name-fs:   18px;
+      --user-email-fs:  15px;
+      --role-fs:        15px;
+      --role-p:         7px 18px;
+      --status-p:       8px 18px;
+      --status-fs:      15px;
+      --la-fs:          17px;
+      --created-fs:     17px;
+      --action-p:       10px 22px;
+      --action-fs:      16px;
+      --nav-brand-fs:   20px;
+      --nav-logo-sz:    48px;
+      --nav-logo-fs:    20px;
+      --back-btn-p:     12px 24px;
+      --back-btn-fs:    18px;
+      --breadcrumb-fs:  18px;
+      --demo-p:         16px 26px;
+      --demo-fs:        17px;
+    }
+  }
+
+  /* ── 4K+ : ≥3840px ───────────────────────────────────────────────────
+     Maximum layout expansion — intentionally spacious, not a narrow strip.
+  ─────────────────────────────────────────────────────────────────────── */
+  @media (min-width: 3840px) {
+    :root {
+      --nav-px:         128px;
+      --nav-h:          108px;
+      --body-px:        128px;
+      --body-py:        96px;
+      --body-pb:        144px;
+      --body-max-w:     2400px;
+      --header-gap:     40px;
+      --header-icon-sz: 110px;
+      --header-icon-br: 30px;
+      --header-icon-fs: 48px;
+      --h1-fs:          68px;
+      --h1-mb:          12px;
+      --subtitle-fs:    26px;
+      --stats-gap:      36px;
+      --stats-mb:       52px;
+      --stat-p:         40px 46px;
+      --stat-label-fs:  17px;
+      --stat-value-fs:  60px;
+      --stat-sub-fs:    20px;
+      --toolbar-gap:    24px;
+      --toolbar-mb:     34px;
+      --search-p:       20px 26px;
+      --search-fs:      22px;
+      --filter-p:       20px 58px 20px 24px;
+      --filter-fs:      21px;
+      --result-fs:      21px;
+      --btn-add-p:      22px 46px;
+      --btn-add-fs:     22px;
+      --table-th-p:     22px 36px;
+      --table-th-fs:    17px;
+      --table-td-p:     26px 36px;
+      --table-td-fs:    22px;
+      --avatar-sz:      72px;
+      --avatar-fs:      22px;
+      --avatar-gap:     22px;
+      --user-name-fs:   22px;
+      --user-email-fs:  18px;
+      --role-fs:        18px;
+      --role-p:         9px 22px;
+      --status-p:       10px 22px;
+      --status-fs:      18px;
+      --la-fs:          21px;
+      --created-fs:     21px;
+      --action-p:       13px 28px;
+      --action-fs:      19px;
+      --nav-brand-fs:   24px;
+      --nav-logo-sz:    60px;
+      --nav-logo-fs:    25px;
+      --back-btn-p:     15px 30px;
+      --back-btn-fs:    22px;
+      --breadcrumb-fs:  22px;
+      --demo-p:         20px 32px;
+      --demo-fs:        21px;
+    }
+  }
+
   /* =====================================================================
      COMPONENT STYLES — all sizing via CSS vars, structure unchanged
      ===================================================================== */
@@ -414,8 +538,10 @@ const MINIMAL_STYLES = `
   .um-header-text h1 {
     font-family: 'DM Sans', sans-serif; font-size: var(--h1-fs); font-weight: 700;
     color: #1a1a2e; margin: 0 0 var(--h1-mb); letter-spacing: -0.03em;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    line-height: 1.15;
   }
-  .um-header-text p { font-size: var(--subtitle-fs); color: #9090a8; margin: 0; font-weight: 300; }
+  .um-header-text p { font-size: var(--subtitle-fs); color: #9090a8; margin: 0; font-weight: 300; line-height: 1.5; }
 
   .um-btn-add {
     display: flex; align-items: center; gap: 8px; padding: var(--btn-add-p);
@@ -438,12 +564,12 @@ const MINIMAL_STYLES = `
     grid-template-columns: repeat(var(--stats-cols), 1fr);
     gap: var(--stats-gap); margin-bottom: var(--stats-mb);
   }
-  .um-stat-card { background: #fff; border: 1px solid #e8e8ee; border-radius: 16px; padding: var(--stat-p); }
+  .um-stat-card { background: #fff; border: 1px solid #e8e8ee; border-radius: 16px; padding: var(--stat-p); box-sizing: border-box; }
   .um-stat-label {
     font-size: var(--stat-label-fs); font-weight: 600; letter-spacing: 0.09em;
     text-transform: uppercase; color: #b0b0c8; margin-bottom: 7px;
   }
-  .um-stat-value { font-size: var(--stat-value-fs); font-weight: 600; color: #1a1a2e; letter-spacing: -0.03em; line-height: 1; }
+  .um-stat-value { font-size: var(--stat-value-fs); font-weight: 600; color: #1a1a2e; letter-spacing: -0.03em; line-height: 1; -webkit-font-smoothing: antialiased; }
   .um-stat-sub { font-size: var(--stat-sub-fs); color: #b0b0c8; margin-top: 4px; font-weight: 300; }
 
   .um-toolbar { display: flex; align-items: center; gap: var(--toolbar-gap); margin-bottom: var(--toolbar-mb); flex-wrap: wrap; }
@@ -466,7 +592,7 @@ const MINIMAL_STYLES = `
   .um-table-wrap {
     background: #fff; border: 1px solid #e8e8ee; border-radius: 20px;
     overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.04);
-    overflow-x: auto;
+    overflow-x: auto; scrollbar-width: thin;
   }
   .um-table { width: 100%; border-collapse: collapse; min-width: 700px; }
   .um-table thead { background: #fafafa; }
@@ -482,15 +608,15 @@ const MINIMAL_STYLES = `
   .um-table tbody tr:last-child td { border-bottom: none; }
   .um-table tbody tr:hover { background: #fafbff; }
 
-  .um-avatar-wrap { display: flex; align-items: center; gap: var(--avatar-gap); }
+  .um-avatar-wrap { display: flex; align-items: center; gap: var(--avatar-gap); min-width: 0; }
   .um-avatar {
     width: var(--avatar-sz); height: var(--avatar-sz); border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: var(--avatar-fs); font-weight: 700; color: #fff;
     flex-shrink: 0; letter-spacing: 0.02em;
   }
-  .um-user-name { font-weight: 500; color: #1a1a2e; font-size: var(--user-name-fs); }
-  .um-user-email { font-size: var(--user-email-fs); color: #9090a8; font-weight: 300; margin-top: 2px; }
+  .um-user-name { font-weight: 500; color: #1a1a2e; font-size: var(--user-name-fs); min-width: 0; overflow-wrap: break-word; word-break: break-word; }
+  .um-user-email { font-size: var(--user-email-fs); color: #9090a8; font-weight: 300; margin-top: 2px; min-width: 0; overflow-wrap: break-word; word-break: break-all; }
 
   .um-role {
     display: inline-flex; align-items: center; gap: 5px; font-size: var(--role-fs);
@@ -547,6 +673,19 @@ const MINIMAL_STYLES = `
     .um-breadcrumb { display: none; }
   }
 
+  /* Tablet: touch targets ≥ 44px on interactive elements */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .um-back-btn   { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+    .um-btn-add    { min-height: 44px; box-sizing: border-box; }
+    .um-search     { min-height: 44px; box-sizing: border-box; }
+    .um-filter-select { min-height: 44px; box-sizing: border-box; }
+    .um-action-edit,
+    .um-action-del { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+    .um-status     { min-height: 44px; box-sizing: border-box; }
+    .um-toolbar    { flex-wrap: wrap; }
+    .um-search-wrap { max-width: 100%; flex: 1 1 100%; }
+  }
+
   /* ── MODAL STYLES (unchanged, no responsive sizing needed) ─────── */
   .um-modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -557,6 +696,7 @@ const MINIMAL_STYLES = `
     background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.18);
     max-width: 520px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 32px;
     animation: umFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) 0.05s both;
+    box-sizing: border-box;
   }
   .um-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; gap: 16px; }
   .um-modal-header h2 {
@@ -663,6 +803,7 @@ const MINIMAL_STYLES = `
     background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     max-width: 400px; width: 90%; padding: 28px;
     animation: umFadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    max-height: 90vh; overflow-y: auto; box-sizing: border-box;
   }
   .um-confirm-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   .um-confirm-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: #1a1a2e; }
@@ -670,6 +811,55 @@ const MINIMAL_STYLES = `
   .um-confirm-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
   .um-confirm-footer .um-btn-cancel { min-width: 100px; }
   .um-confirm-footer .um-btn-create { min-width: 100px; }
+
+  /* ── Modal responsive overrides ─────────────────────────────────── */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .um-modal-content  { width: calc(100vw - 32px); max-width: 100%; padding: 24px; border-radius: 14px; }
+    .um-confirm-dialog { width: calc(100vw - 32px); max-width: 100%; padding: 22px; border-radius: 14px; }
+    .um-modal-footer   { flex-wrap: wrap; }
+    .um-modal-footer .um-btn-cancel,
+    .um-modal-footer .um-btn-create { flex: 1 1 auto; min-height: 44px; justify-content: center; box-sizing: border-box; }
+    .um-confirm-footer .um-btn-cancel,
+    .um-confirm-footer .um-btn-create { flex: 1 1 auto; min-height: 44px; justify-content: center; box-sizing: border-box; }
+  }
+
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .um-modal-content  { max-width: 720px; padding: 44px; border-radius: 22px; }
+    .um-confirm-dialog { max-width: 560px; padding: 40px; border-radius: 22px; }
+    .um-modal-header h2 { font-size: 30px; }
+    .um-confirm-header h3 { font-size: 24px; }
+    .um-confirm-message { font-size: 18px; }
+    .um-form-group label { font-size: 17px; }
+    .um-form-group input:not([type="checkbox"]),
+    .um-form-group select { font-size: 17px; padding: 14px 18px; }
+    .um-btn-cancel, .um-btn-create { font-size: 17px; padding: 14px 32px; }
+    .um-btn-gen-pwd, .um-btn-copy { font-size: 15px; padding: 9px 16px; }
+    .um-btn-toggle-pwd { font-size: 15px; padding: 14px 18px; }
+    .um-error { font-size: 15px; }
+    .um-password-hint, .um-password-match { font-size: 15px; padding: 8px 14px; }
+  }
+
+  @media (min-width: 3840px) {
+    .um-modal-content  { max-width: 960px; padding: 56px; border-radius: 28px; }
+    .um-confirm-dialog { max-width: 720px; padding: 52px; border-radius: 28px; }
+    .um-modal-header h2 { font-size: 38px; }
+    .um-confirm-header h3 { font-size: 30px; }
+    .um-confirm-message { font-size: 22px; }
+    .um-form-group label { font-size: 21px; }
+    .um-form-group input:not([type="checkbox"]),
+    .um-form-group select { font-size: 21px; padding: 18px 22px; }
+    .um-btn-cancel, .um-btn-create { font-size: 21px; padding: 18px 40px; }
+    .um-btn-gen-pwd, .um-btn-copy { font-size: 18px; padding: 12px 20px; }
+    .um-btn-toggle-pwd { font-size: 18px; padding: 18px 22px; }
+    .um-error { font-size: 18px; }
+    .um-password-hint, .um-password-match { font-size: 18px; padding: 10px 16px; }
+  }
+
+  /* ── Global safety rules ─────────────────────────────────────────── */
+  .um-header-text { min-width: 0; }
+  .um-stat-card   { box-sizing: border-box; }
+  .um-table-wrap  { box-sizing: border-box; }
+  .um-body        { box-sizing: border-box; }
 `;
 
 const BackIcon = () => (

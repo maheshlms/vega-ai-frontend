@@ -12,37 +12,129 @@ import { auth } from "../utils/auth.js";
 
 // ─── Responsive Sidebar Styles ────────────────────────────────────────────────
 const sidebarStyles = `
-  /* ── Sidebar width ladder ── */
-  /* 1920×1080 (target) — keep exact current look */
+  /* ── Box-sizing safety ── */
+  .aad-sidebar, .aad-sidebar * { box-sizing: border-box; }
+
+  /* ── Label: whitespace safety — never wrap ── */
+  .aad-sidebar-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    display: block !important; /* always show label — never hide */
+  }
+
+  /* ── Icon wrapper: consistent flex alignment ── */
+  .aad-sidebar-icon-wrap {
+    flex-shrink: 0;
+  }
+
+  /* ── Prevent sidebar from causing horizontal scroll ── */
+  .aad-sidebar {
+    overflow-x: hidden;
+  }
+
+  /* ── BASELINE: 1920×1080 — exact current look ── */
   .aad-sidebar {
     width: 216px;
     top: 72px;
     height: calc(100vh - 72px);
   }
+  .aad-sidebar-link {
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
 
-  /* Small laptop: 1024–1279 — full labels, slightly narrower */
+  /* ── Tablet: 768–1023px — STILL shows full labels, just narrower ── */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .aad-sidebar {
+      width: 200px;
+      top: 72px;
+      height: calc(100vh - 72px);
+    }
+    .aad-sidebar-link {
+      padding-left: 16px;
+      padding-right: 16px;
+      padding-top: 14px;
+      padding-bottom: 14px;
+      min-height: 44px; /* touch target */
+    }
+    .aad-sidebar-label {
+      font-size: 13px;
+      margin-left: 12px;
+    }
+  }
+
+  /* ── Small laptop: 1024–1279px ── */
   @media (min-width: 1024px) and (max-width: 1279px) {
     .aad-sidebar { width: 200px; }
     .aad-sidebar-link { padding-left: 20px; padding-right: 20px; }
   }
 
-  /* Laptop: 1280–1439 — full labels */
+  /* ── Medium laptop: 1280–1439px ── */
   @media (min-width: 1280px) and (max-width: 1439px) {
     .aad-sidebar { width: 210px; }
     .aad-sidebar-link { padding-left: 22px; padding-right: 22px; }
   }
 
-  /* Large laptop / small desktop: 1440–1919 */
+  /* ── Large laptop / small desktop: 1440–1919px ── */
   @media (min-width: 1440px) and (max-width: 1919px) {
     .aad-sidebar { width: 214px; }
   }
 
-  /* Exact target: 1920×1080 — unchanged */
+  /* ── 1920×1080 lock ── */
+  @media (min-width: 1920px) and (max-width: 2559px) {
+    .aad-sidebar { width: 216px; }
+  }
 
-  /* 4K / ultrawide: 2560px+ */
-  @media (min-width: 2560px) {
-    .aad-sidebar { width: 260px; }
-    .aad-sidebar-link { padding-left: 32px; padding-right: 32px; padding-top: 24px; padding-bottom: 24px; }
+  /* ── QHD: 2560–3839px ── */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .aad-sidebar {
+      width: 260px;
+      top: 72px;
+      height: calc(100vh - 72px);
+    }
+    .aad-sidebar-link {
+      padding-left: 32px;
+      padding-right: 32px;
+      padding-top: 22px;
+      padding-bottom: 22px;
+    }
+    .aad-sidebar-label {
+      font-size: 15px;
+      margin-left: 20px;
+    }
+    .aad-sidebar-icon-wrap svg {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  /* ── 4K+: 3840px+ ── */
+  @media (min-width: 3840px) {
+    .aad-sidebar {
+      width: 320px;
+      top: 72px;
+      height: calc(100vh - 72px);
+    }
+    .aad-sidebar-link {
+      padding-left: 44px;
+      padding-right: 44px;
+      padding-top: 30px;
+      padding-bottom: 30px;
+    }
+    .aad-sidebar-label {
+      font-size: 18px;
+      margin-left: 24px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    .aad-sidebar-icon-wrap svg {
+      width: 32px;
+      height: 32px;
+    }
   }
 `;
 
@@ -84,8 +176,7 @@ const Sidebar: React.FC = () => {
   // Construct final menu items
   const menuItems: MenuItem[] = [
     ...baseMenuItems,
-    ...(isAdmin ? [adminMenuItem] : []), // Only add Admin if user is admin
-    // ...bottomMenuItems
+    ...(isAdmin ? [adminMenuItem] : []),
   ];
 
   return (
@@ -106,7 +197,7 @@ const Sidebar: React.FC = () => {
                 ${isActive ? "bg-sidebar-active rounded-md" : ""}
               `}
             >
-              <div className="flex items-center ">
+              <div className="flex items-center">
                 {/* ICON COLUMN */}
                 <span className="aad-sidebar-icon-wrap w-8 flex justify-center">
                   <Icon
@@ -115,7 +206,7 @@ const Sidebar: React.FC = () => {
                   />
                 </span>
 
-                {/* LABEL */}
+                {/* LABEL — always visible */}
                 <span
                   className={`aad-sidebar-label ml-4 text-sm font-medium whitespace-nowrap ${
                     isActive ? "text-sidebar-active" : "text-sidebar"
@@ -143,19 +234,17 @@ const Sidebar: React.FC = () => {
                 ${isActive ? "bg-sidebar-active rounded-md" : ""}
               `}
             >
-              <div className="flex items-center  ">
+              <div className="flex items-center">
                 {/* ICON COLUMN */}
                 <span className="aad-sidebar-icon-wrap w-8 flex justify-center">
                   <Icon
                     size={22}
-                    className={`{isActive ? "text-sidebar-active" : "text-sidebar-icon"} text-red-600 `}
+                    className="text-red-600"
                   />
                 </span>
 
-                {/* LABEL */}
-                <span
-                  className={"aad-sidebar-label ml-4 text-sm font-medium whitespace-nowrap text-red-600 "}
-                >
+                {/* LABEL — always visible */}
+                <span className="aad-sidebar-label ml-4 text-sm font-medium whitespace-nowrap text-red-600">
                   {item.value}
                 </span>
               </div>

@@ -435,6 +435,13 @@ const AuditLogs: React.FC = () => {
   };
   const formatTimestamp = (ts: string): string => { try { return new Date(ts).toLocaleString(); } catch { return String(ts); } };
 
+  // Extract display name from email — show "john.doe" from "john.doe@company.com"
+  const getDisplayName = (email: string): string => {
+    if (!email || email === '-') return '?';
+    const local = email.split('@')[0] || email;
+    return local.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const severityBadge = (log: AuditLog) => {
     const val = log.status || log.severity || '';
     const isSuccess = val === 'success' || val === 'info';
@@ -478,11 +485,94 @@ const AuditLogs: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#111]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen al-bg text-[#111]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
+        @keyframes al-fade-up { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
         .al-spin { animation: spin 1s linear infinite; }
+
+        /* ── Page background — clean white ── */
+        .al-bg { background: #ffffff; }
+
+        /* ── Header — original white design ── */
+        .al-header-band {
+          background: #ffffff;
+          border-bottom: 1px solid #E8E8F0;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* ── Stat cards: visible borders only ── */
+        .al-stat-card {
+          position: relative;
+          overflow: hidden;
+          border-radius: 14px;
+          padding: 16px 18px;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+          animation: al-fade-up 0.4s ease both;
+        }
+        .al-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.07);
+        }
+        .al-stat-success { border: 1.5px solid #D1D5DB; }
+        .al-stat-error   { border: 1.5px solid #D1D5DB; }
+        .al-stat-warning { border: 1.5px solid #D1D5DB; }
+        .al-stat-total   { border: 1.5px solid #D1D5DB; }
+
+        /* ── Table card ── */
+        .al-table-card-wrap {
+          background: #ffffff;
+          border: 1px solid #E8E8F0;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+        }
+
+        /* ── Table row hover: left accent flash ── */
+        .al-table-row {
+          cursor: pointer;
+          border-left: 3px solid transparent;
+          transition: background 0.13s ease, border-color 0.13s ease;
+        }
+        .al-table-row:hover {
+          background: #FAFBFF;
+          border-left-color: #6366F1;
+        }
+
+        /* ── User cell: name + email sub-line ── */
+        .al-user-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: #0A0A0A;
+          line-height: 1.3;
+        }
+        .al-user-email {
+          font-size: 11px;
+          color: #9CA3AF;
+          font-weight: 400;
+          line-height: 1.3;
+          margin-top: 1px;
+        }
+
+        /* ── Avatar gradient palette ── */
+        .al-avatar {
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 700; color: #fff;
+          flex-shrink: 0;
+          letter-spacing: 0.02em;
+        }
+
+        /* ── Filters row ── */
+        .al-filters-band {
+          background: #ffffff;
+          border-bottom: 1px solid #EFEFF5;
+        }
 
         /* ═══════════════════════════════════════════════════════
            RESPONSIVE RULES — AuditLogs.tsx
@@ -492,16 +582,21 @@ const AuditLogs: React.FC = () => {
            4K / ultrawide (2560px+) → expands gently
         ═══════════════════════════════════════════════════════ */
 
+        /* ── Global box-sizing safety ── */
+        .al-root *, .al-root *::before, .al-root *::after { box-sizing: border-box; }
+        .min-h-screen { box-sizing: border-box; }
+
         /* ── Header band padding ── */
         .al-band-px { padding-left: 48px; padding-right: 48px; }
 
         /* ── Header inner wrapper ── */
+        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper / ag-header-inner exactly */
         .al-header-inner {
           max-width: 1400px;
           margin-left: auto;
           margin-right: auto;
-          padding-top: 40px;
-          padding-bottom: 32px;
+          padding-top: clamp(20px, 2.5vw, 40px);
+          padding-bottom: clamp(16px, 2vw, 32px);
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
@@ -522,59 +617,181 @@ const AuditLogs: React.FC = () => {
         .al-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 12px;
+          gap: 14px;
         }
 
         /* ── H1 ── */
-        .al-h1 { font-size: 2.25rem; }
+        /* CHANGED: was 2.25rem hardcoded; now uses clamp() to match aad-h1-resp / ag-h1 exactly */
+        .al-h1 { font-size: clamp(22px, 2.5vw, 36px); }
+
+        /* ── Filters toolbar: prevent overflow, allow wrap ── */
+        .al-filters-row {
+          display: flex;
+          align-items: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        /* ── Table wrapper: horizontal scroll on narrow screens ── */
+        .al-table-scroll {
+          overflow-x: auto;
+          scrollbar-width: thin;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Table: min column widths to stay readable ── */
+        .al-table-scroll table {
+          min-width: 680px;
+        }
+
+        /* ── Modals: max-height + overflow ── */
+        .al-modal-detail {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .al-modal-export {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+
+        /* ── Dropdown z-index safety ── */
+        .al-dropdown { z-index: 50; }
+
+        /* ── User email input: flex-shrink ── */
+        .al-email-input { min-width: 0; }
+
+        /* ── Touch targets ── */
+        .al-touch { min-height: 36px; }
 
         /* Tablet: 768–1023 */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .al-band-px      { padding-left: 20px; padding-right: 20px; }
-          .al-header-inner { max-width: 100%; padding-top: 20px; padding-bottom: 16px; }
-          .al-page-wrapper { max-width: 100%; padding-left: 20px; padding-right: 20px; }
-          .al-stats-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-          .al-h1           { font-size: 1.75rem !important; }
+          .al-band-px        { padding-left: 16px; padding-right: 16px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner tablet values */
+          .al-header-inner   { max-width: 100%; padding-top: 16px; padding-bottom: 14px; gap: 12px; }
+          .al-page-wrapper   { max-width: 100%; padding-left: 16px; padding-right: 16px; }
+          .al-stats-grid     { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 tablet value */
+          .al-h1             { font-size: 1.625rem !important; }
+
+          /* Header action buttons: wrap and touch-friendly */
+          .al-header-inner > div:last-child { flex-wrap: wrap; }
+          .al-header-inner > div:last-child button { min-height: 44px; min-width: 44px; }
+
+          /* Filters: stack more aggressively */
+          .al-filters-row    { gap: 8px; }
+
+          /* User email input: full width on tablet */
+          .al-filters-row .al-email-wrap { width: 100%; }
+          .al-filters-row .al-email-wrap input { width: 100%; min-width: 0; }
+
+          /* Table card: no horizontal padding on narrow */
+          .al-table-card { border-radius: 12px; }
+          .al-table-card .px-6 { padding-left: 14px; padding-right: 14px; }
+
+          /* Pagination buttons: touch-friendly */
+          .al-pagination-btn { min-height: 44px; }
+
+          /* Modal: near full-width */
+          .al-modal-detail-inner { width: calc(100vw - 32px); max-width: 100%; }
+          .al-modal-export-inner { width: calc(100vw - 32px); max-width: 100%; }
+
+          /* Notices: smaller text is fine, just ensure padding */
+          .al-notice { padding-left: 14px; padding-right: 14px; }
+
+          /* Divider in filters: hide on tablet to save space */
+          .al-filter-divider { display: none; }
+
+          /* Total logs count: full row */
+          .al-total-count { width: 100%; margin-left: 0; padding-bottom: 0; }
         }
 
         /* Small laptop: 1024–1279 (MacBook 13") */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .al-band-px      { padding-left: 28px; padding-right: 28px; }
-          .al-header-inner { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
-          .al-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
-          .al-stats-grid   { gap: 10px; }
-          .al-h1           { font-size: 1.875rem !important; }
+          .al-band-px        { padding-left: 24px; padding-right: 24px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner small-laptop values */
+          .al-header-inner   { max-width: 100%; padding-top: 24px; padding-bottom: 20px; }
+          .al-page-wrapper   { max-width: 100%; padding-left: 24px; padding-right: 24px; }
+          .al-stats-grid     { gap: 10px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 small-laptop value */
+          .al-h1             { font-size: 1.875rem !important; }
+          .al-filters-row    { gap: 10px; }
         }
 
         /* Laptop: 1280–1439 (MacBook 14/15", typical 1366/1440) */
         @media (min-width: 1280px) and (max-width: 1439px) {
-          .al-band-px      { padding-left: 36px; padding-right: 36px; }
-          .al-header-inner { max-width: 1280px; padding-top: 32px; padding-bottom: 26px; }
-          .al-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
-          .al-h1           { font-size: 2rem !important; }
+          .al-band-px        { padding-left: 28px; padding-right: 28px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner medium-laptop values */
+          .al-header-inner   { max-width: 1100px; padding-top: 28px; padding-bottom: 22px; }
+          .al-page-wrapper   { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 medium-laptop value */
+          .al-h1             { font-size: 2rem !important; }
         }
 
         /* Large laptop / small desktop: 1440–1919 */
         @media (min-width: 1440px) and (max-width: 1919px) {
-          .al-band-px      { padding-left: 44px; padding-right: 44px; }
-          .al-header-inner { max-width: 1400px; }
-          .al-page-wrapper { max-width: 1400px; padding-left: 44px; padding-right: 44px; }
+          .al-band-px        { padding-left: 36px; padding-right: 36px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner large-laptop values */
+          .al-header-inner   { max-width: 1280px; padding-top: 36px; padding-bottom: 28px; }
+          .al-page-wrapper   { max-width: 1280px; padding-left: 36px; padding-right: 36px; }
         }
 
-        /* Exact target: 1920×1080 — unchanged (defaults above already match) */
+        /* Exact target: 1920×1080 — lock baseline */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .al-band-px        { padding-left: 48px; padding-right: 48px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner 1920px values */
+          .al-header-inner   { max-width: 1400px; padding-top: 40px; padding-bottom: 32px; }
+          .al-page-wrapper   { max-width: 1400px; padding-left: 48px; padding-right: 48px; }
+          .al-stats-grid     { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 1920px value */
+          .al-h1             { font-size: 2.25rem !important; }
+        }
 
-        /* 4K / ultrawide: 2560px+ */
-        @media (min-width: 2560px) {
-          .al-band-px      { padding-left: 80px; padding-right: 80px; }
-          .al-header-inner { max-width: 1920px; padding-top: 56px; padding-bottom: 44px; }
-          .al-page-wrapper { max-width: 1920px; padding-left: 80px; padding-right: 80px; }
-          .al-stats-grid   { gap: 16px; }
-          .al-h1           { font-size: 3rem !important; }
+        /* QHD: 2560–3839px */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .al-band-px        { padding-left: 64px; padding-right: 64px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner QHD values */
+          .al-header-inner   { max-width: 1800px; padding-top: 52px; padding-bottom: 40px; }
+          .al-page-wrapper   { max-width: 1800px; padding-left: 64px; padding-right: 64px; }
+          .al-stats-grid     { gap: 16px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 QHD value */
+          .al-h1             { font-size: 2.75rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* Table: more spacious */
+          .al-table-scroll table td,
+          .al-table-scroll table th { padding-left: 28px; padding-right: 28px; font-size: 14px; }
+          /* Stats cards: more padding */
+          .al-stat-card { padding: 20px 24px; }
+          /* Filters: slightly larger selects */
+          .al-filters-row { gap: 16px; }
+          /* Modal: wider */
+          .al-modal-detail-inner { max-width: 800px; }
+          .al-modal-export-inner { max-width: 560px; }
+        }
+
+        /* 4K+: 3840px+ */
+        @media (min-width: 3840px) {
+          .al-band-px        { padding-left: 96px; padding-right: 96px; }
+          /* CHANGED: matches aad-header-wrapper / ag-header-inner 4K values */
+          .al-header-inner   { max-width: 2400px; padding-top: 64px; padding-bottom: 48px; }
+          .al-page-wrapper   { max-width: 2400px; padding-left: 96px; padding-right: 96px; }
+          .al-stats-grid     { gap: 20px; }
+          /* CHANGED: matches aad-h1-resp / ag-h1 4K value */
+          .al-h1             { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          /* Table: much more spacious */
+          .al-table-scroll table td,
+          .al-table-scroll table th { padding-left: 36px; padding-right: 36px; font-size: 16px; }
+          /* Stats cards */
+          .al-stat-card { padding: 28px 32px; }
+          .al-stat-card .text-xl { font-size: 2rem; }
+          /* Filters */
+          .al-filters-row { gap: 20px; }
+          /* Modal: wider */
+          .al-modal-detail-inner { max-width: 1000px; }
+          .al-modal-export-inner { max-width: 680px; }
         }
       `}</style>
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 al-band-px">
+      <div className="al-header-band al-band-px">
         <div className="al-header-inner">
           <div>
             <h1 className="al-h1 text-4xl font-bold leading-tight tracking-tight text-[#0A0A0A] mb-2 max-md:text-3xl">
@@ -606,20 +823,22 @@ const AuditLogs: React.FC = () => {
           <div className="py-5 border-b border-gray-100">
             <div className="al-stats-grid">
               {[
-                { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, bg: '#F0FDF4', color: '#22C55E' },
-                { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, bg: '#FEF2F2', color: '#EF4444' },
-                { icon: FaExclamationTriangle, label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, bg: '#FFFBEB', color: '#F59E0B' },
-                { icon: FaClock,              label: 'Total Events', value: stats.total_events                ?? 0, bg: '#FAF5FF', color: '#A855F7' },
+                { icon: FaCheckCircle,        label: 'Successful',  value: stats.events_by_severity?.success ?? 0, cardCls: 'al-stat-success', iconBg: '#F0FDF4', iconColor: '#22C55E', valueColor: '#16A34A' },
+                { icon: FaExclamationTriangle, label: 'Errors',      value: stats.events_by_severity?.error   ?? 0, cardCls: 'al-stat-error',   iconBg: '#FEF2F2', iconColor: '#EF4444', valueColor: '#DC2626' },
+                { icon: FaExclamationTriangle, label: 'Warnings',    value: stats.events_by_severity?.warning ?? 0, cardCls: 'al-stat-warning', iconBg: '#FFFBEB', iconColor: '#F59E0B', valueColor: '#D97706' },
+                { icon: FaClock,              label: 'Total Events', value: stats.total_events                ?? 0, cardCls: 'al-stat-total',   iconBg: '#FAF5FF', iconColor: '#A855F7', valueColor: '#7C3AED' },
               ].map((s, i) => {
                 const Icon = s.icon as React.ElementType;
                 return (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
-                      <Icon style={{ color: s.color }} size={16} />
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-[#0A0A0A]">{s.value.toLocaleString()}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
+                  <div key={i} className={`al-stat-card ${s.cardCls}`} style={{ animationDelay: `${i * 0.07}s` }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.iconBg }}>
+                        <Icon style={{ color: s.iconColor }} size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xl font-bold text-[#0A0A0A]">{s.value.toLocaleString()}</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">{s.label}</div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -629,7 +848,7 @@ const AuditLogs: React.FC = () => {
         )}
 
         {/* ── Filters toolbar ── */}
-        <div className="py-4 border-b border-gray-100">
+        <div className="al-filters-band rounded-xl mb-5 px-4 py-4 border border-gray-100 shadow-sm">
           <div className="flex items-end gap-3 flex-wrap">
 
             {/* Time range */}
@@ -640,7 +859,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {/* Divider */}
-            <div className="w-px h-8 bg-gray-200 self-end mb-1" />
+            <div className="al-filter-divider w-px h-8 bg-gray-200 self-end mb-1" />
 
             {/* Event type */}
             <CustomSelect
@@ -661,7 +880,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {/* User email */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 al-email-wrap">
               <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.06em]">User Email</label>
               <input
                 type="text"
@@ -686,7 +905,7 @@ const AuditLogs: React.FC = () => {
             />
 
             {totalLogs > 0 && (
-              <div className="ml-auto text-[12.5px] text-gray-400 self-end pb-2">
+              <div className="ml-auto text-[12.5px] text-gray-400 self-end pb-2 al-total-count">
                 {totalLogs.toLocaleString()} total logs
               </div>
             )}
@@ -711,7 +930,7 @@ const AuditLogs: React.FC = () => {
 
         {/* ── Notices ── */}
         {!hasAuditReadPermission && (
-          <div className="mt-4 flex items-start gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+          <div className="mb-4 flex items-start gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
             <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" size={15} />
             <div>
               <p className="text-[13px] text-green-800 font-medium m-0">Restricted Access</p>
@@ -720,7 +939,7 @@ const AuditLogs: React.FC = () => {
           </div>
         )}
         {error && (
-          <div className="mt-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" size={15} />
             <div>
               <p className="text-[13px] text-amber-800 font-semibold m-0">Note</p>
@@ -730,11 +949,11 @@ const AuditLogs: React.FC = () => {
         )}
 
         {/* ── Table ── */}
-        <div className="mt-6 mb-10 bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="mb-10 al-table-card-wrap">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #fafafa 0%, #f8f7ff 100%)' }}>
             <h2 className="text-[15px] font-bold text-[#0A0A0A] tracking-tight">Activity Log</h2>
             {totalLogs > 0 && !loading && (
-              <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">
+              <span className="text-[11px] font-semibold text-gray-400 bg-white border border-gray-100 px-2.5 py-1 rounded-md shadow-sm">
                 Page {currentPage} of {getTotalPages()}
               </span>
             )}
@@ -742,7 +961,7 @@ const AuditLogs: React.FC = () => {
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-10 h-10 border-2 border-gray-200 border-t-[#111] rounded-full al-spin" />
+              <div className="w-10 h-10 border-2 border-gray-200 border-t-[#6366F1] rounded-full al-spin" />
               <p className="text-[13px] text-gray-400">Loading audit logs…</p>
             </div>
           ) : logs.length === 0 ? (
@@ -754,9 +973,9 @@ const AuditLogs: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto al-table-scroll">
               <table className="w-full">
-                <thead className="bg-[#FAFAFA]">
+                <thead style={{ background: '#FAFBFF' }}>
                   <tr>
                     <th
                       className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] cursor-pointer select-none hover:text-gray-600 transition-colors"
@@ -771,25 +990,48 @@ const AuditLogs: React.FC = () => {
                     <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em]">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {logs.map((log, idx) => (
-                    <tr key={log.id || idx} onClick={() => setSelectedLog(log)} className="hover:bg-[#FAFAFA] transition-colors cursor-pointer">
-                      <td className="px-6 py-3 text-[13px] text-gray-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                            {formatValue(log.user_email)?.[0]?.toUpperCase() || '?'}
+                <tbody className="divide-y divide-gray-50">
+                  {logs.map((log, idx) => {
+                    const email = formatValue(log.user_email);
+                    const displayName = getDisplayName(email);
+                    const initial = (email !== '-' ? email[0] : '?').toUpperCase();
+                    // Pick avatar color — use email charcode + index so same-user rows still vary
+                    const avatarColors = [
+                      '#3B82F6', // blue
+                      '#10B981', // emerald
+                      '#F59E0B', // amber
+                      '#EF4444', // red
+                      '#8B5CF6', // violet
+                      '#EC4899', // pink
+                      '#0EA5E9', // sky
+                      '#14B8A6', // teal
+                      '#F97316', // orange
+                      '#6366F1', // indigo
+                    ];
+                    const avatarColor = avatarColors[((email.charCodeAt(0) || 0) + (email.charCodeAt(1) || 0)) % avatarColors.length];
+
+                    return (
+                      <tr key={log.id || idx} onClick={() => setSelectedLog(log)} className="al-table-row">
+                        <td className="px-6 py-3 text-[13px] text-gray-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="al-avatar flex-shrink-0" style={{ background: avatarColor }}>
+                              {initial}
+                            </div>
+                            <div>
+                              <div className="al-user-name">{displayName}</div>
+                              {/* email sub-line removed */}
+                            </div>
                           </div>
-                          <span className="text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.user_email)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.event_type || log.action)}</td>
-                      <td className="px-6 py-3">{severityBadge(log)}</td>
-                      <td className="px-6 py-3 text-[13px] text-gray-500 max-w-[280px] truncate" title={formatValue(log.details)}>
-                        {formatValue(log.details || log.description)}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-3 text-[13px] font-medium text-[#0A0A0A]">{formatValue(log.event_type || log.action)}</td>
+                        <td className="px-6 py-3">{severityBadge(log)}</td>
+                        <td className="px-6 py-3 text-[13px] text-gray-500 max-w-[280px] truncate" title={formatValue(log.details)}>
+                          {formatValue(log.details || log.description)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -797,17 +1039,17 @@ const AuditLogs: React.FC = () => {
 
           {/* Pagination */}
           {totalLogs > 0 && !loading && (
-            <div className="bg-[#FAFAFA] border-t border-gray-100 px-6 py-3 flex items-center justify-between">
+            <div className="border-t border-gray-100 px-6 py-3 flex items-center justify-between flex-wrap gap-3" style={{ background: '#FAFBFF' }}>
               <span className="text-[12.5px] text-gray-400">
                 Page {currentPage} of {getTotalPages()} · {totalLogs.toLocaleString()} total
               </span>
               <div className="flex gap-2">
                 <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
-                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed al-pagination-btn">
                   ← Previous
                 </button>
                 <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= getTotalPages()}
-                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-4 py-1.5 rounded-lg text-[13px] font-medium bg-[#111] text-white hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed al-pagination-btn">
                   Next →
                 </button>
               </div>
@@ -823,7 +1065,7 @@ const AuditLogs: React.FC = () => {
           onClick={() => { setSelectedLog(null); setCopied(false); }}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden al-modal-detail-inner"
             onClick={e => e.stopPropagation()}
           >
             {/* ── Header ── */}
@@ -1147,7 +1389,7 @@ const AuditLogs: React.FC = () => {
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setShowExportModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 al-modal-export-inner" onClick={e => e.stopPropagation()}>
             <h2 className="text-[20px] font-bold text-[#0A0A0A] mb-1">Export Audit Logs</h2>
             <p className="text-[13px] text-gray-500 mb-6">
               You have {getTotalPages()} pages of logs. What would you like to export?

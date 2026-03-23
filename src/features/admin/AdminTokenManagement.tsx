@@ -474,6 +474,281 @@ const STYLES = `
     .tm-actions { padding: 22px 24px 30px; }
     .tm-grid-2 { grid-template-columns: 1fr; gap: 22px; }
   }
+
+  /* ─── Extended breakpoints per responsive spec ───────────────────────────
+     Filling the gaps between existing breakpoints and adding QHD / 4K support.
+     All values scale proportionally from the 1920px baseline.
+     No JSX, no logic, no Tailwind classes were modified — CSS only.
+  ──────────────────────────────────────────────────────────────────────── */
+
+  /* Large tablet landscape: 768px–1023px
+     Structural shift: body goes full-width, actions stack-wrap, touch targets ≥44px,
+     breadcrumb hidden to save horizontal space, grid-2 collapses to 1 column. */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .tm-nav                   { padding: 0 20px; height: 52px; box-sizing: border-box; }
+    .tm-nav-left              { gap: 10px; }
+    .tm-nav-title             { font-size: 13px; }
+    .tm-nav-logo              { width: 27px; height: 27px; font-size: 11px; border-radius: 7px; }
+    .tm-back-btn              {
+      padding: 0 12px;
+      font-size: 12.5px;
+      border-radius: 7px;
+      min-height: 44px;
+      min-width: 44px;
+      box-sizing: border-box;
+    }
+    .tm-breadcrumb            { display: none; }
+    .tm-body                  { max-width: 100%; padding: 28px 20px 48px; box-sizing: border-box; }
+    .tm-header                { gap: 14px; margin-bottom: 20px; }
+    .tm-header-icon           { width: 44px; height: 44px; font-size: 18px; border-radius: 11px; }
+    .tm-header-text h1        { font-size: clamp(18px, 3.5vw, 22px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-text p         { font-size: 12.5px; }
+    .tm-card                  { border-radius: 14px; }
+    .tm-form                  { padding: 22px 20px 8px; gap: 16px; }
+    .tm-input, .tm-select     { padding: 10px 12px; font-size: 13px; border-radius: 9px; min-height: 44px; box-sizing: border-box; }
+    .tm-field                 { gap: 6px; }
+    .tm-field label           { font-size: 12.5px; min-height: 44px; align-items: center; }
+    .tm-hint                  { font-size: 11px; }
+    .tm-req                   { width: 5px; height: 5px; }
+    .tm-section-title         { font-size: 13px; margin: 12px 0 8px 0; }
+    .tm-keypair-actions       { padding: 14px 0; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tm-btn-action            { padding: 0 14px; font-size: 12px; border-radius: 8px; min-height: 44px; box-sizing: border-box; }
+    .tm-instructions-header   { padding: 16px 20px; }
+    .tm-instructions-header h2 { font-size: 13.5px; }
+    .tm-instructions-toggle   { width: 44px; height: 44px; font-size: 16px; border-radius: 8px; }
+    .tm-instructions-content  { padding: 16px 20px; font-size: 12.5px; }
+    .tm-instructions-content.collapsed { padding: 0 20px; }
+    .tm-grid-2                { grid-template-columns: 1fr; gap: 16px; }
+    .tm-actions               {
+      padding: 16px 20px 24px;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: stretch;
+    }
+    .tm-btn-reset,
+    .tm-btn-test,
+    .tm-btn-submit            {
+      padding: 0 16px;
+      font-size: 13px;
+      border-radius: 9px;
+      min-height: 44px;
+      flex: 1 1 auto;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .tm-toast                 { bottom: 16px; right: 16px; left: 16px; padding: 12px 16px; font-size: 12.5px; border-radius: 10px; }
+    .tm-jwks-modal            { width: calc(100vw - 32px); max-width: 100%; padding: 24px; border-radius: 14px; max-height: 90vh; }
+    .tm-confirmation-modal    { width: calc(100vw - 32px); max-width: 100%; padding: 24px; border-radius: 14px; max-height: 90vh; overflow-y: auto; }
+    .tm-confirmation-actions  { flex-wrap: wrap; }
+    .tm-confirmation-actions button { flex: 1 1 auto; min-height: 44px; }
+    .tm-jwks-actions          { flex-wrap: wrap; }
+    .tm-jwks-actions button   { flex: 1 1 auto; min-height: 44px; }
+  }
+
+  /* Small laptop: 1024px–1279px
+     Body constrained to 100% width with generous padding. Grid-2 collapses to 1 col
+     to give form fields enough breathing room. Actions wrap if needed. */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .tm-nav                   { padding: 0 28px; height: 58px; }
+    .tm-nav-left              { gap: 13px; }
+    .tm-nav-title             { font-size: 13.5px; }
+    .tm-nav-logo              { width: 29px; height: 29px; font-size: 12px; border-radius: 8px; }
+    .tm-back-btn              { padding: 7px 12px; font-size: 12.5px; border-radius: 8px; }
+    .tm-breadcrumb            { font-size: 12.5px; gap: 6px; }
+    .tm-body                  { max-width: 100%; padding: 38px 28px 60px; box-sizing: border-box; }
+    .tm-header                { gap: 16px; margin-bottom: 26px; }
+    .tm-header-icon           { width: 50px; height: 50px; font-size: 20px; border-radius: 13px; }
+    .tm-header-text h1        { font-size: clamp(20px, 2.8vw, 26px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-text p         { font-size: 13px; }
+    .tm-card                  { border-radius: 16px; }
+    .tm-form                  { padding: 30px 30px 8px; gap: 20px; }
+    .tm-input, .tm-select     { padding: 11px 14px; font-size: 13.5px; border-radius: 10px; }
+    .tm-field                 { gap: 7px; }
+    .tm-field label           { font-size: 13px; }
+    .tm-hint                  { font-size: 11.5px; }
+    .tm-section-title         { font-size: 13.5px; margin: 15px 0 11px 0; }
+    .tm-keypair-actions       { padding: 17px 0; gap: 9px; margin-bottom: 17px; }
+    .tm-btn-action            { padding: 8px 13px; font-size: 12.5px; border-radius: 9px; }
+    .tm-instructions-header   { padding: 20px 30px; }
+    .tm-instructions-header h2 { font-size: 14.5px; }
+    .tm-instructions-toggle   { width: 32px; height: 32px; font-size: 17px; border-radius: 7px; }
+    .tm-instructions-content  { padding: 20px 30px; font-size: 13px; }
+    .tm-instructions-content.collapsed { padding: 0 30px; }
+    .tm-grid-2                { grid-template-columns: 1fr; gap: 20px; }
+    .tm-actions               { padding: 20px 30px 28px; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
+    .tm-btn-reset             { padding: 10px 18px; font-size: 13.5px; border-radius: 10px; }
+    .tm-btn-submit            { padding: 10px 24px; font-size: 13.5px; border-radius: 10px; }
+    .tm-btn-test              { padding: 10px 24px; font-size: 13.5px; border-radius: 10px; }
+    .tm-toast                 { bottom: 20px; right: 20px; padding: 12px 18px; font-size: 13px; border-radius: 10px; }
+    .tm-jwks-modal            { max-width: 560px; padding: 28px; }
+    .tm-confirmation-modal    { max-width: 460px; padding: 28px; }
+  }
+
+  /* Medium laptop: 1280px–1439px
+     Container max-width 1100px per spec. Grid-2 kept as 2 cols — enough room.
+     Smooth scale between small laptop and large laptop. */
+  @media (min-width: 1280px) and (max-width: 1439px) {
+    .tm-nav                   { padding: 0 36px; height: 62px; }
+    .tm-body                  { max-width: 820px; padding: 48px 36px 68px; }
+    .tm-header                { gap: 19px; margin-bottom: 34px; }
+    .tm-header-icon           { width: 56px; height: 56px; font-size: 24px; border-radius: 15px; }
+    .tm-header-text h1        { font-size: clamp(26px, 2.5vw, 30px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-text p         { font-size: 13.5px; }
+    .tm-card                  { border-radius: 20px; }
+    .tm-form                  { padding: 38px 38px 8px; gap: 24px; }
+    .tm-input, .tm-select     { padding: 13px 16px; font-size: 14px; border-radius: 11px; }
+    .tm-field label           { font-size: 13px; }
+    .tm-section-title         { font-size: 14.5px; margin: 18px 0 14px 0; }
+    .tm-instructions-header   { padding: 24px 38px; }
+    .tm-instructions-header h2 { font-size: 15.5px; }
+    .tm-instructions-content  { padding: 24px 38px; font-size: 13.5px; }
+    .tm-instructions-content.collapsed { padding: 0 38px; }
+    .tm-actions               { padding: 24px 38px 32px; gap: 11px; }
+    .tm-btn-reset             { padding: 11px 22px; font-size: 13.5px; }
+    .tm-btn-submit            { padding: 11px 28px; font-size: 13.5px; }
+    .tm-btn-test              { padding: 11px 28px; font-size: 13.5px; }
+    .tm-btn-action            { padding: 9px 15px; font-size: 13px; }
+    .tm-nav-title             { font-size: 14.5px; }
+    .tm-breadcrumb            { font-size: 13px; }
+  }
+
+  /* Large laptop: 1440px–1919px
+     Smooth ramp toward 1920px baseline. Max-width 1280px per spec. */
+  @media (min-width: 1440px) and (max-width: 1919px) {
+    .tm-body                  { max-width: clamp(820px, 56vw, 900px); padding: clamp(48px, 4.5vw, 60px) clamp(36px, 3.5vw, 48px) clamp(68px, 6vw, 80px); }
+    .tm-nav                   { padding: 0 clamp(36px, 3.5vw, 48px); height: clamp(62px, 5vw, 68px); }
+    .tm-header-text h1        { font-size: clamp(30px, 2.4vw, 36px); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-icon           { width: clamp(56px, 4.5vw, 64px); height: clamp(56px, 4.5vw, 64px); font-size: clamp(24px, 2vw, 28px); }
+  }
+
+  /* QHD: 2560px–3839px
+     clamp() ceilings already hit at 1920px — everything stops growing.
+     Override explicitly so the layout feels intentionally spacious, not cramped. */
+  @media (min-width: 2560px) and (max-width: 3839px) {
+    .tm-nav                   { padding: 0 72px; height: 84px; }
+    .tm-nav-left              { gap: 20px; }
+    .tm-nav-title             { font-size: 18px; }
+    .tm-nav-logo              { width: 40px; height: 40px; font-size: 17px; border-radius: 11px; }
+    .tm-back-btn              { padding: 10px 20px; font-size: 16px; border-radius: 11px; }
+    .tm-breadcrumb            { font-size: 16px; gap: 10px; }
+    .tm-nav-divider           { height: 28px; }
+    .tm-body                  { max-width: 1200px; padding: 80px 72px 100px; }
+    .tm-header                { gap: 28px; margin-bottom: 52px; }
+    .tm-header-icon           { width: 80px; height: 80px; font-size: 36px; border-radius: 22px; }
+    .tm-header-text h1        { font-size: 48px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-text p         { font-size: 18px; }
+    .tm-card                  { border-radius: 28px; }
+    .tm-form                  { padding: 56px 56px 8px; gap: 36px; }
+    .tm-input, .tm-select     { padding: 18px 22px; font-size: 17px; border-radius: 14px; }
+    .tm-field                 { gap: 12px; }
+    .tm-field label           { font-size: 16px; }
+    .tm-hint                  { font-size: 14px; }
+    .tm-req                   { width: 8px; height: 8px; }
+    .tm-section-title         { font-size: 18px; margin: 28px 0 20px 0; }
+    .tm-keypair-actions       { padding: 26px 0; gap: 14px; margin-bottom: 26px; }
+    .tm-btn-action            { padding: 12px 20px; font-size: 15px; border-radius: 12px; }
+    .tm-instructions-header   { padding: 36px 56px; }
+    .tm-instructions-header h2 { font-size: 20px; }
+    .tm-instructions-toggle   { width: 46px; height: 46px; font-size: 26px; border-radius: 10px; }
+    .tm-instructions-content  { padding: 36px 56px; font-size: 16px; }
+    .tm-instructions-content.collapsed { padding: 0 56px; }
+    .tm-grid-2                { gap: 36px; }
+    .tm-actions               { padding: 36px 56px 48px; gap: 16px; }
+    .tm-btn-reset             { padding: 15px 30px; font-size: 16px; border-radius: 13px; }
+    .tm-btn-submit            { padding: 15px 40px; font-size: 16px; border-radius: 13px; }
+    .tm-btn-test              { padding: 15px 40px; font-size: 16px; border-radius: 13px; }
+    .tm-toast                 { bottom: 40px; right: 40px; padding: 18px 28px; font-size: 16px; border-radius: 16px; }
+    .tm-jwks-modal            { max-width: 800px; padding: 44px; border-radius: 24px; }
+    .tm-jwks-header h3        { font-size: 22px; }
+    .tm-jwks-header p         { font-size: 16px; }
+    .tm-jwks-content          { font-size: 15px; padding: 20px; }
+    .tm-jwks-actions button   { padding: 13px 26px; font-size: 16px; border-radius: 12px; }
+    .tm-confirmation-modal    { max-width: 680px; padding: 44px; border-radius: 24px; }
+    .tm-confirmation-header h3 { font-size: 22px; }
+    .tm-confirmation-content p { font-size: 16px; }
+    .tm-confirmation-actions button { padding: 13px 26px; font-size: 16px; border-radius: 12px; }
+  }
+
+  /* 4K and ultrawide: 3840px+
+     Maximum layout expansion — intentionally generous spacing and type scale. */
+  @media (min-width: 3840px) {
+    .tm-nav                   { padding: 0 96px; height: 104px; }
+    .tm-nav-left              { gap: 26px; }
+    .tm-nav-title             { font-size: 22px; }
+    .tm-nav-logo              { width: 50px; height: 50px; font-size: 21px; border-radius: 13px; }
+    .tm-back-btn              { padding: 13px 26px; font-size: 19px; border-radius: 13px; }
+    .tm-breadcrumb            { font-size: 19px; gap: 12px; }
+    .tm-nav-divider           { height: 34px; }
+    .tm-body                  { max-width: 1600px; padding: 100px 96px 120px; }
+    .tm-header                { gap: 36px; margin-bottom: 64px; }
+    .tm-header-icon           { width: 100px; height: 100px; font-size: 46px; border-radius: 28px; }
+    .tm-header-text h1        { font-size: 62px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .tm-header-text p         { font-size: 22px; }
+    .tm-card                  { border-radius: 36px; }
+    .tm-form                  { padding: 72px 72px 8px; gap: 46px; }
+    .tm-input, .tm-select     { padding: 22px 28px; font-size: 20px; border-radius: 18px; }
+    .tm-field                 { gap: 15px; }
+    .tm-field label           { font-size: 19px; }
+    .tm-hint                  { font-size: 16px; }
+    .tm-req                   { width: 10px; height: 10px; }
+    .tm-section-title         { font-size: 22px; margin: 36px 0 26px 0; }
+    .tm-keypair-actions       { padding: 34px 0; gap: 18px; margin-bottom: 34px; }
+    .tm-btn-action            { padding: 16px 26px; font-size: 18px; border-radius: 14px; }
+    .tm-instructions-header   { padding: 46px 72px; }
+    .tm-instructions-header h2 { font-size: 24px; }
+    .tm-instructions-toggle   { width: 58px; height: 58px; font-size: 32px; border-radius: 13px; }
+    .tm-instructions-content  { padding: 46px 72px; font-size: 19px; }
+    .tm-instructions-content.collapsed { padding: 0 72px; }
+    .tm-grid-2                { gap: 46px; }
+    .tm-actions               { padding: 46px 72px 62px; gap: 20px; }
+    .tm-btn-reset             { padding: 19px 38px; font-size: 19px; border-radius: 16px; }
+    .tm-btn-submit            { padding: 19px 52px; font-size: 19px; border-radius: 16px; }
+    .tm-btn-test              { padding: 19px 52px; font-size: 19px; border-radius: 16px; }
+    .tm-toast                 { bottom: 52px; right: 52px; padding: 22px 36px; font-size: 19px; border-radius: 20px; }
+    .tm-jwks-modal            { max-width: 1100px; padding: 56px; border-radius: 30px; }
+    .tm-jwks-header h3        { font-size: 28px; }
+    .tm-jwks-header p         { font-size: 19px; }
+    .tm-jwks-content          { font-size: 18px; padding: 26px; }
+    .tm-jwks-actions button   { padding: 17px 34px; font-size: 19px; border-radius: 14px; }
+    .tm-confirmation-modal    { max-width: 860px; padding: 56px; border-radius: 30px; }
+    .tm-confirmation-header h3 { font-size: 28px; }
+    .tm-confirmation-content p { font-size: 19px; }
+    .tm-confirmation-actions button { padding: 17px 34px; font-size: 19px; border-radius: 14px; }
+  }
+
+  /* ─── Global safety rules — apply at all breakpoints ──────────────────── */
+
+  /* Box-sizing safety on all tm- elements */
+  .tm-card, .tm-form, .tm-body, .tm-nav,
+  .tm-btn-reset, .tm-btn-submit, .tm-btn-test, .tm-btn-action {
+    box-sizing: border-box;
+  }
+
+  /* Prevent long unbreakable strings (URLs, tokens, secrets) from blowing out inputs */
+  .tm-input, .tm-jwks-content {
+    overflow-wrap: break-word;
+    word-break: break-all;
+  }
+
+  /* Unitless line-height on all text so it scales with font-size at every breakpoint */
+  .tm-header-text h1        { line-height: 1.15; }
+  .tm-header-text p         { line-height: 1.5; }
+  .tm-hint                  { line-height: 1.4; }
+  .tm-field label           { line-height: 1.4; }
+  .tm-section-title         { line-height: 1.3; }
+  .tm-confirmation-content p,
+  .tm-jwks-header p         { line-height: 1.6; }
+
+  /* Min-width: 0 on flex/grid children that truncate text */
+  .tm-header-text           { min-width: 0; }
+  .tm-breadcrumb            { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* Modals: always max-height capped so they never overflow viewport */
+  .tm-jwks-modal,
+  .tm-confirmation-modal    { max-height: 90vh; overflow-y: auto; }
+
+  /* Toast: prevent overflow on very narrow viewports */
+  .tm-toast                 { max-width: calc(100vw - 32px); box-sizing: border-box; }
 `;
 
 const EyeIcon = ({ open }: { open: boolean }) => open ? (

@@ -549,83 +549,291 @@ const AdminLoginForm: React.FC = () => {
 
         .adm-input::placeholder { opacity: 1; }
 
-        /* ─── Responsive card sizing ───
-           Baseline: 1920×1080 → card width 420px, logo h-32, heading text-2xl, px-7, py-6
-           Below 1920 wide (large desktops / hi-res): scale down proportionally
-           Laptop range (768px–1365px / mac 13–15"): compact but fully usable
-           Medium desktops (1366px–1599px): slight reduction
-           Large desktops (1600px–1919px): near-baseline
-           1920px+: exact baseline (420px card, all original sizes)
-        ─────────────────────────────── */
+        /* ══════════════════════════════════════════════════════════════════
+           GLOBAL GUARDS
+           box-sizing, font-smoothing, image fluidity
+        ══════════════════════════════════════════════════════════════════ */
 
-        /* 1920px+ — exact baseline, no changes */
-        @media (min-width: 1920px) {
-          .adm-card-wrap { width: 420px !important; }
-          .adm-logo-img  { height: 8rem !important; } /* h-32 */
-          .adm-heading   { font-size: 1.5rem !important; } /* text-2xl */
-          .adm-sub       { font-size: 0.75rem !important; margin-bottom: 1.5rem !important; }
-          .adm-px        { padding-left: 1.75rem !important; padding-right: 1.75rem !important; } /* px-7 */
-          .adm-pt        { padding-top: 1.5rem !important; } /* pt-6 */
-          .adm-pb        { padding-bottom: 1.5rem !important; } /* pb-6 */
-          .adm-label     { font-size: 0.875rem !important; }
-          .adm-input-el  { padding: 0.5rem 0.75rem !important; font-size: 0.8125rem !important; }
-          .adm-btn-el    { height: 2.5rem !important; font-size: 0.875rem !important; }
-          .adm-footer    { font-size: 0.75rem !important; margin-top: 1.5rem !important; }
-          .adm-toggle-btn { font-size: 13px !important; padding: 0.5rem 0.75rem !important; }
-          .adm-top-right { top: 1.5rem !important; right: 1.5rem !important; }
+        .adm-root *, .adm-root *::before, .adm-root *::after {
+          box-sizing: border-box;
         }
 
-        /* 1600px–1919px — near baseline */
-        @media (min-width: 1600px) and (max-width: 1919px) {
-          .adm-card-wrap { width: 400px !important; }
-          .adm-logo-img  { height: 7rem !important; }
-          .adm-heading   { font-size: 1.375rem !important; }
-          .adm-sub       { font-size: 0.7rem !important; margin-bottom: 1.35rem !important; }
-          .adm-px        { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
-          .adm-pt        { padding-top: 1.35rem !important; }
-          .adm-pb        { padding-bottom: 1.35rem !important; }
-          .adm-label     { font-size: 0.8125rem !important; }
-          .adm-input-el  { padding: 0.45rem 0.7rem !important; font-size: 0.8rem !important; }
-          .adm-btn-el    { height: 2.4rem !important; font-size: 0.8125rem !important; }
-          .adm-footer    { font-size: 0.7rem !important; margin-top: 1.35rem !important; }
-          .adm-toggle-btn { font-size: 12px !important; padding: 0.45rem 0.7rem !important; }
-          .adm-top-right { top: 1.35rem !important; right: 1.35rem !important; }
+        /* Font smoothing on headings — matters at QHD/4K */
+        .adm-root .adm-heading {
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
 
-        /* 1366px–1599px — medium desktops */
-        @media (min-width: 1366px) and (max-width: 1599px) {
-          .adm-card-wrap { width: 380px !important; }
-          .adm-logo-img  { height: 6rem !important; }
-          .adm-heading   { font-size: 1.25rem !important; }
-          .adm-sub       { font-size: 0.6875rem !important; margin-bottom: 1.25rem !important; }
-          .adm-px        { padding-left: 1.35rem !important; padding-right: 1.35rem !important; }
-          .adm-pt        { padding-top: 1.25rem !important; }
-          .adm-pb        { padding-bottom: 1.25rem !important; }
-          .adm-label     { font-size: 0.8125rem !important; }
-          .adm-input-el  { padding: 0.425rem 0.65rem !important; font-size: 0.78rem !important; }
-          .adm-btn-el    { height: 2.3rem !important; font-size: 0.8rem !important; }
-          .adm-footer    { font-size: 0.68rem !important; margin-top: 1.25rem !important; }
-          .adm-toggle-btn { font-size: 12px !important; padding: 0.425rem 0.65rem !important; }
-          .adm-top-right { top: 1.25rem !important; right: 1.25rem !important; }
+        /* Logo image: never overflow its container */
+        .adm-root .adm-logo-img {
+          max-width: 100%;
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
         }
 
-        /* 768px–1365px — laptops (including MacBooks 13"/14"/15") */
-        @media (min-width: 768px) and (max-width: 1365px) {
-          .adm-card-wrap { width: min(360px, calc(100vw - 48px)) !important; }
-          .adm-logo-img  { height: 5.5rem !important; }
-          .adm-heading   { font-size: 1.125rem !important; }
-          .adm-sub       { font-size: 0.6625rem !important; margin-bottom: 1.1rem !important; }
-          .adm-px        { padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
-          .adm-pt        { padding-top: 1.1rem !important; }
-          .adm-pb        { padding-bottom: 1.1rem !important; }
-          .adm-label     { font-size: 0.775rem !important; }
-          .adm-input-el  { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
-          .adm-btn-el    { height: 2.2rem !important; font-size: 0.775rem !important; }
-          .adm-footer    { font-size: 0.65rem !important; margin-top: 1rem !important; }
-          .adm-toggle-btn { font-size: 11px !important; padding: 0.4rem 0.6rem !important; }
-          .adm-top-right { top: 1rem !important; right: 1rem !important; }
-          /* Tighten internal card spacing on laptops */
+        /* Error text: break long strings so they don't blow out the card */
+        .adm-root .adm-shake {
+          overflow-wrap: break-word;
+          word-break: break-word;
+        }
+
+        /* Touch targets on interactive elements */
+        .adm-root .adm-btn-el {
+          min-height: 40px;
+        }
+
+        /* Unitless line-heights so they scale with font size */
+        .adm-root .adm-heading { line-height: 1.25; }
+        .adm-root .adm-sub     { line-height: 1.5;  }
+        .adm-root .adm-footer  { line-height: 1.6;  }
+
+        /* ══════════════════════════════════════════════════════════════════
+           CARD WRAP — fluid width via clamp()
+           Scales from 320px (tablet) → 420px (1920px baseline)
+           Uses min() to ensure it never overflows tight viewports
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-card-wrap {
+          width: clamp(320px, 26vw, 420px) !important;
+          max-width: calc(100vw - 48px) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           LOGO HEIGHT — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-logo-img {
+          height: clamp(5rem, 7vw, 8rem) !important;
+          width: auto !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           HEADING — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-heading {
+          font-size: clamp(1.125rem, 1.5vw, 1.5rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           SUBTITLE — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-sub {
+          font-size: clamp(0.6625rem, 0.75vw, 0.75rem) !important;
+          margin-bottom: clamp(1rem, 1.2vw, 1.5rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           HORIZONTAL PADDING — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-px {
+          padding-left:  clamp(1rem, 1.5vw, 1.75rem) !important;
+          padding-right: clamp(1rem, 1.5vw, 1.75rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           VERTICAL PADDING — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-pt {
+          padding-top: clamp(1rem, 1.2vw, 1.5rem) !important;
+        }
+        .adm-pb {
+          padding-bottom: clamp(1rem, 1.2vw, 1.5rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           LABEL — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-label {
+          font-size: clamp(0.75rem, 0.85vw, 0.875rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           INPUT — fluid padding and font
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-input-el {
+          padding:   clamp(0.4rem, 0.5vw, 0.5rem) clamp(0.6rem, 0.7vw, 0.75rem) !important;
+          font-size: clamp(0.75rem, 0.85vw, 0.8125rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BUTTON — fluid height and font
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-btn-el {
+          height:    clamp(2.2rem, 2.5vw, 2.5rem) !important;
+          font-size: clamp(0.775rem, 0.85vw, 0.875rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           FOOTER — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-footer {
+          font-size:  clamp(0.625rem, 0.7vw, 0.75rem) !important;
+          margin-top: clamp(1rem, 1.2vw, 1.5rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           TOGGLE BUTTON (← Login + theme) — fluid
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-toggle-btn {
+          font-size:     clamp(11px, 0.8vw, 13px) !important;
+          padding:       clamp(0.4rem, 0.5vw, 0.5rem) clamp(0.6rem, 0.7vw, 0.75rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           TOP-RIGHT POSITION — fluid offset from edge
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-top-right {
+          top:   clamp(1rem, 1.2vw, 1.5rem) !important;
+          right: clamp(1rem, 1.2vw, 1.5rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           FORM SPACING — fluid gap between fields
+        ══════════════════════════════════════════════════════════════════ */
+        .adm-space-y > * + * {
+          margin-top: clamp(0.65rem, 0.85vw, 1rem) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Large tablet 768–1023px
+           Card must use nearly full width; touch targets 44px min
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .adm-card-wrap   { width: min(380px, calc(100vw - 48px)) !important; }
+          .adm-logo-img    { height: 5.5rem !important; }
+          .adm-heading     { font-size: 1.125rem !important; }
+          .adm-sub         { font-size: 0.6625rem !important; margin-bottom: 1rem !important; }
+          .adm-px          { padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
+          .adm-pt          { padding-top: 1.1rem !important; }
+          .adm-pb          { padding-bottom: 1.1rem !important; }
+          .adm-label       { font-size: 0.775rem !important; }
+          .adm-input-el    { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
+          .adm-btn-el      { height: 2.75rem !important; font-size: 0.775rem !important; min-height: 44px !important; }
+          .adm-footer      { font-size: 0.625rem !important; margin-top: 1rem !important; }
+          .adm-toggle-btn  { font-size: 11px !important; padding: 0.4rem 0.6rem !important; min-height: 44px !important; }
+          .adm-top-right   { top: 1rem !important; right: 1rem !important; }
+          .adm-space-y > * + * { margin-top: 0.7rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Small laptop 1024–1279px (MacBook 13")
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .adm-card-wrap   { width: min(360px, calc(100vw - 48px)) !important; }
+          .adm-logo-img    { height: 5.5rem !important; }
+          .adm-heading     { font-size: 1.125rem !important; }
+          .adm-sub         { font-size: 0.6625rem !important; margin-bottom: 1.1rem !important; }
+          .adm-px          { padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
+          .adm-pt          { padding-top: 1.1rem !important; }
+          .adm-pb          { padding-bottom: 1.1rem !important; }
+          .adm-label       { font-size: 0.775rem !important; }
+          .adm-input-el    { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
+          .adm-btn-el      { height: 2.2rem !important; font-size: 0.775rem !important; }
+          .adm-footer      { font-size: 0.65rem !important; margin-top: 1rem !important; }
+          .adm-toggle-btn  { font-size: 11px !important; padding: 0.4rem 0.6rem !important; }
+          .adm-top-right   { top: 1rem !important; right: 1rem !important; }
           .adm-space-y > * + * { margin-top: 0.75rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Medium laptop 1280–1439px (MacBook 14/15", 1366px)
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 1280px) and (max-width: 1439px) {
+          .adm-card-wrap   { width: 380px !important; }
+          .adm-logo-img    { height: 6rem !important; }
+          .adm-heading     { font-size: 1.25rem !important; }
+          .adm-sub         { font-size: 0.6875rem !important; margin-bottom: 1.25rem !important; }
+          .adm-px          { padding-left: 1.35rem !important; padding-right: 1.35rem !important; }
+          .adm-pt          { padding-top: 1.25rem !important; }
+          .adm-pb          { padding-bottom: 1.25rem !important; }
+          .adm-label       { font-size: 0.8125rem !important; }
+          .adm-input-el    { padding: 0.425rem 0.65rem !important; font-size: 0.78rem !important; }
+          .adm-btn-el      { height: 2.3rem !important; font-size: 0.8rem !important; }
+          .adm-footer      { font-size: 0.68rem !important; margin-top: 1.25rem !important; }
+          .adm-toggle-btn  { font-size: 12px !important; padding: 0.425rem 0.65rem !important; }
+          .adm-top-right   { top: 1.25rem !important; right: 1.25rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: Large laptop 1440–1919px (MacBook 15/16", 1440p)
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 1440px) and (max-width: 1919px) {
+          .adm-card-wrap   { width: 400px !important; }
+          .adm-logo-img    { height: 7rem !important; }
+          .adm-heading     { font-size: 1.375rem !important; }
+          .adm-sub         { font-size: 0.7rem !important; margin-bottom: 1.35rem !important; }
+          .adm-px          { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+          .adm-pt          { padding-top: 1.35rem !important; }
+          .adm-pb          { padding-bottom: 1.35rem !important; }
+          .adm-label       { font-size: 0.8125rem !important; }
+          .adm-input-el    { padding: 0.45rem 0.7rem !important; font-size: 0.8rem !important; }
+          .adm-btn-el      { height: 2.4rem !important; font-size: 0.8125rem !important; }
+          .adm-footer      { font-size: 0.7rem !important; margin-top: 1.35rem !important; }
+          .adm-toggle-btn  { font-size: 12px !important; padding: 0.45rem 0.7rem !important; }
+          .adm-top-right   { top: 1.35rem !important; right: 1.35rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: 1920px BASELINE LOCK
+           Pixel-perfect match to original — nothing changes here
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 1920px) and (max-width: 2559px) {
+          .adm-card-wrap   { width: 420px !important; }
+          .adm-logo-img    { height: 8rem !important; }
+          .adm-heading     { font-size: 1.5rem !important; }
+          .adm-sub         { font-size: 0.75rem !important; margin-bottom: 1.5rem !important; }
+          .adm-px          { padding-left: 1.75rem !important; padding-right: 1.75rem !important; }
+          .adm-pt          { padding-top: 1.5rem !important; }
+          .adm-pb          { padding-bottom: 1.5rem !important; }
+          .adm-label       { font-size: 0.875rem !important; }
+          .adm-input-el    { padding: 0.5rem 0.75rem !important; font-size: 0.8125rem !important; }
+          .adm-btn-el      { height: 2.5rem !important; font-size: 0.875rem !important; }
+          .adm-footer      { font-size: 0.75rem !important; margin-top: 1.5rem !important; }
+          .adm-toggle-btn  { font-size: 13px !important; padding: 0.5rem 0.75rem !important; }
+          .adm-top-right   { top: 1.5rem !important; right: 1.5rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: QHD 2560–3839px
+           clamp() values all hit ceiling at 1920px — must explicitly expand.
+           Card grows proportionally so it doesn't feel tiny on a large screen.
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 2560px) and (max-width: 3839px) {
+          .adm-card-wrap   { width: 520px !important; }
+          .adm-logo-img    { height: 10rem !important; }
+          .adm-heading     { font-size: 1.875rem !important; }
+          .adm-sub         { font-size: 0.9rem !important; margin-bottom: 1.75rem !important; }
+          .adm-px          { padding-left: 2.25rem !important; padding-right: 2.25rem !important; }
+          .adm-pt          { padding-top: 1.875rem !important; }
+          .adm-pb          { padding-bottom: 1.875rem !important; }
+          .adm-label       { font-size: 1rem !important; }
+          .adm-input-el    { padding: 0.65rem 0.95rem !important; font-size: 1rem !important; }
+          .adm-btn-el      { height: 3.1rem !important; font-size: 1.05rem !important; }
+          .adm-footer      { font-size: 0.9rem !important; margin-top: 1.875rem !important; }
+          .adm-toggle-btn  { font-size: 15px !important; padding: 0.6rem 0.95rem !important; }
+          .adm-top-right   { top: 2rem !important; right: 2rem !important; }
+          .adm-space-y > * + * { margin-top: 1.1rem !important; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BREAKPOINT: 4K / Ultrawide 3840px+
+           Intentionally larger — card feels designed for the display,
+           not a tiny login box floating in a sea of background.
+        ══════════════════════════════════════════════════════════════════ */
+        @media (min-width: 3840px) {
+          .adm-card-wrap   { width: 680px !important; }
+          .adm-logo-img    { height: 13rem !important; }
+          .adm-heading     { font-size: 2.5rem !important; }
+          .adm-sub         { font-size: 1.125rem !important; margin-bottom: 2.25rem !important; }
+          .adm-px          { padding-left: 3rem !important; padding-right: 3rem !important; }
+          .adm-pt          { padding-top: 2.5rem !important; }
+          .adm-pb          { padding-bottom: 2.5rem !important; }
+          .adm-label       { font-size: 1.25rem !important; }
+          .adm-input-el    { padding: 0.875rem 1.25rem !important; font-size: 1.25rem !important; }
+          .adm-btn-el      { height: 4rem !important; font-size: 1.375rem !important; }
+          .adm-footer      { font-size: 1.125rem !important; margin-top: 2.5rem !important; }
+          .adm-toggle-btn  { font-size: 18px !important; padding: 0.75rem 1.25rem !important; }
+          .adm-top-right   { top: 2.5rem !important; right: 2.5rem !important; }
+          .adm-space-y > * + * { margin-top: 1.5rem !important; }
         }
       `}</style>
 
