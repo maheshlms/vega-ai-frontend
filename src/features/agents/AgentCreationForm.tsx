@@ -1162,16 +1162,24 @@ const AgentCreationForm: React.FC = () => {
 
                 {/* 2. Agent Name */}
                 <div>
-                  <label className="acf-label">Agent Name <span className="text-red-500">*</span></label>
+                  <label className="acf-label">
+                    <span className="inline-flex items-center gap-1">
+                      Agent Name <span className="text-red-500 ml-1">*</span>
+                      <span className="relative group/hint ml-1 inline-flex items-center">
+                        <button type="button" className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors" tabIndex={-1} aria-label="Taken from your avatar — change it anytime">i</button>
+                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+                          Taken from your avatar — change it anytime
+                          <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+                        </span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="text" name="agentName" value={formData.agentName}
                     onChange={handleInputChange} required
                     placeholder={selectedAvatarObj ? `${selectedAvatarObj.name} Agent` : 'Select an avatar to auto-fill…'}
                     className="acf-input"
                   />
-                  <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
-                    <span>💡</span><span>Taken from your avatar — change it anytime</span>
-                  </p>
                 </div>
 
                 {/* 3. Environment — custom dropdown (replaces native <select>) */}
@@ -1227,27 +1235,43 @@ const AgentCreationForm: React.FC = () => {
                 {/* 5. Notification Window */}
                 {agentTypeId !== 'connection' && (
                   <div>
-                    <label className="acf-label">Notification Window (days) <span className="text-red-500">*</span></label>
+                    <label className="acf-label">
+                      <span className="inline-flex items-center gap-1">
+                        Notification Window (days) <span className="text-red-500 ml-1">*</span>
+                        <span className="relative group/hint ml-1 inline-flex items-center">
+                          <button type="button" className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors" tabIndex={-1} aria-label="Days before license expiry to start alerting">i</button>
+                          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+                            Days before license expiry to start alerting
+                            <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+                          </span>
+                        </span>
+                      </span>
+                    </label>
                     <input
                       type="number" name="notificationWindow" value={formData.notificationWindow}
                       onChange={handleInputChange} min="1" max="365" required className="acf-input"
                     />
-                    <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
-                      <span>💡</span><span>Days before license expiry to start alerting</span>
-                    </p>
                   </div>
                 )}
 
                 {/* 6. Notification Channel */}
                 <div>
-                  <label className="acf-label">Notification Channel</label>
+                  <label className="acf-label">
+                    <span className="inline-flex items-center gap-1">
+                      Notification Channel
+                      <span className="relative group/hint ml-1 inline-flex items-center">
+                        <button type="button" className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors" tabIndex={-1} aria-label={`Alerts go to: ${formData.slackChannel}`}>i</button>
+                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+                          Alerts go to: {formData.slackChannel}
+                          <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+                        </span>
+                      </span>
+                    </span>
+                  </label>
                   <div className="relative">
                     <input type="text" value="Slack" readOnly className="acf-input pr-10" />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-lg">💬</div>
                   </div>
-                  <p className="text-[11.5px] text-gray-400 mt-1.5 flex items-center gap-1">
-                    <span>💡</span><span>Alerts go to: {formData.slackChannel}</span>
-                  </p>
                 </div>
 
                 {/* Actions */}

@@ -158,7 +158,7 @@ const INTEGRATION_DEFAULTS: Record<string, IntegrationDefaults> = {
     },
   },
   PingDirectory: {
-    port: 1443,
+    port: 0,
     defaultAuthMethod: 'AssertionJwtExchange',
     allowedAuthMethods: ['AssertionJwtExchange', 'BearerToken', 'BasicAuth'],
     placeholders: {
@@ -300,13 +300,6 @@ const SecureNote = () => (
   </p>
 );
 
-const Hint = ({ text }: { text: string }) => (
-  <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
-    <span>💡</span>
-    <span>{text}</span>
-  </p>
-);
-
 interface FieldProps {
   label: string;
   required?: boolean;
@@ -318,12 +311,29 @@ interface FieldProps {
 const Field = ({ label, required, hint, subLabel, children }: FieldProps) => (
   <div className="group">
     <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
-      {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
-      {subLabel && <span className="tsf-sublabel text-gray-500 ml-2 font-normal">{subLabel}</span>}
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+        {subLabel && <span className="tsf-sublabel text-gray-500 ml-2 font-normal">{subLabel}</span>}
+        {hint && (
+          <span className="relative group/hint ml-1 inline-flex items-center">
+            <button
+              type="button"
+              className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors"
+              tabIndex={-1}
+              aria-label={hint}
+            >
+              i
+            </button>
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+              {hint}
+              <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+            </span>
+          </span>
+        )}
+      </span>
     </label>
     {children}
-    {hint && <Hint text={hint} />}
   </div>
 );
 
@@ -558,7 +568,7 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         [name]: isCheckbox
           ? checked
           : (name === 'port' || name === 'engine_port' || name === 'ldaps_port')
-            ? (value === '' ? prev[name as keyof FormData] : (parseInt(value) || prev[name as keyof FormData]))
+            ? (value === '' ? 0 : (parseInt(value) || prev[name as keyof FormData]))
             : value,
       };
 
@@ -774,10 +784,10 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
         return mapping[method] || method.toLowerCase().replace(/\s+/g, '_');
       };
 
-      // For directory types build HTTPS admin URL (REST API runs on port 1443)
+      // For directory types build HTTPS admin URL using the user-specified port
       let base_url: string;
       if (isDirectory(formData.type)) {
-        base_url = `https://${formData.ldap_host}:1443`;
+        base_url = `https://${formData.ldap_host}:${formData.port}`;
       } else {
         const protocol = (formData.host.startsWith('https://') || formData.host.startsWith('http://')) ? '' : 'https://';
         const cleanHost = formData.host.replace(/^https?:\/\//, '');
@@ -1339,6 +1349,24 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
             />
           </Field>
 
+          {/* ── Port ── */}
+          <Field
+            label="Port"
+            required
+            hint="REST Admin API port (commonly 1443 or 8443)"
+          >
+            <input
+              type="text"
+              inputMode="numeric"
+              name="port"
+              value={formData.port || ''}
+              onChange={handleChange}
+              placeholder="1443"
+              required
+              className={inputCls}
+            />
+          </Field>
+
           {/* ── Base DN ── */}
           <Field
             label="Base DN"
@@ -1634,7 +1662,23 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                 {/* Authentication Method - Dropdown */}
                 <div className="group">
                   <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
-                    Authentication Method <span className="text-red-500">*</span>
+                    <span className="inline-flex items-center gap-1">
+                      Authentication Method <span className="text-red-500 ml-1">*</span>
+                      <span className="relative group/hint ml-1 inline-flex items-center">
+                        <button
+                          type="button"
+                          className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors"
+                          tabIndex={-1}
+                          aria-label="Choose the authentication method for your system"
+                        >
+                          i
+                        </button>
+                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+                          Choose the authentication method for your system
+                          <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+                        </span>
+                      </span>
+                    </span>
                   </label>
                   <select
                     name="auth_method"
@@ -1649,17 +1693,29 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
-                    <span>💡</span>
-                    <span>Choose the authentication method for your system</span>
-                  </p>
                 </div>
 
                 {/* Engine Port - Only for PingFederate + BearerToken */}
                 {isPingFederate(formData.type) && formData.auth_method === 'BearerToken' && (
                   <div className="group">
                     <label className="tsf-field-label block font-semibold text-gray-900 mb-2">
-                      Engine Port
+                      <span className="inline-flex items-center gap-1">
+                        Engine Port
+                        <span className="relative group/hint ml-1 inline-flex items-center">
+                          <button
+                            type="button"
+                            className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors"
+                            tabIndex={-1}
+                            aria-label="Engine port for PingFederate admin API (default: 9031)"
+                          >
+                            i
+                          </button>
+                          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
+                            Engine port for PingFederate admin API (default: 9031)
+                            <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
+                          </span>
+                        </span>
+                      </span>
                     </label>
                     <input
                       type="text"
@@ -1671,10 +1727,6 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                       placeholder="9031"
                       className="w-full tsf-input-p tsf-input-fs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400 bg-white transition-colors hover:border-gray-300"
                     />
-                    <p className="tsf-hint-text text-gray-500 mt-2 flex items-center gap-1">
-                      <span>💡</span>
-                      <span>Engine port for PingFederate admin API (default: 9031)</span>
-                    </p>
                   </div>
                 )}
 
@@ -1708,14 +1760,11 @@ const TargetSystemForm: React.FC<TargetSystemFormProps> = ({
                   </Field>
                 )}
 
-                {/* ── Per-integration extra fields (between Port and Auth) — skip for directory ── */}
-                {!isDirectory(formData.type) && renderTypeSpecificFields()}
+                {/* ── Per-integration extra fields (between Port and Auth) ── */}
+                {renderTypeSpecificFields()}
 
                 {/* ── Auth credential fields ── */}
                 {renderAuthFields()}
-
-                {/* ── Directory connection fields (rendered after auth for proper ordering) ── */}
-                {isDirectory(formData.type) && renderTypeSpecificFields()}
 
                 {/* ── Description ── */}
                 <Field label="Description" hint="Optional notes or documentation about this system">
