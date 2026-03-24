@@ -513,6 +513,7 @@ interface Agent {
   softDeleted: boolean;
   avatarUrl?: string;
   avatarId?: string;
+  integrationType?: string;
 }
 
 interface RemoteAgent {
@@ -522,7 +523,7 @@ interface RemoteAgent {
   type: string;
   status?: string;
   permission?: string;
-  config?: { environment?: string; selectedAvatarImg?: string; selectedAvatarId?: string; selectedAvatarName?: string; };
+  config?: { environment?: string; selectedAvatarImg?: string; selectedAvatarId?: string; selectedAvatarName?: string; integrationType?: string; };
   checkInterval?: number;
   lastActivity?: string;
   created_by?: string;
@@ -1156,8 +1157,11 @@ const AgentDistributionCard: React.FC<AgentDistributionCardProps> = ({ agents, t
   const productGroups: ProductGroup[] = React.useMemo(() => {
     const buckets: ProductGroup[] = PRODUCT_REGISTRY.map(p => ({ ...p, agents: [], envStats: {}, typeStats: {} }));
     agents.forEach(agent => {
+      const integrationKey = (agent.integrationType || '').toLowerCase().replace(/[-_\s]/g, '');
       const haystack = `${agent.name} ${agent.type}`.toLowerCase();
-      const matched = buckets.filter(b => haystack.includes(b.key)).sort((a, b) => b.key.length - a.key.length)[0];
+      const matched =
+        buckets.find(b => integrationKey === b.key) ??
+        buckets.filter(b => haystack.includes(b.key)).sort((a, b) => b.key.length - a.key.length)[0];
       const target = matched ?? buckets[0];
       target.agents.push(agent);
       const env = agent.environment || 'Unknown';
@@ -1429,6 +1433,7 @@ const AdminAgentControl: React.FC = () => {
         softDeleted: agent.soft_deleted || false,
         avatarUrl: agent.avatar_url || agent.config?.selectedAvatarImg,
         avatarId: agent.config?.selectedAvatarId,
+        integrationType: agent.config?.integrationType,
       }));
       setAgents(normalized);
     } catch {
