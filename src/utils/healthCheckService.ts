@@ -19,6 +19,14 @@
  *    timestamp and resumes from the correct remaining time rather than always
  *    restarting from 300s. If the saved interval has already elapsed while the
  *    page was closed, a check is triggered immediately on load.
+ *
+ * ── FIX: _results is now cleared to [] immediately after being dispatched to
+ *    subscribers. Previously _results was never reset, so every subsequent
+ *    notify() call (fired every second by the countdown ticker) re-sent the
+ *    same stale results array. This caused the subscriber in TargetSystemShow
+ *    to overwrite a fresh manual Test result with the old auto-check result
+ *    on the very next tick (within 1 second). Clearing _results after dispatch
+ *    means the subscriber only ever processes each batch of results once.
  */
 
 import api from './api'; // adjust path if needed
@@ -133,6 +141,24 @@ function notify() {
   _listeners.forEach(fn => fn(state));
 }
 
+// ── FIX: separate function that dispatches results then immediately clears
+//    _results to [] so subsequent notify() calls (from the per-second ticker)
+//    never re-send the same stale batch to subscribers. ──
+function notifyWithResults() {
+  // Snapshot results before clearing so listeners receive the full batch
+  const resultsSnapshot = _results;
+  _results = []; // clear immediately — ticker notifies won't re-send these
+
+  const state: HealthCheckState = {
+    isRunning:       _isRunning,
+    lastChecked:     _lastChecked,
+    countdown:       _countdown,
+    intervalMinutes: _intervalMinutes,
+    results:         resultsSnapshot,
+  };
+  _listeners.forEach(fn => fn(state));
+}
+
 function resetCountdown() {
   _countdown = getCountdownSeconds();
   saveCheckTimes();
@@ -182,7 +208,13 @@ async function runCheck() {
 
   _isRunning   = false;
   _lastChecked = new Date();
-  resetCountdown();
+
+  // ── FIX: use notifyWithResults() instead of resetCountdown() → notify().
+  //    notifyWithResults() dispatches the results snapshot then clears _results
+  //    to [] so the per-second ticker's notify() calls never re-send them. ──
+  _countdown = getCountdownSeconds();
+  saveCheckTimes();
+  notifyWithResults();
 }
 
 /* ── Countdown ticker ───────────────────────────────────────────────────── */
@@ -194,7 +226,7 @@ function startTicker() {
     // ── CHANGED: persist the updated countdown every second so a refresh
     //    always picks up the correct remaining time ──
     saveCheckTimes();
-    notify();
+    notify(); // _results is [] here after notifyWithResults() cleared it — safe
   }, 1_000);
 }
 
