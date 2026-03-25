@@ -78,6 +78,9 @@ interface PendingApproval {
   action_type?: string;
   user_display?: string;
   approval_title?: string;
+  // SP connection specific fields
+  sp_name?: string;
+  entity_id?: string;
 }
 
 interface FileData {
@@ -924,22 +927,47 @@ const AgentChat: React.FC = () => {
       const response = await api.fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify({ approval_id: pendingApproval.approval_id }) });
       if (!response.ok) throw new Error(`Approval request failed: ${response.statusText}`);
       await response.json();
+
+      // ── Determine action type for message strings ─────────────────────────
       const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
       const isPDReset = pendingApproval.action_type === 'reset_pd_password';
-      const approveText = isSSL ? '✓ SSL certificate update approved. Proceeding with activation...'
-        : isPDReset ? '✓ Password reset approved. Proceeding...'
+      const isSPConnection = pendingApproval.action_type === 'create_sp_connection';
+
+      const approveText = isSSL
+        ? '✓ SSL certificate update approved. Proceeding with activation...'
+        : isPDReset
+        ? '✓ Password reset approved. Proceeding...'
+        : isSPConnection
+        ? '✓ SP Connection creation approved. Proceeding with setup...'
         : '✓ License approval confirmed. Proceeding with installation...';
-      const rejectText = isSSL ? '✗ SSL certificate update rejected. Process aborted.'
-        : isPDReset ? '✗ Password reset rejected. Process aborted.'
+
+      const rejectText = isSSL
+        ? '✗ SSL certificate update rejected. Process aborted.'
+        : isPDReset
+        ? '✗ Password reset rejected. Process aborted.'
+        : isSPConnection
+        ? '✗ SP Connection creation rejected. Process aborted.'
         : '✗ License approval rejected. Process aborted.';
-      const successText = isSSL ? '✓ SSL certificate imported and activated successfully!'
-        : isPDReset ? '✓ Password reset completed successfully!'
+
+      const successText = isSSL
+        ? '✓ SSL certificate imported and activated successfully!'
+        : isPDReset
+        ? '✓ Password reset completed successfully!'
+        : isSPConnection
+        ? '✓ SP Connection created successfully!'
         : '✓ License installation completed!';
-      const failText = isSSL ? '✗ SSL certificate update failed'
-        : isPDReset ? '✗ Password reset failed'
+
+      const failText = isSSL
+        ? '✗ SSL certificate update failed'
+        : isPDReset
+        ? '✗ Password reset failed'
+        : isSPConnection
+        ? '✗ SP Connection creation failed'
         : '✗ License installation failed';
+
       setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
       if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
+
       if (action === 'approve') {
         try {
           const executeResponse = await api.fetchWithAuth(`/api/v1/approvals/${pendingApproval.approval_id}`, { method: 'POST', body: JSON.stringify({ session_id: pendingApproval.session_id }) });
@@ -1014,9 +1042,28 @@ const AgentChat: React.FC = () => {
       const data = await response.json();
       const aiResponseText = data.message || 'I could not generate a response. Please try again.';
       if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
-      if (data.approval_metadata?.approval_id && data.approval_metadata?.approval_method === 'button') {
-        setPendingApproval({ approval_id: data.approval_metadata.approval_id, filename: data.approval_metadata.filename || 'file', expires_at: data.approval_metadata.expires_at, session_id: data.session_id, action_type: data.approval_metadata.action_type, user_display: data.approval_metadata.user_display, approval_title: data.approval_metadata.approval_title });
+
+      // ── FIX: Accept approval_id presence alone as sufficient to show the
+      //    approval button. The approval_method check was the root cause of the
+      //    SP connection button not appearing — the backend sends approval_method
+      //    but in some code paths it may be absent. Checking for approval_id
+      //    alone (which is always present when approval is needed) is safer and
+      //    matches what the backend actually guarantees across all agent types.
+      if (data.approval_metadata?.approval_id) {
+        setPendingApproval({
+          approval_id: data.approval_metadata.approval_id,
+          filename: data.approval_metadata.filename || data.approval_metadata.sp_name || 'file',
+          expires_at: data.approval_metadata.expires_at,
+          session_id: data.session_id,
+          action_type: data.approval_metadata.action_type,
+          user_display: data.approval_metadata.user_display,
+          approval_title: data.approval_metadata.approval_title,
+          // SP connection specific fields
+          sp_name: data.approval_metadata.sp_name,
+          entity_id: data.approval_metadata.entity_id,
+        });
       }
+
       setIsTyping(false);
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
       const agentKey = `Agent${agentMessageIndex}`;
@@ -1726,9 +1773,17 @@ const AgentChat: React.FC = () => {
                               ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
                               : pendingApproval.action_type === 'reset_pd_password'
                               ? <>Approve password reset for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</>
+                              : pendingApproval.action_type === 'create_sp_connection'
+                              ? <>Approve SP Connection creation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.sp_name || pendingApproval.filename}</strong>?</>
                               : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
                             }
                           </div>
+                          {/* SP Connection extra details row */}
+                          {pendingApproval.action_type === 'create_sp_connection' && pendingApproval.entity_id && (
+                            <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 10 }}>
+                              Entity ID: <span style={{ color: '#374151', fontWeight: 500 }}>{pendingApproval.entity_id}</span>
+                            </div>
+                          )}
                           <div className="agc-approval-actions">
                             <button className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
                               onClick={() => handleApprovalButtonClick('approve')} disabled={approvalProcessing}>
