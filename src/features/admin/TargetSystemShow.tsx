@@ -314,6 +314,16 @@ export default function TargetSystemShow() {
   const systemsRef = useRef<System[]>([]);
   systemsRef.current = systems;
 
+  // ── FIX: ref to track manually tested systems so bg-check results don't
+  //    overwrite a fresh manual test result. Maps system _id → { status, timestamp }.
+  //    Grace period: 60 s — long enough to survive a full auto-check cycle. ──
+  const manuallyTestedRef = useRef<Map<string, { status: string; timestamp: number }>>(new Map());
+
+  // ── FIX: ref that always holds the latest health-check interval (minutes)
+  //    so fetchData() and the subscriber can use a grace window that covers
+  //    the full interval, not just a hardcoded 60 seconds. ──
+  const hcIntervalRef = useRef<number>(healthCheckService.getState().intervalMinutes);
+
   // ── UNCHANGED useEffect ──
   useEffect(() => {
     const user: User | null = auth.getCurrentUser();
@@ -331,17 +341,44 @@ export default function TargetSystemShow() {
   // ── CHANGED: replaces the two timer useEffects (countdown ticker + 30s interval).
   //    Registers this page's systems getter with the background service.
   //    Subscribes to state changes and applies bg-check results locally.
-  //    Cleans up on unmount — service skips checks when page is gone. ──
+  //    Cleans up on unmount — service skips checks when page is gone.
+  //
+  //    FIX: before applying bg-check results, skip any system that was manually
+  //    tested within the last 60 seconds — their result is fresher than the
+  //    stale bg-check results that fire on every countdown tick via notify().
+  //
+  //    FIX 2: grace window now covers the full health-check interval + 30s buffer
+  //    (via hcIntervalRef) instead of a hardcoded 60s, so a manual test result
+  //    survives until after the next full auto-check cycle completes. ──
   useEffect(() => {
     healthCheckService.registerSystemsGetter(() => systemsRef.current.map(s => s._id));
 
     const unsub = healthCheckService.subscribe(state => {
+      // ── FIX 2: keep hcIntervalRef current so fetchData() always uses
+      //    the latest configured interval for its grace window ──
+      hcIntervalRef.current = state.intervalMinutes;
+
       setHcState(state);
 
-      // When a bg check completes, apply the new statuses to local systems list
+      // When a bg check completes, apply the new statuses to local systems list.
+      // FIX: skip systems that were manually tested within the grace window so a
+      // stale auto-check result never overwrites a fresh manual test result.
       if (!state.isRunning && state.results.length > 0) {
+        const now = Date.now();
+        // ── FIX 2: grace window = full interval + 30s buffer ──
+        const MANUAL_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+
         const statusMap: Record<string, string> = {};
-        for (const r of state.results) statusMap[r.id] = r.newStatus;
+        for (const r of state.results) {
+          const manualEntry = manuallyTestedRef.current.get(r.id);
+          // Only apply the bg result if there is no recent manual test for this system
+          if (!manualEntry || now - manualEntry.timestamp > MANUAL_GRACE_MS) {
+            statusMap[r.id] = r.newStatus;
+          }
+        }
+
+        // Nothing to update — all results were suppressed by the grace window
+        if (Object.keys(statusMap).length === 0) return;
 
         setSystems(prev => {
           const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
@@ -363,7 +400,12 @@ export default function TargetSystemShow() {
     };
   }, []); // empty deps — reads systems via ref
 
-  // ── UNCHANGED ──
+  // ── UNCHANGED base, with FIX 3 applied:
+  //    After fetching the systems list from the API, override the DB-fetched
+  //    status for any system that was manually tested within the grace window.
+  //    This prevents fetchData() (triggered by filter changes, form submits,
+  //    deletes, etc.) from reading a stale DB status that was written by a
+  //    subsequent auto health-check and reverting the manual test result. ──
   async function fetchData() {
     setLoading(true); setError(null);
     try {
@@ -373,6 +415,22 @@ export default function TargetSystemShow() {
       ]);
       let list: System[] = Array.isArray(sd) ? sd : sd.systems || [];
       if (integrationId) list = list.filter(s => s.integration_id === integrationId);
+
+      // ── FIX 3: preserve manual test results over DB-fetched status ──
+      // fetchData() reads from MongoDB which may have been overwritten by an
+      // auto health-check that ran after the manual test. If a system was
+      // manually tested within the grace window, keep that status instead.
+      const now = Date.now();
+      const FETCH_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+      list = list.map(s => {
+        const manual = manuallyTestedRef.current.get(s._id);
+        if (manual && now - manual.timestamp < FETCH_GRACE_MS) {
+          return { ...s, status: manual.status };
+        }
+        return s;
+      });
+      // ────────────────────────────────────────────────────────────────
+
       setSystems(list);
       setTypeOptions(Array.isArray(td) ? td : (td as TypesResponse).types || []);
       setStats({
@@ -434,7 +492,9 @@ export default function TargetSystemShow() {
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
   }, [delTarget]);
 
-  // ── UNCHANGED ──
+  // ── FIX: after updating local state, record this system in manuallyTestedRef
+  //    so the bg-check subscriber skips overwriting it for the grace window.
+  //    Everything else (API call, toast, setSystems, setStats) is UNCHANGED. ──
   async function testConn(id: string) {
     setTestingId(id);
     try {
@@ -452,6 +512,11 @@ export default function TargetSystemShow() {
         toast.success(msg || 'Connection successful');
       }
       const newStatus = isFailure ? 'disconnected' : 'connected';
+
+      // FIX: record this manual test result so the bg-check subscriber won't
+      // overwrite it with a stale result during the grace window.
+      manuallyTestedRef.current.set(id, { status: newStatus, timestamp: Date.now() });
+
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: newStatus } : s);
         setStats({
@@ -465,6 +530,10 @@ export default function TargetSystemShow() {
       });
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
+
+      // FIX: record the error result too — same grace-window protection.
+      manuallyTestedRef.current.set(id, { status: 'error', timestamp: Date.now() });
+
       setSystems(prev => {
         const updated = prev.map(s => s._id === id ? { ...s, status: 'error' } : s);
         setStats({
