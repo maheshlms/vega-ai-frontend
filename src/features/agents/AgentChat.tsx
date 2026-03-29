@@ -418,6 +418,15 @@ const AgentChat: React.FC = () => {
   const [approvalProcessing, setApprovalProcessing] = useState<boolean>(false);
   const [approvalClickedAction, setApprovalClickedAction] = useState<'approve' | 'reject' | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
+  const [editUserFormData, setEditUserFormData] = useState<{
+    user_dn: string;
+    user_display: string;
+    current_values: Record<string, string>;
+    fields: Array<{ key: string; label: string }>;
+  } | null>(null);
+  const [showEditUserModal, setShowEditUserModal] = useState<boolean>(false);
+  const [editUserLocalValues, setEditUserLocalValues] = useState<Record<string, string>>({});
+  const [editUserSubmitting, setEditUserSubmitting] = useState<boolean>(false);
 
   // ── Guided actions state ──────────────────────────────────────────────────
   const [showGuidedActions, setShowGuidedActions] = useState<boolean>(false);
@@ -932,6 +941,7 @@ const AgentChat: React.FC = () => {
       const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
       const isPDReset = pendingApproval.action_type === 'reset_pd_password';
       const isSPConnection = pendingApproval.action_type === 'create_sp_connection';
+      const isUserUpdate = pendingApproval.action_type === 'update_user_pd_user';
 
       const approveText = isSSL
         ? '✓ SSL certificate update approved. Proceeding with activation...'
@@ -939,6 +949,8 @@ const AgentChat: React.FC = () => {
         ? '✓ Password reset approved. Proceeding...'
         : isSPConnection
         ? '✓ SP Connection creation approved. Proceeding with setup...'
+        : isUserUpdate
+        ? '✓ User update approved. Applying changes...'
         : '✓ License approval confirmed. Proceeding with installation...';
 
       const rejectText = isSSL
@@ -947,6 +959,8 @@ const AgentChat: React.FC = () => {
         ? '✗ Password reset rejected. Process aborted.'
         : isSPConnection
         ? '✗ SP Connection creation rejected. Process aborted.'
+        : isUserUpdate
+        ? '✗ User update rejected. No changes applied.'
         : '✗ License approval rejected. Process aborted.';
 
       const successText = isSSL
@@ -955,6 +969,8 @@ const AgentChat: React.FC = () => {
         ? '✓ Password reset completed successfully!'
         : isSPConnection
         ? '✓ SP Connection created successfully!'
+        : isUserUpdate
+        ? '✓ User attributes updated successfully!'
         : '✓ License installation completed!';
 
       const failText = isSSL
@@ -963,6 +979,8 @@ const AgentChat: React.FC = () => {
         ? '✗ Password reset failed'
         : isSPConnection
         ? '✗ SP Connection creation failed'
+        : isUserUpdate
+        ? '✗ User update failed'
         : '✗ License installation failed';
 
       setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
@@ -1067,11 +1085,11 @@ const AgentChat: React.FC = () => {
       setIsTyping(false);
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
       const agentKey = `Agent${agentMessageIndex}`;
-      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date(), file_path: data.file_path, filename: data.filename, metadata: data.metadata };
+      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date(), file_path: data.file_path, filename: data.filename, metadata: data.metadata, isError: !!data.error_type };
       setMessages(prev => [...prev, aiMessage]);
       setChatHistory({ ...updatedHistory, [agentKey]: aiResponseText });
       latestAIResponseRef.current = aiResponseText;
-      await speakMessage(data.speech_text || stripHtmlForSpeech(aiResponseText));
+      await speakMessage(data.error_type ? "An error occurred. Please check the message displayed." : (data.speech_text || stripHtmlForSpeech(aiResponseText)));
     } catch (error: any) {
       setIsTyping(false);
       const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Something went wrong. Please try again.');
@@ -1723,6 +1741,19 @@ const AgentChat: React.FC = () => {
                             {message.files && message.files.length > 0 && (
                               <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>📎 {message.files.join(', ')}</div>
                             )}
+                            {message.metadata?.type === 'update_user_form' && (
+                              <div style={{ marginTop: 8 }}>
+                                <button onClick={() => {
+                                  const formData = message.metadata as any;
+                                  setEditUserFormData(formData);
+                                  setEditUserLocalValues({ ...(formData.current_values || {}) });
+                                  setShowEditUserModal(true);
+                                }}
+                                  style={{ padding: '6px 14px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                                  ✏️ Edit User Info
+                                </button>
+                              </div>
+                            )}
                             {message.metadata?.type && message.metadata?.filename && (
                               <div style={{ marginTop: 8 }}>
                                 {/* ── FIX: use metadata.content as fallback when csr_content is absent (e.g. metadata_xml) ── */}
@@ -1775,6 +1806,8 @@ const AgentChat: React.FC = () => {
                               ? <>Approve password reset for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</>
                               : pendingApproval.action_type === 'create_sp_connection'
                               ? <>Approve SP Connection creation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.sp_name || pendingApproval.filename}</strong>?</>
+                              : pendingApproval.action_type === 'update_user_pd_user'
+                              ? <>Approve user attribute update for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</>
                               : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
                             }
                           </div>
@@ -1878,6 +1911,90 @@ const AgentChat: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Edit User Modal ── */}
+      {showEditUserModal && editUserFormData && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, width: 480, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 600, color: '#111827' }}>Edit User Info</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>{editUserFormData.user_display}</p>
+            {editUserFormData.fields.map(({ key, label }) => (
+              <div key={key} style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: 4 }}>{label}</label>
+                <input
+                  type={key === 'mail' ? 'email' : 'text'}
+                  value={editUserLocalValues[key] || ''}
+                  onChange={e => setEditUserLocalValues(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box', outline: 'none' }}
+                />
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button onClick={() => setShowEditUserModal(false)}
+                style={{ padding: '8px 16px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: 'pointer', color: '#374151' }}>
+                Cancel
+              </button>
+              <button
+                disabled={editUserSubmitting}
+                onClick={async () => {
+                  const changedFields: Record<string, string> = {};
+                  for (const { key } of editUserFormData.fields) {
+                    const nv = (editUserLocalValues[key] || '').trim();
+                    const ov = (editUserFormData.current_values[key] || '').trim();
+                    if (nv !== ov) changedFields[key] = nv;
+                  }
+                  if (Object.keys(changedFields).length === 0) { setShowEditUserModal(false); return; }
+                  setEditUserSubmitting(true);
+                  const userMsg = `Updating ${editUserFormData.user_display}`;
+                  setMessages(prev => [...prev, { id: Date.now(), text: userMsg, sender: 'user', timestamp: new Date() }]);
+                  setShowEditUserModal(false);
+                  setIsTyping(true);
+                  try {
+                    const currentSessionId = sessionIdRef.current || Date.now().toString();
+                    const resp = await api.fetchWithAuth('/api/v1/chat', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        user_id: 'current-user', session_id: currentSessionId,
+                        user_session_id: auth.getSessionId(), agent_id: agent?.id,
+                        agent_type: agent?.type || 'license', message: userMsg,
+                        access_token: auth.getToken() || '',
+                        context: { form_data: changedFields },
+                      }),
+                    });
+                    if (!resp.ok) throw new Error(`API error: ${resp.statusText}`);
+                    const data = await resp.json();
+                    if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
+                    if (data.approval_metadata?.approval_id) {
+                      setPendingApproval({
+                        approval_id: data.approval_metadata.approval_id,
+                        filename: data.approval_metadata.filename || data.approval_metadata.user_display || 'user',
+                        expires_at: data.approval_metadata.expires_at,
+                        session_id: data.session_id,
+                        action_type: data.approval_metadata.action_type,
+                        user_display: data.approval_metadata.user_display,
+                        approval_title: data.approval_metadata.approval_title,
+                        sp_name: data.approval_metadata.sp_name,
+                        entity_id: data.approval_metadata.entity_id,
+                      });
+                    }
+                    setIsTyping(false);
+                    const aiText = data.message || 'I could not generate a response. Please try again.';
+                    setMessages(prev => [...prev, { id: Date.now() + 1, text: aiText, sender: 'ai', timestamp: new Date(), metadata: data.metadata, isError: !!data.error_type }]);
+                    await speakMessage(data.speech_text || stripHtmlForSpeech(aiText));
+                  } catch (err: any) {
+                    setIsTyping(false);
+                    setMessages(prev => [...prev, { id: Date.now() + 2, text: `Error: ${err.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
+                  } finally {
+                    setEditUserSubmitting(false);
+                  }
+                }}
+                style={{ padding: '8px 16px', fontSize: 13, backgroundColor: editUserSubmitting ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: editUserSubmitting ? 'not-allowed' : 'pointer' }}>
+                {editUserSubmitting ? 'Submitting…' : 'Submit Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Onboarding Tour Overlay ── */}
       {tourActive && tourTargetRect && (() => {
