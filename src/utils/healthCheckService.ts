@@ -27,6 +27,24 @@
  *    to overwrite a fresh manual Test result with the old auto-check result
  *    on the very next tick (within 1 second). Clearing _results after dispatch
  *    means the subscriber only ever processes each batch of results once.
+ *
+ * ── FIX: Added per-request timeout (20s) inside runCheck() so a hung backend
+ *    request can never cause the health-check overlay to spin forever. Any
+ *    individual testConnection call that exceeds 20s is treated as an error
+ *    result, and the overall check cycle always completes and clears isRunning.
+ *
+ * ── CRITICAL BUG FIX: The original init() stored the first-check setTimeout
+ *    id into _intervalId as a "sentinel" to block repeated init() calls.
+ *    But startInterval() also guards on `if (_intervalId) return`, so after
+ *    the first check fired and called startInterval(), the function returned
+ *    immediately because _intervalId was still set to the (now-expired) timeout
+ *    id. The repeating setInterval NEVER started — the timer froze at 0:00
+ *    after the first check and never ran again.
+ *
+ *    FIX: use a separate boolean `_initialized` to block repeated init() calls,
+ *    and use a separate `_firstCheckTimeoutId` to hold the first-check timeout.
+ *    _intervalId is now only ever set by startInterval() via setInterval(), so
+ *    the `if (_intervalId) return` guard in startInterval() works correctly.
  */
 
 import api from './api'; // adjust path if needed
@@ -54,6 +72,11 @@ const MIN_INTERVAL_MINUTES     = 3;
 const DEFAULT_INTERVAL_MINUTES = 5;
 const LS_INTERVAL_KEY          = 'hcs_interval_minutes';
 
+// ── FIX: hard cap on how long a single testConnection call may take.
+//    20s is generous enough for slow backends but guarantees the overlay
+//    always clears — no more spinning forever if the API hangs. ──
+const REQUEST_TIMEOUT_MS = 20_000;
+
 function loadIntervalMinutes(): number {
   try {
     const saved = localStorage.getItem(LS_INTERVAL_KEY);
@@ -77,7 +100,16 @@ const LS_NEXT_CHECK_KEY    = 'hcs_nextCheck';     // ISO string of when next che
 
 /* ── Internal state ─────────────────────────────────────────────────────── */
 
+// ── CRITICAL BUG FIX: separate _initialized flag from _intervalId.
+//    Previously _intervalId was set to the first-check setTimeout id as a
+//    sentinel to block repeated init() calls. This caused startInterval()
+//    (which guards `if (_intervalId) return`) to never start the real
+//    repeating setInterval after the first check fired. Timer froze at 0:00.
+//    Now _initialized is the idempotency guard and _intervalId is only ever
+//    set by startInterval() via the real setInterval. ──
+let _initialized  = false;
 let _intervalId:   ReturnType<typeof setInterval>  | null = null;
+let _firstCheckTimeoutId: ReturnType<typeof setTimeout> | null = null; // separate slot
 let _tickerId:     ReturnType<typeof setInterval>  | null = null;
 let _isRunning     = false;
 let _lastChecked:  Date | null = null;
@@ -177,6 +209,24 @@ function isApiTestFailure(r: any): boolean {
   );
 }
 
+/* ── FIX: per-request timeout wrapper ───────────────────────────────────────
+   Wraps a single testConnection call in a race against a timer.
+   If the API call does not resolve within REQUEST_TIMEOUT_MS, the promise
+   rejects with a 'timeout' error — counted as 'error' status for that system.
+   This guarantees runCheck() always finishes and isRunning is always cleared,
+   so the health-check overlay never spins indefinitely. ── */
+function testConnectionWithTimeout(id: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('timeout')),
+      REQUEST_TIMEOUT_MS
+    );
+    api.targetSystems.testConnection(id)
+      .then(r  => { clearTimeout(timer); resolve(r); })
+      .catch(e => { clearTimeout(timer); reject(e);  });
+  });
+}
+
 /* ── Core check ─────────────────────────────────────────────────────────── */
 
 async function runCheck() {
@@ -191,12 +241,15 @@ async function runCheck() {
   _isRunning = true;
   notify();
 
+  // ── CHANGED: use testConnectionWithTimeout() instead of the bare API call
+  //    so a hung request cannot keep isRunning=true forever. ──
   const settled = await Promise.allSettled(
     ids.map(async (id): Promise<SystemHealthResult> => {
       try {
-        const r = await api.targetSystems.testConnection(id);
+        const r = await testConnectionWithTimeout(id);
         return { id, newStatus: isApiTestFailure(r) ? 'disconnected' : 'connected' };
       } catch {
+        // Covers both network errors and the 20s timeout
         return { id, newStatus: 'error' };
       }
     })
@@ -240,6 +293,10 @@ function stopTicker() {
 /* ── Scheduled interval ─────────────────────────────────────────────────── */
 
 function startInterval() {
+  // ── CRITICAL BUG FIX: this guard now only blocks if a real setInterval is
+  //    already running. Previously _intervalId was also set to the first-check
+  //    setTimeout id, which blocked this function after the first check fired.
+  //    Now _intervalId is only ever set here, so the guard works correctly. ──
   if (_intervalId) return;
   _intervalId = setInterval(() => {
     _countdown = 0;          // show 0 briefly before check starts
@@ -264,9 +321,19 @@ function stopInterval() {
  * ── CHANGED: on init, reads localStorage to resume from the correct
  *    countdown instead of always starting fresh from 300s. If the saved
  *    next-check time has already passed, triggers an immediate check.
+ *
+ * ── CRITICAL BUG FIX: uses _initialized flag (not _intervalId) to prevent
+ *    repeated init() calls. _intervalId is now only ever touched by
+ *    startInterval()/stopInterval(), so the repeating interval always starts
+ *    correctly after the first check completes. ──
  */
 export function init() {
-  if (_intervalId) return; // already initialised
+  // ── CRITICAL BUG FIX: use _initialized instead of _intervalId as the
+  //    idempotency guard. The old code set _intervalId = firstCheckTimeoutId
+  //    which then blocked startInterval() from ever creating the real
+  //    repeating interval after the first check fired. ──
+  if (_initialized) return;
+  _initialized = true;
 
   // ── CHANGED: restore persisted state ──
   const { countdown, lastChecked } = loadSavedCountdown();
@@ -276,22 +343,21 @@ export function init() {
   startTicker();
 
   if (countdown <= 0) {
-    // Overdue — run immediately, then start the regular 5-min interval
+    // Overdue — run immediately, then start the regular interval
     runCheck().then(() => startInterval());
   } else {
     // Schedule the first check to fire exactly when the saved countdown expires,
-    // then switch to the regular 5-min interval afterwards.
+    // then switch to the regular interval afterwards.
     const firstCheckMs = countdown * 1000;
-    const firstTimeoutId = setTimeout(() => {
+    // ── CRITICAL BUG FIX: store the timeout in its own slot, NOT in _intervalId.
+    //    Storing it in _intervalId caused startInterval() to see a truthy value
+    //    and return early, so the repeating setInterval never started. ──
+    _firstCheckTimeoutId = setTimeout(() => {
+      _firstCheckTimeoutId = null;
       _countdown = 0;
       notify();
       runCheck().then(() => startInterval());
     }, firstCheckMs);
-
-    // Store timeout so destroy() can cancel it
-    // (we reuse _intervalId slot as a sentinel; the real interval starts after)
-    // We just set _intervalId to a truthy dummy so repeated init() calls are blocked.
-    _intervalId = firstTimeoutId as unknown as ReturnType<typeof setInterval>;
   }
 }
 
@@ -376,6 +442,12 @@ export function getState(): HealthCheckState {
 export function destroy() {
   stopTicker();
   stopInterval();
+  // ── CRITICAL BUG FIX: also cancel the first-check timeout if still pending ──
+  if (_firstCheckTimeoutId) {
+    clearTimeout(_firstCheckTimeoutId);
+    _firstCheckTimeoutId = null;
+  }
+  _initialized = false; // allow re-init after destroy
   _listeners.clear();
   _getSystemIds = null;
   // ── CHANGED: clear persisted state on full teardown (e.g. logout) ──

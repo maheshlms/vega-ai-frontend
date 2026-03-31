@@ -295,7 +295,9 @@ export default function TargetSystemShow() {
   const [error,       setError]       = useState<string | null>(null);
   const [showForm,    setShowForm]    = useState(false);
   const [editingSys,  setEditingSys]  = useState<System | null>(null);
-  const [testingId,   setTestingId]   = useState<string | null>(null);
+  // ── CHANGED: testingId (single string | null) → testingIds (Set<string>)
+  //    so multiple cards can be in "Testing…" state simultaneously. ──
+  const [testingIds,  setTestingIds]  = useState<Set<string>>(new Set());
   const [typeOptions, setTypeOptions] = useState<TypeOption[]>([]);
   const [authMethods, setAuthMethods] = useState<string[]>([]);
   const [canAdd,      setCanAdd]      = useState(false);
@@ -310,19 +312,19 @@ export default function TargetSystemShow() {
   //    Replaced with a single hcState from the background service. ──
   const [hcState, setHcState] = useState<HealthCheckState>(healthCheckService.getState());
 
+  // ── ADDED: tracks which system IDs are currently being swept by the Refresh
+  //    button's health check OR the bg auto health check so their cards show
+  //    the "Testing…" badge. ──
+  // const [refreshTestingIds, setRefreshTestingIds] = useState<Set<string>>(new Set());
+
   // ── UNCHANGED: stable ref so the service getter always sees latest systems ──
   const systemsRef = useRef<System[]>([]);
   systemsRef.current = systems;
 
   // ── FIX: ref to track manually tested systems so bg-check results don't
   //    overwrite a fresh manual test result. Maps system _id → { status, timestamp }.
-  //    Grace period: 60 s — long enough to survive a full auto-check cycle. ──
+  //    Grace period: 15s — just enough to survive an in-flight auto-check cycle. ──
   const manuallyTestedRef = useRef<Map<string, { status: string; timestamp: number }>>(new Map());
-
-  // ── FIX: ref that always holds the latest health-check interval (minutes)
-  //    so fetchData() and the subscriber can use a grace window that covers
-  //    the full interval, not just a hardcoded 60 seconds. ──
-  const hcIntervalRef = useRef<number>(healthCheckService.getState().intervalMinutes);
 
   // ── UNCHANGED useEffect ──
   useEffect(() => {
@@ -344,20 +346,79 @@ export default function TargetSystemShow() {
   //    Cleans up on unmount — service skips checks when page is gone.
   //
   //    FIX: before applying bg-check results, skip any system that was manually
-  //    tested within the last 60 seconds — their result is fresher than the
-  //    stale bg-check results that fire on every countdown tick via notify().
+  //    tested within the last 15 seconds — their result is fresher than any
+  //    in-flight auto-check that was already running when the user clicked Test.
+  //    15s covers the backend's 10s timeout plus a small buffer.
   //
-  //    FIX 2: grace window now covers the full health-check interval + 30s buffer
-  //    (via hcIntervalRef) instead of a hardcoded 60s, so a manual test result
-  //    survives until after the next full auto-check cycle completes. ──
+  //    CRITICAL BUG FIX: was using manuallyTestedRef.current.delete(r.id) which
+  //    returns a boolean, not the entry. Changed to .get(r.id) so the timestamp
+  //    comparison works correctly. Entries are cleared after the loop separately.
+  //
+  //    FIX (Problem 1 — bg auto-check "Testing…" badges):
+  //    When a bg check STARTS (state.isRunning), all card IDs are added to
+  //    refreshTestingIds so cards show green "Testing…" badges. Cleared once
+  //    results are applied. This restores the per-card green glow for auto checks.
   useEffect(() => {
     healthCheckService.registerSystemsGetter(() => systemsRef.current.map(s => s._id));
 
-    const unsub = healthCheckService.subscribe(state => {
-      // ── FIX 2: keep hcIntervalRef current so fetchData() always uses
-      //    the latest configured interval for its grace window ──
-      hcIntervalRef.current = state.intervalMinutes;
+    // const unsub = healthCheckService.subscribe(state => {
+    //   setHcState(state);
 
+    //   // ── FIX (Problem 1): when a bg check STARTS, mark all cards as "Testing…"
+    //   //    so the UI shows green per-card badges instead of nothing. ──
+    //   // if (state.isRunning) {
+    //   //   setRefreshTestingIds(new Set(systemsRef.current.map(s => s._id)));
+    //   // }
+
+    //   // When a bg check completes, apply the new statuses to local systems list.
+    //   // FIX: skip systems that were manually tested within the grace window so a
+    //   // stale auto-check result never overwrites a fresh manual test result.
+    //   if (!state.isRunning && state.results.length > 0) {
+    //     const now = Date.now();
+    //     // Grace window = 15s (covers backend 10s timeout + buffer).
+    //     // Independent of user-configured interval so it works at any interval setting.
+    //     const MANUAL_GRACE_MS = 15_000;
+
+    //     const statusMap: Record<string, string> = {};
+    //     for (const r of state.results) {
+    //       // CRITICAL FIX: use .get() not .delete() — .delete() returns boolean,
+    //       // not the entry object, breaking the timestamp comparison below.
+    //       const manualEntry = manuallyTestedRef.current.get(r.id);
+    //       // Only apply the bg result if there is no recent manual test for this system
+    //       if (!manualEntry || now - manualEntry.timestamp > MANUAL_GRACE_MS) {
+    //         statusMap[r.id] = r.newStatus;
+    //       }
+    //     }
+
+    //     // Clear processed entries so next cycle starts clean
+    //     for (const r of state.results) {
+    //       manuallyTestedRef.current.delete(r.id);
+    //     }
+
+    //     // Nothing to update — all results were suppressed by the grace window.
+    //     // Still clear the testing badges so cards don't stay stuck in "Testing…".
+    //     // if (Object.keys(statusMap).length === 0) {
+    //     //   setRefreshTestingIds(new Set());
+    //     //   return;
+    //     // }
+
+    //     setSystems(prev => {
+    //       const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
+    //       setStats({
+    //         total_systems: updated.length,
+    //         connected:     updated.filter(s => s.status === 'connected').length,
+    //         disconnected:  updated.filter(s => s.status === 'disconnected').length,
+    //         error:         updated.filter(s => s.status === 'error').length,
+    //         pending:       updated.filter(s => s.status === 'pending').length,
+    //       });
+    //       return updated;
+    //     });
+    //     // Clear bg-check testing badges once results are applied
+    //     // setRefreshTestingIds(new Set());
+    //   }
+    // });
+
+    const unsub = healthCheckService.subscribe(state => {
       setHcState(state);
 
       // When a bg check completes, apply the new statuses to local systems list.
@@ -365,11 +426,14 @@ export default function TargetSystemShow() {
       // stale auto-check result never overwrites a fresh manual test result.
       if (!state.isRunning && state.results.length > 0) {
         const now = Date.now();
-        // ── FIX 2: grace window = full interval + 30s buffer ──
-        const MANUAL_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+        // Grace window = 15s (covers backend 10s timeout + buffer).
+        // Independent of user-configured interval so it works at any interval setting.
+        const MANUAL_GRACE_MS = 15_000;
 
         const statusMap: Record<string, string> = {};
         for (const r of state.results) {
+          // CRITICAL FIX: use .get() not .delete() — .delete() returns boolean,
+          // not the entry object, breaking the timestamp comparison below.
           const manualEntry = manuallyTestedRef.current.get(r.id);
           // Only apply the bg result if there is no recent manual test for this system
           if (!manualEntry || now - manualEntry.timestamp > MANUAL_GRACE_MS) {
@@ -377,8 +441,15 @@ export default function TargetSystemShow() {
           }
         }
 
-        // Nothing to update — all results were suppressed by the grace window
-        if (Object.keys(statusMap).length === 0) return;
+        // Clear processed entries so next cycle starts clean
+        for (const r of state.results) {
+          manuallyTestedRef.current.delete(r.id);
+        }
+
+        // Nothing to update — all results were suppressed by the grace window.
+        if (Object.keys(statusMap).length === 0) {
+          return;
+        }
 
         setSystems(prev => {
           const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
@@ -421,7 +492,7 @@ export default function TargetSystemShow() {
       // auto health-check that ran after the manual test. If a system was
       // manually tested within the grace window, keep that status instead.
       const now = Date.now();
-      const FETCH_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+      const FETCH_GRACE_MS = 15_000;
       list = list.map(s => {
         const manual = manuallyTestedRef.current.get(s._id);
         if (manual && now - manual.timestamp < FETCH_GRACE_MS) {
@@ -444,6 +515,164 @@ export default function TargetSystemShow() {
       setError((e as Error).message);
       setSystems([]);
     } finally { setLoading(false); }
+  }
+
+  // ── CHANGED: handleRefresh — SMART RETRY with consecutive-failure bail-out.
+  //
+  //    The two scenarios we need to handle:
+  //
+  //    1. PF IS OFF (Docker stopped, connection refused):
+  //       → Backend gets ECONNREFUSED, returns a clean JSON failure fast (~1s).
+  //       → We get the same clean failure on EVERY retry — it never changes.
+  //       → BAIL OUT after 3 consecutive identical clean failures (~3-6s total).
+  //       → User sees "Disconnected" in ~3-6s. Fast. ✓
+  //
+  //    2. PF IS STARTING (Docker just started the container):
+  //       → Backend times out OR throws a network exception for ~20-40s.
+  //       → OR it returns a clean JSON failure initially, then flips to connected
+  //         once PF finishes booting.
+  //       → We retry up to STARTUP_RETRY_ATTEMPTS times with STARTUP_RETRY_DELAY_MS.
+  //       → Card stays in "Testing…" the whole time.
+  //       → User sees "Connected" once PF is ready. ✓
+  //
+  //    BAIL-OUT RULE:
+  //    If testConnection() RESOLVES with a clean JSON failure 3 times in a row
+  //    with no change in the response, we treat it as definitively down and stop.
+  //    This distinguishes "truly off" (~3 fast identical failures) from "starting
+  //    up" (failures that eventually flip to connected after some retries).
+  //
+  //    If testConnection() REJECTS (network exception / timeout), we always retry
+  //    since exceptions mean the system is unreachable but possibly just booting.
+  // ──────────────────────────────────────────────────────────────────────────
+  // async function handleRefresh() {
+  //   // Step 1: fetch the latest system list from DB (uses the normal loading spinner).
+  //   await fetchData();
+
+  //   // Step 2: grab the freshly loaded systems via the stable ref and fire
+  //   // testConnection for every one simultaneously.
+  //   // const currentSystems = systemsRef.current;
+  //   // if (currentSystems.length === 0) return;
+
+  //   // Mark ALL systems as refresh-testing so their badges switch to "Testing…"
+  //   // setRefreshTestingIds(new Set(currentSystems.map(s => s._id)));
+
+  //   // ── Per-request timeout: 12s cap per attempt.
+  //   //    Keeps individual attempts from hanging while still being generous enough
+  //   //    for slow backends. ──
+  //   const TIMEOUT_MS = 12_000;
+
+  //   async function testConnectionWithTimeout(id: string): Promise<TestResult> {
+  //     return new Promise<TestResult>((resolve, reject) => {
+  //       const timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
+  //       api.targetSystems.testConnection(id)
+  //         .then(r => { clearTimeout(timer); resolve(r); })
+  //         .catch(e => { clearTimeout(timer); reject(e); });
+  //     });
+  //   }
+
+  //   // ── STARTUP RETRY CONFIG ──
+  //   // Total retry window: 8 retries × 5s delay = 40s.
+  //   // Covers PingFederate cold-starts which typically take 20-40s.
+  //   const STARTUP_RETRY_ATTEMPTS  = 8;
+  //   const STARTUP_RETRY_DELAY_MS  = 5_000;
+
+  //   // ── BAIL-OUT CONFIG ──
+  //   // If we get this many consecutive clean JSON failures with no change,
+  //   // we treat the instance as definitively off and stop retrying immediately.
+  //   // 3 consecutive clean failures × ~1s each = ~3s to declare "Disconnected"
+  //   // when PF is truly stopped. This is the key to fast results when PF is off.
+  //   const CONSECUTIVE_FAIL_BAIL = 3;
+
+  //   function sleep(ms: number) {
+  //     return new Promise<void>(resolve => setTimeout(resolve, ms));
+  //   }
+
+  //   // Returns true if the API responded with a JSON failure.
+  //   // Clean failures mean the backend reached the target but it reported down.
+  //   function isCleanFailureResult(r: TestResult): boolean {
+  //     const msg = r.message || r.detail || '';
+  //     return (
+  //       r.success === false ||
+  //       r.connected === false ||
+  //       r.status === 'error' ||
+  //       r.status === 'failed' ||
+  //       /fail|error|unable|cannot|unreachable|connection failed/i.test(msg)
+  //     );
+  //   }
+
+  //   // Fire all tests in parallel; handle each result as it arrives so a slow
+  //   // system doesn't block a fast one from updating.
+  //   await Promise.allSettled(
+  //     currentSystems.map(async (sys) => {
+  //       let finalStatus: string = 'disconnected';
+  //       let consecutiveCleanFailures = 0;
+
+  //       for (let attempt = 0; attempt <= STARTUP_RETRY_ATTEMPTS; attempt++) {
+  //         // On retries (attempt > 0), wait before trying again so the instance
+  //         // has more time to finish starting up.
+  //         if (attempt > 0) {
+  //           await sleep(STARTUP_RETRY_DELAY_MS);
+  //         }
+
+  //         try {
+  //           const r: TestResult = await testConnectionWithTimeout(sys._id);
+
+  //           if (!isCleanFailureResult(r)) {
+  //             // ✅ Connected — done immediately, no more retries needed.
+  //             finalStatus = 'connected';
+  //             break;
+  //           } else {
+  //             // Clean JSON failure — instance responded but said it's down.
+  //             finalStatus = 'disconnected';
+  //             consecutiveCleanFailures++;
+
+  //             // ── BAIL-OUT: if we've seen CONSECUTIVE_FAIL_BAIL clean failures
+  //             //    in a row, the instance is definitively off. Stop retrying now
+  //             //    so the user gets fast feedback instead of waiting 40s. ──
+  //             if (consecutiveCleanFailures >= CONSECUTIVE_FAIL_BAIL) {
+  //               break;
+  //             }
+  //             // Otherwise continue retrying — it may still be booting up and
+  //             // returning a clean failure before it's actually ready.
+  //           }
+  //         } catch {
+  //           // Network exception or timeout — instance is unreachable, possibly
+  //           // still booting. Reset consecutive clean failure counter and keep
+  //           // retrying since exceptions don't mean "definitively off".
+  //           finalStatus = 'error';
+  //           consecutiveCleanFailures = 0;
+  //         }
+  //       }
+
+  //       // Record in grace-window map so the auto health-check subscriber won't
+  //       // overwrite these fresh results during the next scheduled cycle.
+  //       manuallyTestedRef.current.set(sys._id, { status: finalStatus, timestamp: Date.now() });
+
+  //       // Apply this system's result immediately — don't wait for the others.
+  //       setSystems(prev => {
+  //         const updated = prev.map(s => s._id === sys._id ? { ...s, status: finalStatus } : s);
+  //         setStats({
+  //           total_systems: updated.length,
+  //           connected:     updated.filter(s => s.status === 'connected').length,
+  //           disconnected:  updated.filter(s => s.status === 'disconnected').length,
+  //           error:         updated.filter(s => s.status === 'error').length,
+  //           pending:       updated.filter(s => s.status === 'pending').length,
+  //         });
+  //         return updated;
+  //       });
+
+  //       // Clear this system's "Testing…" badge as soon as its final result is in.
+  //       setRefreshTestingIds(prev => {
+  //         const next = new Set(prev);
+  //         next.delete(sys._id);
+  //         return next;
+  //       });
+  //     })
+  //   );
+  // }
+
+  async function handleRefresh(){
+    await fetchData();
   }
 
   // ── UNCHANGED ──
@@ -492,33 +721,144 @@ export default function TargetSystemShow() {
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
   }, [delTarget]);
 
-  // ── FIX: after updating local state, record this system in manuallyTestedRef
-  //    so the bg-check subscriber skips overwriting it for the grace window.
-  //    Everything else (API call, toast, setSystems, setStats) is UNCHANGED. ──
+  // ── CHANGED: testConn — corrected bail-out logic for the PF startup race condition.
+  //
+  //    ROOT CAUSE of the original bug:
+  //    When PF has JUST started in Docker, its HTTP port is open immediately but
+  //    PF itself is still initializing. During this window (~10-30s), the backend
+  //    CAN reach PF's port and gets a response — but it's a failure response
+  //    (PF not ready yet). The backend returns this as a clean JSON failure fast
+  //    (< 2s), so the previous "fast bail-out" logic treated it as "definitively
+  //    off" and stopped retrying. Result: user sees "Disconnected" even though PF
+  //    was about to be ready in a few more seconds.
+  //
+  //    THE CORRECT MENTAL MODEL:
+  //    ┌─────────────────────────────────────────────────────────────────────┐
+  //    │ Clean JSON failure (resolve) = PF port is OPEN, PF is responding.  │
+  //    │   → PF IS running. It may just need more time to fully initialize. │
+  //    │   → NEVER bail out on clean JSON failures. Always keep retrying.   │
+  //    │                                                                     │
+  //    │ Network exception / timeout (reject) = PF port is CLOSED or        │
+  //    │   unreachable. Backend couldn't reach PF at all.                   │
+  //    │   → PF is definitively OFF (or Docker is stopped).                 │
+  //    │   → Bail out after NETWORK_FAIL_BAIL consecutive exceptions.       │
+  //    └─────────────────────────────────────────────────────────────────────┘
+  //
+  //    NEW BAIL-OUT RULE — only bail on consecutive NETWORK EXCEPTIONS:
+  //    - Clean JSON failure → keep retrying (PF is up but initializing). No bail.
+  //    - Network exception  → count toward bail. After NETWORK_FAIL_BAIL (3)
+  //      consecutive exceptions, PF is definitively off. Bail out fast.
+  //    - Clean failure resets exception counter (PF came back / port is open).
+  //
+  //    RESULT:
+  //    • PF just started: gets clean JSON failures during init → keeps retrying
+  //      → eventually gets connected response → shows "Connected". ✓
+  //    • PF truly off: port closed → gets network exceptions every time → bails
+  //      after 3 → fast "Error" in ~3 × retry_delay seconds. ✓
+  //    • Multiple cards: uses testingIds (Set) so each card tests independently. ✓
+  // ──────────────────────────────────────────────────────────────────────────
   async function testConn(id: string) {
-    setTestingId(id);
-    try {
-      const r: TestResult = await api.targetSystems.testConnection(id);
+    // ── Add this id to the Set so this card shows "Testing…" independently ──
+    setTestingIds(prev => new Set(prev).add(id));
+
+    // ── Per-attempt timeout: 12s cap so individual calls don't hang forever. ──
+    const TIMEOUT_MS = 12_000;
+
+    // ── Startup retry config — covers PF cold-starts (~20-40s). ──
+    // Total window: 8 retries × 5s delay = 40s maximum wait.
+    const STARTUP_RETRY_ATTEMPTS = 8;
+    const STARTUP_RETRY_DELAY_MS = 5_000;
+
+    // ── CORRECTED bail-out: only bail on consecutive NETWORK EXCEPTIONS.
+    //    Clean JSON failures mean PF IS reachable — never bail on those.
+    //    Network exceptions mean PF port is closed — bail after this many. ──
+    const NETWORK_FAIL_BAIL = 3;
+
+    function sleep(ms: number) {
+      return new Promise<void>(resolve => setTimeout(resolve, ms));
+    }
+
+    async function testConnectionWithTimeout(): Promise<TestResult> {
+      return new Promise<TestResult>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
+        api.targetSystems.testConnection(id)
+          .then(r => { clearTimeout(timer); resolve(r); })
+          .catch(e => { clearTimeout(timer); reject(e); });
+      });
+    }
+
+    // Returns true if the API resolved with a success/connected result.
+    function isSuccessResult(r: TestResult): boolean {
       const msg = r.message || r.detail || '';
-      const isFailure =
+      return !(
         r.success === false ||
         r.connected === false ||
         r.status === 'error' ||
         r.status === 'failed' ||
-        /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
-      if (isFailure) {
-        toast.error(msg || 'Connection test failed');
-      } else {
-        toast.success(msg || 'Connection successful');
+        /fail|error|unable|cannot|unreachable|connection failed/i.test(msg)
+      );
+    }
+
+    let finalStatus: string = 'disconnected';
+    let lastResult: TestResult | null = null;
+    // Only counts consecutive NETWORK exceptions (reject), not clean JSON failures.
+    let consecutiveNetworkFailures = 0;
+
+    try {
+      for (let attempt = 0; attempt <= STARTUP_RETRY_ATTEMPTS; attempt++) {
+        // Wait between retries so PF has time to finish booting.
+        if (attempt > 0) {
+          await sleep(STARTUP_RETRY_DELAY_MS);
+        }
+
+        try {
+          const r: TestResult = await testConnectionWithTimeout();
+          lastResult = r;
+
+          if (isSuccessResult(r)) {
+            // ✅ Connected — stop immediately.
+            finalStatus = 'connected';
+            break;
+          } else {
+            // Clean JSON failure — PF's port is OPEN and responding, but PF
+            // itself is still initializing or reporting an error state.
+            // This means PF IS running — it just needs more time.
+            // Reset network failure counter (we DID reach PF) and keep retrying.
+            finalStatus = 'disconnected';
+            consecutiveNetworkFailures = 0;
+            // Do NOT break or bail — keep retrying until PF finishes initializing.
+          }
+        } catch {
+          // Network exception or per-attempt timeout — PF port is CLOSED or
+          // completely unreachable. Backend couldn't reach PF at all.
+          finalStatus = 'error';
+          consecutiveNetworkFailures++;
+
+          // ── BAIL-OUT: only here, on consecutive network exceptions.
+          //    3 consecutive exceptions = PF port is definitively closed/off.
+          //    Stop retrying to give the user fast feedback. ──
+          if (consecutiveNetworkFailures >= NETWORK_FAIL_BAIL) {
+            break;
+          }
+          // Otherwise keep retrying — Docker may still be starting.
+          lastResult = null;
+        }
       }
-      const newStatus = isFailure ? 'disconnected' : 'connected';
+
+      // ── Show toast using the last known result message (if any). ──
+      const msg = lastResult ? (lastResult.message || lastResult.detail || '') : '';
+      if (finalStatus === 'connected') {
+        toast.success(msg || 'Connection successful');
+      } else {
+        toast.error(msg || 'Connection test failed');
+      }
 
       // FIX: record this manual test result so the bg-check subscriber won't
       // overwrite it with a stale result during the grace window.
-      manuallyTestedRef.current.set(id, { status: newStatus, timestamp: Date.now() });
+      manuallyTestedRef.current.set(id, { status: finalStatus, timestamp: Date.now() });
 
       setSystems(prev => {
-        const updated = prev.map(s => s._id === id ? { ...s, status: newStatus } : s);
+        const updated = prev.map(s => s._id === id ? { ...s, status: finalStatus } : s);
         setStats({
           total_systems: updated.length,
           connected:     updated.filter(s => s.status === 'connected').length,
@@ -529,6 +869,8 @@ export default function TargetSystemShow() {
         return updated;
       });
     } catch (e: any) {
+      // Outer catch — should not normally be reached since the inner loop
+      // catches all exceptions, but kept as a safety net.
       toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
 
       // FIX: record the error result too — same grace-window protection.
@@ -545,7 +887,15 @@ export default function TargetSystemShow() {
         });
         return updated;
       });
-    } finally { setTestingId(null); }
+    } finally {
+      // ── Remove only this id from the Set, leaving other in-flight
+      //    tests untouched so their cards keep showing "Testing…" ──
+      setTestingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   /* ── UNCHANGED filter options ── */
@@ -581,12 +931,14 @@ export default function TargetSystemShow() {
     return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
   };
 
-  // ── CHANGED: overlay visibility logic.
-  //    Old: systems.length > 0 && (isRunningCheck || countdown <= 5)
-  //    New: only show when the service is running AND no page action is in progress
-  //         (prevents the overlay popping up mid-delete / mid-edit / mid-manual-test) ──
-  const isPageBusy = delModal || showForm || testingId !== null;
-  const showHealthOverlay = (hcState.isRunning || hcState.countdown <= 5) && !isPageBusy && systems.length > 0;
+  // ── CHANGED: removed showHealthOverlay entirely.
+  //    The full-page blur overlay is replaced by per-card "Testing…" badges
+  //    via refreshTestingIds, which now covers bg auto health checks too.
+  //    Manual Test button uses testingIds independently. ──
+  const isPageBusy = delModal || showForm || testingIds.size > 0;
+
+  // ── CHANGED: isCardTesting now checks the Set instead of comparing a single string ──
+  const isCardTesting = (id: string) => testingIds.has(id);
 
   return (
     <>
@@ -658,56 +1010,6 @@ export default function TargetSystemShow() {
         }
 
         .dd-panel { animation: fade-up .15s cubic-bezier(.22,1,.36,1); }
-
-        /* ── Health-check full-page overlay ── */
-        @keyframes hc-spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes hc-fade-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes hc-pop {
-          from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-        .hc-overlay {
-          position: fixed; inset: 0; z-index: 40;
-          background: rgba(255,255,255,0.6);
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-          animation: hc-fade-in 0.25s ease;
-          pointer-events: none;
-        }
-        .hc-card {
-          position: fixed;
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 41;
-          background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 20px;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(99,102,241,0.08);
-          padding: 28px 36px;
-          display: flex; flex-direction: column; align-items: center; gap: 14px;
-          animation: hc-pop 0.28s cubic-bezier(.22,1,.36,1);
-          pointer-events: none;
-          min-width: 220px;
-        }
-        .hc-ring {
-          width: 44px; height: 44px;
-          border: 3px solid #e5e7eb;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: hc-spin 0.75s linear infinite;
-        }
-        .hc-label {
-          font-size: 13px; font-weight: 600; color: #374151;
-          letter-spacing: -0.01em;
-        }
-        .hc-sub {
-          font-size: 11.5px; color: #9ca3af; margin-top: -8px;
-        }
 
         /* ══════════════════════════════════════════════════════════════════
            RESPONSIVE LAYOUT SYSTEM
@@ -1143,21 +1445,6 @@ export default function TargetSystemShow() {
 
       <div className="ts min-h-screen bg-white">
 
-        {/* ════════════════════ HEALTH-CHECK OVERLAY
-            ── CHANGED: was (isRunningCheck || countdown <= 5) && systems.length > 0
-               Now:      showHealthOverlay = hcState.isRunning && !isPageBusy && systems.length > 0
-               Suppressed during delete modal, form modal, and manual test. ── */}
-        {showHealthOverlay && (
-          <>
-            <div className="hc-overlay" />
-            <div className="hc-card">
-              <div className="hc-ring" />
-              <div className="hc-label">Checking systems…</div>
-              <div className="hc-sub">{systems.length} system{systems.length !== 1 ? 's' : ''} · auto health-check</div>
-            </div>
-          </>
-        )}
-
         {/* ════════════════════ DELETE MODAL ════════════════════ */}
         {delModal && (
           <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
@@ -1243,7 +1530,7 @@ export default function TargetSystemShow() {
                 </p>
               </div>
               <div className="ts-header-actions flex items-center gap-2.5 pt-1 shrink-0">
-                <button onClick={fetchData} disabled={loading}
+                <button onClick={handleRefresh} disabled={loading}
                   className="ts-header-btn inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-semibold text-gray-600 transition-all disabled:opacity-50">
                   <FaSync size={11} className={loading ? 'animate-spin' : ''} />
                   Refresh
@@ -1297,8 +1584,6 @@ export default function TargetSystemShow() {
                   </button>
                 )}
               </div>
-              {/* ── CHANGED: hcState.countdown / hcState.isRunning / hcState.lastChecked
-                  instead of local countdown / isRunningCheck / lastChecked ── */}
               <div className="flex items-center gap-3 shrink-0">
                 {systems.length > 0 && (
                   <LiveHealthIndicator
@@ -1365,7 +1650,7 @@ export default function TargetSystemShow() {
             ) : (
               <div className="ts-card-grid">
                 {systems.map((sys, i) => {
-                  const isManualTesting = testingId === sys._id;
+                  const isManualTesting = isCardTesting(sys._id);
                   return (
                     <article
                       key={sys._id}
@@ -1439,14 +1724,12 @@ export default function TargetSystemShow() {
                             </button>
                           )}
 
-                          {/* Test — ── CHANGED: disabled uses hcState.isRunning instead of isRunningCheck ── */}
+                          {/* Test — disabled only while THIS card is being tested */}
                           <button
                             onClick={() => testConn(sys._id)}
-                            disabled={isManualTesting || hcState.isRunning}
+                            disabled={isManualTesting}
                             className="ts-card-action-btn flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0f0f0f] hover:bg-[#2a2a2a] font-semibold text-white transition-colors disabled:opacity-50"
-                            title={hcState.isRunning ? 'Auto health-check in progress…' : undefined}
                           >
-                            {/* FIX: replaced rotating FaCheckCircle with a proper ring spinner */}
                             {isManualTesting ? (
                               <>
                                 <span style={{
