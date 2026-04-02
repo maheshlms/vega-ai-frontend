@@ -992,7 +992,7 @@ const AgentChat: React.FC = () => {
           if (executeResponse.ok) {
             const executeData = await executeResponse.json();
             const resultText = executeData.message || successText;
-            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success }]);
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success , metadata: executeData.metadata  }]);
             if (isAvatarActive) await speakMessage(executeData.speech_text || stripHtmlForSpeech(resultText));
           } else {
             const errorData = await executeResponse.json();

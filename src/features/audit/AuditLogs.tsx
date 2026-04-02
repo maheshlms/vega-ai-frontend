@@ -437,7 +437,7 @@ const AuditLogs: React.FC = () => {
 
   // Extract display name from email — show "john.doe" from "john.doe@company.com"
   const getDisplayName = (email: string): string => {
-    if (!email || email === '-') return '?';
+    if (!email || email === '-') return 'Vega';
     const local = email.split('@')[0] || email;
     return local.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
@@ -462,7 +462,7 @@ const AuditLogs: React.FC = () => {
 
   const activeTimeLabel = timePreset !== 'all'
     ? (timePreset === 'custom'
-        ? `${customFrom ? customFrom.slice(0, 10) : '?'} → ${customTo ? customTo.slice(0, 10) : '?'}`
+        ? `${customFrom ? customFrom.slice(0, 10) : 'Vega'} → ${customTo ? customTo.slice(0, 10) : 'Vega'}`
         : TIME_OPTIONS.find(o => o.value === timePreset)?.label)
     : null;
 
@@ -994,7 +994,7 @@ const AuditLogs: React.FC = () => {
                   {logs.map((log, idx) => {
                     const email = formatValue(log.user_email);
                     const displayName = getDisplayName(email);
-                    const initial = (email !== '-' ? email[0] : '?').toUpperCase();
+                    const initial = (email !== '-' ? email[0] : 'V').toUpperCase();
                     // Pick avatar color — use email charcode + index so same-user rows still vary
                     const avatarColors = [
                       '#3B82F6', // blue

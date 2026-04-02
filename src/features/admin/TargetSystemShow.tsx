@@ -5,7 +5,6 @@ import api from '../../utils/api';
 import { auth } from '../../utils/auth';
 import TargetSystemForm from './TargetSystemForm';
 import { toast } from 'react-toastify';
-// ── CHANGED: import the background service instead of managing timers locally
 import healthCheckService, { HealthCheckState } from '../../utils/healthCheckService';
 
 healthCheckService.init();
@@ -138,10 +137,8 @@ const LiveHealthIndicator = ({
   const [inputVal, setInputVal] = useState(String(intervalMinutes));
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync input when interval changes externally
   useEffect(() => { setInputVal(String(intervalMinutes)); }, [intervalMinutes]);
 
-  // Close popover on click outside
   useEffect(() => {
     if (!popoverOpen) return;
     const fn = (e: MouseEvent) => {
@@ -184,7 +181,6 @@ const LiveHealthIndicator = ({
           cursor: 'pointer',
         }}
       >
-        {/* Thin progress track along the bottom — fills up toward next check */}
         {!isChecking && (
           <span
             className="absolute bottom-0 left-0 h-[2px] rounded-full transition-all duration-1000 ease-linear"
@@ -196,7 +192,6 @@ const LiveHealthIndicator = ({
           />
         )}
 
-        {/* Animated dot */}
         <span className="relative flex h-2 w-2 shrink-0">
           <span
             className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${isChecking ? 'animate-ping bg-blue-400' : ''}`}
@@ -207,7 +202,6 @@ const LiveHealthIndicator = ({
           />
         </span>
 
-        {/* Text */}
         <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: isChecking ? '#2563eb' : '#64748b' }}>
           {isChecking ? (
             <>Checking {systemCount} system{systemCount !== 1 ? 's' : ''}…</>
@@ -218,7 +212,6 @@ const LiveHealthIndicator = ({
                 ? <span style={{ color: '#94a3b8' }}>· {timeStr}</span>
                 : <span style={{ color: '#94a3b8' }}>· waiting…</span>
               }
-              {/* Countdown display */}
               <span
                 className="inline-flex items-center justify-center rounded-md px-1.5"
                 style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}
@@ -229,7 +222,6 @@ const LiveHealthIndicator = ({
           )}
         </span>
 
-        {/* Chevron indicator */}
         <FaChevronDown
           size={8}
           className={`transition-transform duration-200 ml-auto shrink-0 ${popoverOpen ? 'rotate-180' : ''}`}
@@ -237,7 +229,6 @@ const LiveHealthIndicator = ({
         />
       </button>
 
-      {/* Compact interval popover */}
       {popoverOpen && (
         <div
           className="absolute top-full mt-2 right-0 bg-white rounded-xl border border-gray-200 shadow-lg z-50 p-3"
@@ -278,6 +269,22 @@ const LiveHealthIndicator = ({
   );
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODULE-LEVEL FLAG — persists across mounts/unmounts (navigation).
+   Using a module-level variable (not useRef) means it is NOT reset when the
+   component unmounts and remounts on navigation-back.
+
+   WHY THIS FIXES THE TIMER RESET:
+   - useRef resets to its initial value on every mount → every navigation-back
+     triggered runNow() → runCheck() ran → on completion reset _countdown to
+     getIntervalSeconds() (full interval) → timer jumped to 3:00.
+   - A module-level variable survives the unmount/remount cycle → runNow() is
+     only called once per app session (the very first time the page loads) →
+     subsequent navigation-backs skip runNow() entirely → the service's
+     existing countdown continues uninterrupted, no timer reset.
+   ─────────────────────────────────────────────────────────────────────────── */
+let _hasRunInitialCheck = false;
+
 /* ═══════════════════════════ Main Component ════════════════════════════ */
 export default function TargetSystemShow() {
   const { integrationId } = useParams<{ integrationId?: string }>();
@@ -288,14 +295,13 @@ export default function TargetSystemShow() {
   const integrationValue     = ls?.integrationValue;
   const authMethodsFromState = ls?.authMethods || [];
 
-  // ── UNCHANGED state ──
   const [systems,     setSystems]     = useState<System[]>([]);
   const [stats,       setStats]       = useState<Stats | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
   const [showForm,    setShowForm]    = useState(false);
   const [editingSys,  setEditingSys]  = useState<System | null>(null);
-  const [testingId,   setTestingId]   = useState<string | null>(null);
+  const [testingIds,  setTestingIds]  = useState<Set<string>>(new Set());
   const [typeOptions, setTypeOptions] = useState<TypeOption[]>([]);
   const [authMethods, setAuthMethods] = useState<string[]>([]);
   const [canAdd,      setCanAdd]      = useState(false);
@@ -306,25 +312,13 @@ export default function TargetSystemShow() {
   const [delText,     setDelText]     = useState('');
   const [filters,     setFilters]     = useState<Filters>({ environment: '', status: '' });
 
-  // ── CHANGED: removed healthCheckingIds, countdown, lastChecked, isRunningCheck.
-  //    Replaced with a single hcState from the background service. ──
   const [hcState, setHcState] = useState<HealthCheckState>(healthCheckService.getState());
 
-  // ── UNCHANGED: stable ref so the service getter always sees latest systems ──
   const systemsRef = useRef<System[]>([]);
   systemsRef.current = systems;
 
-  // ── FIX: ref to track manually tested systems so bg-check results don't
-  //    overwrite a fresh manual test result. Maps system _id → { status, timestamp }.
-  //    Grace period: 60 s — long enough to survive a full auto-check cycle. ──
   const manuallyTestedRef = useRef<Map<string, { status: string; timestamp: number }>>(new Map());
 
-  // ── FIX: ref that always holds the latest health-check interval (minutes)
-  //    so fetchData() and the subscriber can use a grace window that covers
-  //    the full interval, not just a hardcoded 60 seconds. ──
-  const hcIntervalRef = useRef<number>(healthCheckService.getState().intervalMinutes);
-
-  // ── UNCHANGED useEffect ──
   useEffect(() => {
     const user: User | null = auth.getCurrentUser();
     const isAdmin = auth.isAdmin();
@@ -335,50 +329,40 @@ export default function TargetSystemShow() {
     fetchData();
   }, [filters]);
 
-  // ── UNCHANGED useEffect ──
   useEffect(() => { if (authMethodsFromState.length) setAuthMethods(authMethodsFromState); }, []);
 
-  // ── CHANGED: replaces the two timer useEffects (countdown ticker + 30s interval).
-  //    Registers this page's systems getter with the background service.
-  //    Subscribes to state changes and applies bg-check results locally.
-  //    Cleans up on unmount — service skips checks when page is gone.
-  //
-  //    FIX: before applying bg-check results, skip any system that was manually
-  //    tested within the last 60 seconds — their result is fresher than the
-  //    stale bg-check results that fire on every countdown tick via notify().
-  //
-  //    FIX 2: grace window now covers the full health-check interval + 30s buffer
-  //    (via hcIntervalRef) instead of a hardcoded 60s, so a manual test result
-  //    survives until after the next full auto-check cycle completes. ──
   useEffect(() => {
+    // ── FIX 1: Register the getter on mount and NEVER remove it on unmount.
+    //    The service must keep the getter alive while you navigate to other
+    //    pages so background checks keep running against the correct IDs.
+    //    Previously, the cleanup returned `registerSystemsGetter(null)` which
+    //    wiped the getter on every navigation away — causing the service to
+    //    find 0 systems and skip every scheduled check while you were away.
     healthCheckService.registerSystemsGetter(() => systemsRef.current.map(s => s._id));
 
     const unsub = healthCheckService.subscribe(state => {
-      // ── FIX 2: keep hcIntervalRef current so fetchData() always uses
-      //    the latest configured interval for its grace window ──
-      hcIntervalRef.current = state.intervalMinutes;
-
       setHcState(state);
 
-      // When a bg check completes, apply the new statuses to local systems list.
-      // FIX: skip systems that were manually tested within the grace window so a
-      // stale auto-check result never overwrites a fresh manual test result.
       if (!state.isRunning && state.results.length > 0) {
         const now = Date.now();
-        // ── FIX 2: grace window = full interval + 30s buffer ──
-        const MANUAL_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+        const MANUAL_GRACE_MS = 15_000;
 
         const statusMap: Record<string, string> = {};
         for (const r of state.results) {
           const manualEntry = manuallyTestedRef.current.get(r.id);
-          // Only apply the bg result if there is no recent manual test for this system
           if (!manualEntry || now - manualEntry.timestamp > MANUAL_GRACE_MS) {
-            statusMap[r.id] = r.newStatus;
+            // ── normalize 'error' from bg service → 'disconnected' in UI.
+            statusMap[r.id] = r.newStatus === 'error' ? 'disconnected' : r.newStatus;
           }
         }
 
-        // Nothing to update — all results were suppressed by the grace window
-        if (Object.keys(statusMap).length === 0) return;
+        for (const r of state.results) {
+          manuallyTestedRef.current.delete(r.id);
+        }
+
+        if (Object.keys(statusMap).length === 0) {
+          return;
+        }
 
         setSystems(prev => {
           const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
@@ -394,18 +378,14 @@ export default function TargetSystemShow() {
       }
     });
 
+    // ── FIX 1 (continued): Only unsubscribe the listener on unmount.
+    //    Do NOT call registerSystemsGetter(null) here — that would break
+    //    background health checks while you are on other pages.
     return () => {
-      healthCheckService.registerSystemsGetter(null);
       unsub();
     };
-  }, []); // empty deps — reads systems via ref
+  }, []);
 
-  // ── UNCHANGED base, with FIX 3 applied:
-  //    After fetching the systems list from the API, override the DB-fetched
-  //    status for any system that was manually tested within the grace window.
-  //    This prevents fetchData() (triggered by filter changes, form submits,
-  //    deletes, etc.) from reading a stale DB status that was written by a
-  //    subsequent auto health-check and reverting the manual test result. ──
   async function fetchData() {
     setLoading(true); setError(null);
     try {
@@ -416,12 +396,9 @@ export default function TargetSystemShow() {
       let list: System[] = Array.isArray(sd) ? sd : sd.systems || [];
       if (integrationId) list = list.filter(s => s.integration_id === integrationId);
 
-      // ── FIX 3: preserve manual test results over DB-fetched status ──
-      // fetchData() reads from MongoDB which may have been overwritten by an
-      // auto health-check that ran after the manual test. If a system was
-      // manually tested within the grace window, keep that status instead.
+      // ── preserve manual test results over DB-fetched status ──
       const now = Date.now();
-      const FETCH_GRACE_MS = (hcIntervalRef.current * 60 + 30) * 1000;
+      const FETCH_GRACE_MS = 15_000;
       list = list.map(s => {
         const manual = manuallyTestedRef.current.get(s._id);
         if (manual && now - manual.timestamp < FETCH_GRACE_MS) {
@@ -429,9 +406,28 @@ export default function TargetSystemShow() {
         }
         return s;
       });
-      // ────────────────────────────────────────────────────────────────
+
+      // ── normalize 'error' → 'disconnected' for DB-fetched statuses
+      //    not covered by a recent manual test. ──
+      list = list.map(s => {
+        if (s.status === 'error') {
+          const manual = manuallyTestedRef.current.get(s._id);
+          const isRecentManual = manual && (now - manual.timestamp < FETCH_GRACE_MS);
+          if (!isRecentManual) {
+            return { ...s, status: 'disconnected' };
+          }
+        }
+        return s;
+      });
 
       setSystems(list);
+      // ── FIX 2: update systemsRef.current synchronously with the fresh list
+      //    so that runNow() below reads the correct IDs immediately.
+      //    React's setSystems() is async (batched), so systemsRef.current still
+      //    holds the OLD array at this point. We assign directly to the ref here
+      //    so the healthCheckService getter gets the right IDs when runNow fires.
+      systemsRef.current = list;
+
       setTypeOptions(Array.isArray(td) ? td : (td as TypesResponse).types || []);
       setStats({
         total_systems: list.length,
@@ -440,13 +436,31 @@ export default function TargetSystemShow() {
         error:         list.filter(s => s.status === 'error').length,
         pending:       list.filter(s => s.status === 'pending').length,
       });
+
+      // ── FIX (timer reset): use module-level _hasRunInitialCheck instead of
+      //    useRef. A useRef resets on every mount (every navigation-back),
+      //    causing runNow() to fire on every return visit → runCheck() completes
+      //    → resets _countdown to full interval → timer jumps to 3:00.
+      //
+      //    A module-level variable persists across mounts. runNow() fires only
+      //    once per app session (the very first page load). On all subsequent
+      //    navigation-backs the block is skipped → the service's countdown
+      //    continues from wherever it was → no timer reset. ──
+      if (!_hasRunInitialCheck && list.length > 0) {
+        _hasRunInitialCheck = true;
+        healthCheckService.runNow();
+      }
+
     } catch (e) {
       setError((e as Error).message);
       setSystems([]);
     } finally { setLoading(false); }
   }
 
-  // ── UNCHANGED ──
+  async function handleRefresh(){
+    await fetchData();
+  }
+
   async function handleCreate(data: any): Promise<any> {
     try {
       const created = await api.targetSystems.create(data);
@@ -466,7 +480,6 @@ export default function TargetSystemShow() {
     }
   }
 
-  // ── UNCHANGED ──
   async function handleUpdate(id: string, data: any): Promise<any> {
     try {
       const updated = await api.targetSystems.update(id, data);
@@ -478,11 +491,9 @@ export default function TargetSystemShow() {
     }
   }
 
-  // ── UNCHANGED ──
   const openDelete  = useCallback((s: System) => { setDelTarget(s); setDelModal(true); }, []);
   const closeDelete = useCallback(() => { setDelModal(false); setDelTarget(null); setDelText(''); }, []);
 
-  // ── UNCHANGED ──
   const confirmDelete = useCallback(async () => {
     if (!delTarget) return;
     try {
@@ -492,33 +503,81 @@ export default function TargetSystemShow() {
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
   }, [delTarget]);
 
-  // ── FIX: after updating local state, record this system in manuallyTestedRef
-  //    so the bg-check subscriber skips overwriting it for the grace window.
-  //    Everything else (API call, toast, setSystems, setStats) is UNCHANGED. ──
   async function testConn(id: string) {
-    setTestingId(id);
-    try {
-      const r: TestResult = await api.targetSystems.testConnection(id);
+    setTestingIds(prev => new Set(prev).add(id));
+
+    const TIMEOUT_MS = 12_000;
+    const STARTUP_RETRY_ATTEMPTS = 8;
+    const STARTUP_RETRY_DELAY_MS = 5_000;
+    const NETWORK_FAIL_BAIL = 3;
+
+    function sleep(ms: number) {
+      return new Promise<void>(resolve => setTimeout(resolve, ms));
+    }
+
+    async function testConnectionWithTimeout(): Promise<TestResult> {
+      return new Promise<TestResult>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
+        api.targetSystems.testConnection(id)
+          .then(r => { clearTimeout(timer); resolve(r); })
+          .catch(e => { clearTimeout(timer); reject(e); });
+      });
+    }
+
+    function isSuccessResult(r: TestResult): boolean {
       const msg = r.message || r.detail || '';
-      const isFailure =
+      return !(
         r.success === false ||
         r.connected === false ||
         r.status === 'error' ||
         r.status === 'failed' ||
-        /fail|error|unable|cannot|unreachable|connection failed/i.test(msg);
-      if (isFailure) {
-        toast.error(msg || 'Connection test failed');
-      } else {
-        toast.success(msg || 'Connection successful');
-      }
-      const newStatus = isFailure ? 'disconnected' : 'connected';
+        /fail|error|unable|cannot|unreachable|connection failed/i.test(msg)
+      );
+    }
 
-      // FIX: record this manual test result so the bg-check subscriber won't
-      // overwrite it with a stale result during the grace window.
-      manuallyTestedRef.current.set(id, { status: newStatus, timestamp: Date.now() });
+    let finalStatus: string = 'disconnected';
+    let lastResult: TestResult | null = null;
+    let consecutiveNetworkFailures = 0;
+
+    try {
+      for (let attempt = 0; attempt <= STARTUP_RETRY_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+          await sleep(STARTUP_RETRY_DELAY_MS);
+        }
+
+        try {
+          const r: TestResult = await testConnectionWithTimeout();
+          lastResult = r;
+
+          if (isSuccessResult(r)) {
+            finalStatus = 'connected';
+            break;
+          } else {
+            finalStatus = 'disconnected';
+            consecutiveNetworkFailures = 0;
+          }
+        } catch {
+          finalStatus = 'error';
+          consecutiveNetworkFailures++;
+
+          if (consecutiveNetworkFailures >= NETWORK_FAIL_BAIL) {
+            break;
+          }
+          lastResult = null;
+        }
+      }
+
+      const msg = lastResult ? (lastResult.message || lastResult.detail || '') : '';
+      if (finalStatus === 'connected') {
+        toast.success(msg || 'Connection successful');
+      } else {
+        toast.error(msg || 'Connection test failed');
+      }
+
+      manuallyTestedRef.current.set(id, { status: finalStatus, timestamp: Date.now() });
 
       setSystems(prev => {
-        const updated = prev.map(s => s._id === id ? { ...s, status: newStatus } : s);
+        const updated = prev.map(s => s._id === id ? { ...s, status: finalStatus } : s);
         setStats({
           total_systems: updated.length,
           connected:     updated.filter(s => s.status === 'connected').length,
@@ -531,7 +590,6 @@ export default function TargetSystemShow() {
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || e?.message || 'Connection test failed');
 
-      // FIX: record the error result too — same grace-window protection.
       manuallyTestedRef.current.set(id, { status: 'error', timestamp: Date.now() });
 
       setSystems(prev => {
@@ -545,7 +603,13 @@ export default function TargetSystemShow() {
         });
         return updated;
       });
-    } finally { setTestingId(null); }
+    } finally {
+      setTestingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   /* ── UNCHANGED filter options ── */
@@ -581,12 +645,9 @@ export default function TargetSystemShow() {
     return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
   };
 
-  // ── CHANGED: overlay visibility logic.
-  //    Old: systems.length > 0 && (isRunningCheck || countdown <= 5)
-  //    New: only show when the service is running AND no page action is in progress
-  //         (prevents the overlay popping up mid-delete / mid-edit / mid-manual-test) ──
-  const isPageBusy = delModal || showForm || testingId !== null;
-  const showHealthOverlay = (hcState.isRunning || hcState.countdown <= 5) && !isPageBusy && systems.length > 0;
+  const isPageBusy = delModal || showForm || testingIds.size > 0;
+
+  const isCardTesting = (id: string) => testingIds.has(id);
 
   return (
     <>
@@ -659,56 +720,6 @@ export default function TargetSystemShow() {
 
         .dd-panel { animation: fade-up .15s cubic-bezier(.22,1,.36,1); }
 
-        /* ── Health-check full-page overlay ── */
-        @keyframes hc-spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes hc-fade-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes hc-pop {
-          from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-        .hc-overlay {
-          position: fixed; inset: 0; z-index: 40;
-          background: rgba(255,255,255,0.6);
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-          animation: hc-fade-in 0.25s ease;
-          pointer-events: none;
-        }
-        .hc-card {
-          position: fixed;
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 41;
-          background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 20px;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(99,102,241,0.08);
-          padding: 28px 36px;
-          display: flex; flex-direction: column; align-items: center; gap: 14px;
-          animation: hc-pop 0.28s cubic-bezier(.22,1,.36,1);
-          pointer-events: none;
-          min-width: 220px;
-        }
-        .hc-ring {
-          width: 44px; height: 44px;
-          border: 3px solid #e5e7eb;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: hc-spin 0.75s linear infinite;
-        }
-        .hc-label {
-          font-size: 13px; font-weight: 600; color: #374151;
-          letter-spacing: -0.01em;
-        }
-        .hc-sub {
-          font-size: 11.5px; color: #9ca3af; margin-top: -8px;
-        }
-
         /* ══════════════════════════════════════════════════════════════════
            RESPONSIVE LAYOUT SYSTEM
            ─────────────────────────────────────────────────────────────────
@@ -750,14 +761,12 @@ export default function TargetSystemShow() {
         }
 
         /* ── Header section ── */
-        /* CHANGED: padding-top/bottom now use clamp() to match aad-header-wrapper / ag-header-inner / al-header-inner exactly */
         .ts-header-section {
           padding-top:    clamp(20px, 2.5vw, 40px);
           padding-bottom: clamp(16px, 2vw, 32px);
         }
 
-        /* ── H1 — fluid, matches aad-h1-resp / ag-h1 / al-h1 exactly ── */
-        /* CHANGED: was clamp(22px, 1.8vw, 34px); now matches the other pages */
+        /* ── H1 — fluid ── */
         .ts-h1 {
           font-size: clamp(22px, 2.5vw, 36px);
           font-weight: 700;
@@ -929,12 +938,10 @@ export default function TargetSystemShow() {
             padding-right: 16px;
           }
 
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner tablet values */
           .ts-header-section {
             padding-top: 16px;
             padding-bottom: 14px;
           }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 tablet value */
           .ts-h1 { font-size: 1.625rem !important; }
 
           /* Stats: 2-column grid at tablet */
@@ -1000,12 +1007,10 @@ export default function TargetSystemShow() {
             padding-right: 24px;
           }
 
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner small-laptop values */
           .ts-header-section {
             padding-top: 24px;
             padding-bottom: 20px;
           }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 small-laptop value */
           .ts-h1 { font-size: 1.875rem !important; }
 
           /* Stat cards: keep in single row, allow natural compression */
@@ -1028,12 +1033,10 @@ export default function TargetSystemShow() {
             padding-right: 28px;
           }
 
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner medium-laptop values */
           .ts-header-section {
             padding-top: 28px;
             padding-bottom: 22px;
           }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 medium-laptop value */
           .ts-h1 { font-size: 2rem !important; }
         }
 
@@ -1045,21 +1048,17 @@ export default function TargetSystemShow() {
             padding-right: 36px;
           }
 
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner large-laptop values */
           .ts-header-section {
             padding-top: 36px;
             padding-bottom: 28px;
           }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 large-laptop value */
           .ts-h1 { font-size: 2rem !important; }
         }
 
         /* ── 1920px BASELINE — explicit lock ── */
         @media (min-width: 1920px) and (max-width: 2559px) {
           .ts-page-wrapper    { max-width: 1280px; padding-left: 32px; padding-right: 32px; }
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 1920px values */
           .ts-header-section  { padding-top: 40px; padding-bottom: 32px; }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 1920px value */
           .ts-h1              { font-size: 2.25rem !important; }
           .ts-h1-sub          { font-size: 14px; }
           .ts-header-btn      { height: 40px; font-size: 13px; padding-left: 16px; padding-right: 16px; }
@@ -1083,9 +1082,7 @@ export default function TargetSystemShow() {
             padding-left: 48px;
             padding-right: 48px;
           }
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner QHD values */
           .ts-header-section  { padding-top: 52px; padding-bottom: 40px; }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 QHD value */
           .ts-h1              { font-size: clamp(34px, 2.2vw, 48px) !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           .ts-stat-value      { font-size: clamp(42px, 3vw, 60px) !important; }
           .ts-stats-row       { gap: 20px; }
@@ -1112,9 +1109,7 @@ export default function TargetSystemShow() {
             padding-left: 64px;
             padding-right: 64px;
           }
-          /* CHANGED: matches aad-header-wrapper / ag-header-inner / al-header-inner 4K values */
           .ts-header-section  { padding-top: 64px; padding-bottom: 48px; }
-          /* CHANGED: matches aad-h1-resp / ag-h1 / al-h1 4K value */
           .ts-h1              { font-size: 3.5rem !important; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
           .ts-h1-sub          { font-size: 22px; }
           .ts-stat-value      { font-size: 72px !important; }
@@ -1142,21 +1137,6 @@ export default function TargetSystemShow() {
       `}</style>
 
       <div className="ts min-h-screen bg-white">
-
-        {/* ════════════════════ HEALTH-CHECK OVERLAY
-            ── CHANGED: was (isRunningCheck || countdown <= 5) && systems.length > 0
-               Now:      showHealthOverlay = hcState.isRunning && !isPageBusy && systems.length > 0
-               Suppressed during delete modal, form modal, and manual test. ── */}
-        {showHealthOverlay && (
-          <>
-            <div className="hc-overlay" />
-            <div className="hc-card">
-              <div className="hc-ring" />
-              <div className="hc-label">Checking systems…</div>
-              <div className="hc-sub">{systems.length} system{systems.length !== 1 ? 's' : ''} · auto health-check</div>
-            </div>
-          </>
-        )}
 
         {/* ════════════════════ DELETE MODAL ════════════════════ */}
         {delModal && (
@@ -1243,7 +1223,7 @@ export default function TargetSystemShow() {
                 </p>
               </div>
               <div className="ts-header-actions flex items-center gap-2.5 pt-1 shrink-0">
-                <button onClick={fetchData} disabled={loading}
+                <button onClick={handleRefresh} disabled={loading}
                   className="ts-header-btn inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-semibold text-gray-600 transition-all disabled:opacity-50">
                   <FaSync size={11} className={loading ? 'animate-spin' : ''} />
                   Refresh
@@ -1297,8 +1277,6 @@ export default function TargetSystemShow() {
                   </button>
                 )}
               </div>
-              {/* ── CHANGED: hcState.countdown / hcState.isRunning / hcState.lastChecked
-                  instead of local countdown / isRunningCheck / lastChecked ── */}
               <div className="flex items-center gap-3 shrink-0">
                 {systems.length > 0 && (
                   <LiveHealthIndicator
@@ -1365,7 +1343,7 @@ export default function TargetSystemShow() {
             ) : (
               <div className="ts-card-grid">
                 {systems.map((sys, i) => {
-                  const isManualTesting = testingId === sys._id;
+                  const isManualTesting = isCardTesting(sys._id);
                   return (
                     <article
                       key={sys._id}
@@ -1439,14 +1417,12 @@ export default function TargetSystemShow() {
                             </button>
                           )}
 
-                          {/* Test — ── CHANGED: disabled uses hcState.isRunning instead of isRunningCheck ── */}
+                          {/* Test — disabled only while THIS card is being tested */}
                           <button
                             onClick={() => testConn(sys._id)}
-                            disabled={isManualTesting || hcState.isRunning}
+                            disabled={isManualTesting}
                             className="ts-card-action-btn flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0f0f0f] hover:bg-[#2a2a2a] font-semibold text-white transition-colors disabled:opacity-50"
-                            title={hcState.isRunning ? 'Auto health-check in progress…' : undefined}
                           >
-                            {/* FIX: replaced rotating FaCheckCircle with a proper ring spinner */}
                             {isManualTesting ? (
                               <>
                                 <span style={{

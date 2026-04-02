@@ -646,6 +646,7 @@ const Agents: React.FC = () => {
           killswitch_activated: false, killswitch_activated_at: '',
           killswitch_activated_by: '', killswitch_reason: '',
           soft_deleted: false, status: 'active',
+          update_reason: reason ?? 'Agent re-enabled',
         });
         setAgents(prev => prev.map(a =>
           a.id === agent.id ? { ...a, disabled: false, killswitchActivated: false, status: 'active' } : a
