@@ -716,9 +716,44 @@ const AgentCreationForm: React.FC = () => {
     try {
       const resolvedIntegrationType =
         formData.selectedTargetSystem.type?.trim() || integrationTypeFromNav?.trim() || agentTypeId || '';
+
+      // Expand short-form agent type and integration type into readable words
+      const AGENT_TYPE_LABELS: Record<string, string> = {
+        'license':      'License',
+        'ssl':          'SSL Certificate',
+        'pwd-reset':    'Password Reset',
+        'password-reset': 'Password Reset',
+        'user-mgmt':    'User Management',
+        'user_mgmt':    'User Management',
+        'connection':   'SP Connection',
+      };
+      const INTEGRATION_TYPE_LABELS: Record<string, string> = {
+        'pingfederate':   'PingFederate',
+        'pingdirectory':  'PingDirectory',
+        'ping-federate':  'PingFederate',
+        'ping-directory': 'PingDirectory',
+        'ping federate':  'PingFederate',
+        'ping directory': 'PingDirectory',
+      };
+      const ENV_LABELS: Record<string, string> = {
+        'production':  'Production',
+        'staging':     'Staging',
+        'development': 'Development',
+      };
+
+      const agentTypeLabel =
+        AGENT_TYPE_LABELS[agentTypeId?.toLowerCase() ?? ''] ?? agentTypeId ?? 'License';
+      const integrationLabel =
+        INTEGRATION_TYPE_LABELS[resolvedIntegrationType.toLowerCase()] ?? resolvedIntegrationType;
+      const envLabel =
+        ENV_LABELS[formData.environment?.toLowerCase() ?? ''] ?? formData.environment ?? '';
+
+      const descriptionParts = [integrationLabel, envLabel].filter(Boolean).join(' ');
+      const agentDescription = `${agentTypeLabel} Agent for ${descriptionParts} Environment`;
+
       const payload: AgentCreationPayload = {
         name: formData.agentName, type: agentTypeId ?? 'license', status: 'active',
-        description: `${agentTypeId ?? 'License'} agent for ${formData.environment}`,
+        description: agentDescription,
         checkInterval: 3600,
         config: {
           environment: formData.environment, notificationWindow: formData.notificationWindow,
