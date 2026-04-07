@@ -18,17 +18,34 @@ interface System {
 interface Stats { total_systems: number; connected: number; disconnected: number; error: number; pending: number; }
 interface Filters { environment: string; status: string; }
 interface TypeOption { value: string; label: string; }
-interface SystemsResponse { systems?: System[]; [k: string]: any; }
-interface TypesResponse   { types?: TypeOption[];  [k: string]: any; }
-interface TestResult      { message?: string; detail?: string; success?: boolean; status?: string; connected?: boolean; [k: string]: any; }
-interface User            { role?: string; roles?: string[]; [k: string]: any; }
+interface SystemsResponse { systems?: System[];[k: string]: any; }
+interface TypesResponse { types?: TypeOption[];[k: string]: any; }
+interface TestResult { message?: string; detail?: string; success?: boolean; status?: string; connected?: boolean;[k: string]: any; }
+interface User { role?: string; roles?: string[];[k: string]: any; }
+
+/* ── Shape of each agent as returned by GET /api/v1/agents ── */
+interface ConnectedAgent {
+  id: string;
+  name: string;
+  type: string;
+  status?: string;
+  killswitch_activated?: boolean;
+  soft_deleted?: boolean;
+  config?: {
+    targetId?: string;
+    target_system_id?: string;
+    environment?: string;
+    [k: string]: any;
+  };
+  [k: string]: any;
+}
 
 /* ─────────────────────────────── status config ──────────────────────────── */
 const STATUS_CFG: Record<string, { dot: string; label: string; bg: string; color: string; glow: string }> = {
-  connected:    { dot: '#22c55e', label: 'Connected',    bg: '#f0fdf4', color: '#15803d', glow: 'rgba(34,197,94,0.35)'  },
-  disconnected: { dot: '#ef4444', label: 'Disconnected', bg: '#fef2f2', color: '#b91c1c', glow: 'rgba(239,68,68,0.35)'  },
-  error:        { dot: '#f97316', label: 'Error',        bg: '#fff7ed', color: '#c2410c', glow: 'rgba(249,115,22,0.35)' },
-  pending:      { dot: '#eab308', label: 'Pending',      bg: '#fefce8', color: '#a16207', glow: 'rgba(234,179,8,0.35)'  },
+  connected: { dot: '#22c55e', label: 'Connected', bg: '#f0fdf4', color: '#15803d', glow: 'rgba(34,197,94,0.35)' },
+  disconnected: { dot: '#ef4444', label: 'Disconnected', bg: '#fef2f2', color: '#b91c1c', glow: 'rgba(239,68,68,0.35)' },
+  error: { dot: '#f97316', label: 'Error', bg: '#fff7ed', color: '#c2410c', glow: 'rgba(249,115,22,0.35)' },
+  pending: { dot: '#eab308', label: 'Pending', bg: '#fefce8', color: '#a16207', glow: 'rgba(234,179,8,0.35)' },
 };
 
 /* ─────────────────────────────── sub-components ────────────────────────── */
@@ -291,26 +308,31 @@ export default function TargetSystemShow() {
   const navigate = useNavigate();
   const location = useLocation();
   const ls = location.state as LocationState | undefined;
-  const integrationName      = ls?.integrationName;
-  const integrationValue     = ls?.integrationValue;
+  const integrationName = ls?.integrationName;
+  const integrationValue = ls?.integrationValue;
   const authMethodsFromState = ls?.authMethods || [];
 
-  const [systems,     setSystems]     = useState<System[]>([]);
-  const [stats,       setStats]       = useState<Stats | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
-  const [showForm,    setShowForm]    = useState(false);
-  const [editingSys,  setEditingSys]  = useState<System | null>(null);
-  const [testingIds,  setTestingIds]  = useState<Set<string>>(new Set());
+  const [systems, setSystems] = useState<System[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingSys, setEditingSys] = useState<System | null>(null);
+  const [testingIds, setTestingIds] = useState<Set<string>>(new Set());
   const [typeOptions, setTypeOptions] = useState<TypeOption[]>([]);
   const [authMethods, setAuthMethods] = useState<string[]>([]);
-  const [canAdd,      setCanAdd]      = useState(false);
-  const [canEdit,     setCanEdit]     = useState(false);
-  const [canDelete,   setCanDelete]   = useState(false);
-  const [delModal,    setDelModal]    = useState(false);
-  const [delTarget,   setDelTarget]   = useState<System | null>(null);
-  const [delText,     setDelText]     = useState('');
-  const [filters,     setFilters]     = useState<Filters>({ environment: '', status: '' });
+  const [canAdd, setCanAdd] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [delModal, setDelModal] = useState(false);
+  const [delTarget, setDelTarget] = useState<System | null>(null);
+  const [delText, setDelText] = useState('');
+  const [filters, setFilters] = useState<Filters>({ environment: '', status: '' });
+
+  /* ── Connected-agents state for the delete modal ── */
+  const [connectedAgents, setConnectedAgents] = useState<ConnectedAgent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+  const [hasActiveAgents, setHasActiveAgents] = useState(false);
 
   const [hcState, setHcState] = useState<HealthCheckState>(healthCheckService.getState());
 
@@ -350,7 +372,12 @@ export default function TargetSystemShow() {
         const statusMap: Record<string, string> = {};
         for (const r of state.results) {
           const manualEntry = manuallyTestedRef.current.get(r.id);
-          if (!manualEntry || now - manualEntry.timestamp > MANUAL_GRACE_MS) {
+          const withinGrace = manualEntry && (now - manualEntry.timestamp < MANUAL_GRACE_MS);
+          // Only suppress the background result if the manual test already confirmed
+          // a SUCCESSFUL connection. If manual showed disconnected/error, always let
+          // the background result through — the service may have just come back up.
+          const shouldSuppress = withinGrace && manualEntry.status === 'connected';
+          if (!shouldSuppress) {
             // ── normalize 'error' from bg service → 'disconnected' in UI.
             statusMap[r.id] = r.newStatus === 'error' ? 'disconnected' : r.newStatus;
           }
@@ -368,10 +395,10 @@ export default function TargetSystemShow() {
           const updated = prev.map(s => statusMap[s._id] ? { ...s, status: statusMap[s._id] } : s);
           setStats({
             total_systems: updated.length,
-            connected:     updated.filter(s => s.status === 'connected').length,
-            disconnected:  updated.filter(s => s.status === 'disconnected').length,
-            error:         updated.filter(s => s.status === 'error').length,
-            pending:       updated.filter(s => s.status === 'pending').length,
+            connected: updated.filter(s => s.status === 'connected').length,
+            disconnected: updated.filter(s => s.status === 'disconnected').length,
+            error: updated.filter(s => s.status === 'error').length,
+            pending: updated.filter(s => s.status === 'pending').length,
           });
           return updated;
         });
@@ -431,10 +458,10 @@ export default function TargetSystemShow() {
       setTypeOptions(Array.isArray(td) ? td : (td as TypesResponse).types || []);
       setStats({
         total_systems: list.length,
-        connected:     list.filter(s => s.status === 'connected').length,
-        disconnected:  list.filter(s => s.status === 'disconnected').length,
-        error:         list.filter(s => s.status === 'error').length,
-        pending:       list.filter(s => s.status === 'pending').length,
+        connected: list.filter(s => s.status === 'connected').length,
+        disconnected: list.filter(s => s.status === 'disconnected').length,
+        error: list.filter(s => s.status === 'error').length,
+        pending: list.filter(s => s.status === 'pending').length,
       });
 
       // ── FIX (timer reset): use module-level _hasRunInitialCheck instead of
@@ -457,7 +484,7 @@ export default function TargetSystemShow() {
     } finally { setLoading(false); }
   }
 
-  async function handleRefresh(){
+  async function handleRefresh() {
     await fetchData();
   }
 
@@ -491,17 +518,75 @@ export default function TargetSystemShow() {
     }
   }
 
-  const openDelete  = useCallback((s: System) => { setDelTarget(s); setDelModal(true); }, []);
-  const closeDelete = useCallback(() => { setDelModal(false); setDelTarget(null); setDelText(''); }, []);
+  /* ─────────────────────────────────────────────────────────────────────────
+     fetchAgentsForTarget
+     ─────────────────────────────────────────────────────────────────────────
+     Fetches ALL agents (active AND disabled) that belong to the given target.
+
+     Why we use api.llmRuntime.listAgents() instead of listActiveAgents():
+       • listActiveAgents() only returns non-killswitch, non-soft-deleted agents
+         → disabled agents are invisible → the modal falsely shows "no agents".
+       • listAgents() returns every agent the current user can see (admin sees
+         all). We then filter client-side by config.targetId / config.target_system_id.
+       • This matches how the Agents page itself fetches agents.
+  ─────────────────────────────────────────────────────────────────────────── */
+  async function fetchAgentsForTarget(targetId: string): Promise<ConnectedAgent[]> {
+    try {
+      const allAgents: ConnectedAgent[] = await api.llmRuntime.listAgents();
+      if (!Array.isArray(allAgents)) return [];
+      return allAgents.filter(agent => {
+        const cfg = agent.config ?? {};
+        // AgentCreationForm saves the target as config.targetId (camelCase).
+        // Backend may also persist it as config.target_system_id (snake_case).
+        const agentTargetId = cfg.targetId ?? cfg.target_system_id ?? '';
+        return agentTargetId === targetId;
+      });
+    } catch (err) {
+      console.warn('[TargetSystemShow] fetchAgentsForTarget error:', err);
+      return [];
+    }
+  }
+
+  /* ── Open delete modal: load ALL agents for this target system first ── */
+  const openDelete = useCallback(async (s: System) => {
+    setDelTarget(s);
+    setDelText('');
+    setConnectedAgents([]);
+    setHasActiveAgents(false);
+    setDelModal(true);
+    setLoadingAgents(true);
+    try {
+      const list = await fetchAgentsForTarget(s._id);
+      setConnectedAgents(list);
+      // Deletion is only blocked by agents that are NEITHER killswitch-activated
+      // NOR soft-deleted. Disabled (killswitch) or deleted agents are fine.
+      const anyActive = list.some(a => !a.killswitch_activated && !a.soft_deleted);
+      setHasActiveAgents(anyActive);
+    } catch {
+      setConnectedAgents([]);
+      setHasActiveAgents(false);
+    } finally {
+      setLoadingAgents(false);
+    }
+  }, []);
+
+  const closeDelete = useCallback(() => {
+    setDelModal(false);
+    setDelTarget(null);
+    setDelText('');
+    setConnectedAgents([]);
+    setHasActiveAgents(false);
+  }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!delTarget) return;
+    if (hasActiveAgents) return; // guard — button should already be disabled
     try {
       await api.targetSystems.delete(delTarget._id);
       toast.success('Target system deleted successfully. Associated agents have been removed.');
       closeDelete(); fetchData();
     } catch (e: any) { toast.error(e?.response?.data?.detail || e?.message || 'Failed to delete'); }
-  }, [delTarget]);
+  }, [delTarget, hasActiveAgents]);
 
   async function testConn(id: string) {
     setTestingIds(prev => new Set(prev).add(id));
@@ -580,10 +665,10 @@ export default function TargetSystemShow() {
         const updated = prev.map(s => s._id === id ? { ...s, status: finalStatus } : s);
         setStats({
           total_systems: updated.length,
-          connected:     updated.filter(s => s.status === 'connected').length,
-          disconnected:  updated.filter(s => s.status === 'disconnected').length,
-          error:         updated.filter(s => s.status === 'error').length,
-          pending:       updated.filter(s => s.status === 'pending').length,
+          connected: updated.filter(s => s.status === 'connected').length,
+          disconnected: updated.filter(s => s.status === 'disconnected').length,
+          error: updated.filter(s => s.status === 'error').length,
+          pending: updated.filter(s => s.status === 'pending').length,
         });
         return updated;
       });
@@ -596,10 +681,10 @@ export default function TargetSystemShow() {
         const updated = prev.map(s => s._id === id ? { ...s, status: 'error' } : s);
         setStats({
           total_systems: updated.length,
-          connected:     updated.filter(s => s.status === 'connected').length,
-          disconnected:  updated.filter(s => s.status === 'disconnected').length,
-          error:         updated.filter(s => s.status === 'error').length,
-          pending:       updated.filter(s => s.status === 'pending').length,
+          connected: updated.filter(s => s.status === 'connected').length,
+          disconnected: updated.filter(s => s.status === 'disconnected').length,
+          error: updated.filter(s => s.status === 'error').length,
+          pending: updated.filter(s => s.status === 'pending').length,
         });
         return updated;
       });
@@ -614,33 +699,33 @@ export default function TargetSystemShow() {
 
   /* ── UNCHANGED filter options ── */
   const ENV_OPTIONS: DDOption[] = [
-    { key: '',            label: 'All Environments' },
+    { key: '', label: 'All Environments' },
     { key: 'development', label: 'Development' },
-    { key: 'staging',     label: 'Staging' },
-    { key: 'production',  label: 'Production' },
+    { key: 'staging', label: 'Staging' },
+    { key: 'production', label: 'Production' },
   ];
   const STATUS_OPTIONS: DDOption[] = [
-    { key: '',             label: 'All Statuses' },
-    { key: 'connected',    label: 'Connected',    dot: '#22c55e' },
+    { key: '', label: 'All Statuses' },
+    { key: 'connected', label: 'Connected', dot: '#22c55e' },
     { key: 'disconnected', label: 'Disconnected', dot: '#ef4444' },
-    { key: 'error',        label: 'Error',        dot: '#f97316' },
-    { key: 'pending',      label: 'Pending',      dot: '#eab308' },
+    { key: 'error', label: 'Error', dot: '#f97316' },
+    { key: 'pending', label: 'Pending', dot: '#eab308' },
   ];
 
   const STAT_CARDS = [
-    { label: 'Total Systems', value: stats?.total_systems ?? 0, dot: '#9ca3af', delay: 0   },
-    { label: 'Connected',     value: stats?.connected     ?? 0, dot: '#22c55e', delay: 50  },
-    { label: 'Disconnected',  value: stats?.disconnected  ?? 0, dot: '#ef4444', delay: 100 },
-    { label: 'Error',         value: stats?.error         ?? 0, dot: '#f97316', delay: 150 },
+    { label: 'Total Systems', value: stats?.total_systems ?? 0, dot: '#9ca3af', delay: 0 },
+    { label: 'Connected', value: stats?.connected ?? 0, dot: '#22c55e', delay: 50 },
+    { label: 'Disconnected', value: stats?.disconnected ?? 0, dot: '#ef4444', delay: 100 },
+    { label: 'Error', value: stats?.error ?? 0, dot: '#f97316', delay: 150 },
     // { label: 'Pending',       value: stats?.pending       ?? 0, dot: '#eab308', delay: 200 },
   ];
 
   const getStatusColor = (status: string) => {
     const map: Record<string, string> = {
-      connected:    'bg-green-100 text-green-700 border border-green-300',
+      connected: 'bg-green-100 text-green-700 border border-green-300',
       disconnected: 'bg-red-100 text-red-700 border border-red-300',
-      error:        'bg-red-100 text-red-700 border border-red-300',
-      pending:      'bg-yellow-100 text-yellow-700 border border-yellow-300',
+      error: 'bg-red-100 text-red-700 border border-red-300',
+      pending: 'bg-yellow-100 text-yellow-700 border border-yellow-300',
     };
     return map[status] || 'bg-gray-100 text-gray-700 border border-gray-300';
   };
@@ -719,6 +804,15 @@ export default function TargetSystemShow() {
         }
 
         .dd-panel { animation: fade-up .15s cubic-bezier(.22,1,.36,1); }
+
+        /* ── Agent list item in delete modal ── */
+        @keyframes agent-row-in {
+          from { opacity: 0; transform: translateX(-6px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .del-agent-row {
+          animation: agent-row-in 0.2s ease both;
+        }
 
         /* ══════════════════════════════════════════════════════════════════
            RESPONSIVE LAYOUT SYSTEM
@@ -1169,39 +1263,180 @@ export default function TargetSystemShow() {
                   <p className="text-[12px] text-gray-500 mt-1.5 break-all">{delTarget?.base_url || delTarget?.host}</p>
                 </div>
 
-                {/* Warning — compact */}
+                {/* ── Connected agents section ── */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[12px] font-bold text-gray-700 uppercase tracking-wider">
+                      Connected Agents
+                    </p>
+                    {/* Count pill — shown once loaded and list is non-empty */}
+                    {!loadingAgents && connectedAgents.length > 0 && (
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${hasActiveAgents
+                        ? 'bg-red-50 text-red-600 border-red-200'
+                        : 'bg-green-50 text-green-700 border-green-200'
+                        }`}>
+                        {hasActiveAgents
+                          ? `${connectedAgents.filter(a => !a.killswitch_activated && !a.soft_deleted).length} active`
+                          : 'All disabled'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Spinner while fetching agents */}
+                  {loadingAgents && (
+                    <div className="flex items-center gap-2 py-3 px-3 bg-gray-50 rounded-xl">
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin flex-shrink-0" />
+                      <span className="text-[12px] text-gray-400">Fetching connected agents…</span>
+                    </div>
+                  )}
+
+                  {/* No agents found for this target */}
+                  {!loadingAgents && connectedAgents.length === 0 && (
+                    <div className="flex items-center gap-2 py-2.5 px-3 bg-green-50 border border-green-100 rounded-xl">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+                        <circle cx="7" cy="7" r="6.5" stroke="#22c55e" />
+                        <path d="M4.5 7l1.8 1.8 3-3.6" stroke="#22c55e" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-[12px] text-green-700 font-medium">No agents connected to this system</span>
+                    </div>
+                  )}
+
+                  {/* Agent list */}
+                  {!loadingAgents && connectedAgents.length > 0 && (
+                    <div className="rounded-xl border border-gray-200 overflow-hidden">
+
+                      {/* Amber warning banner — shown when deletion is blocked by active agents */}
+                      {hasActiveAgents && (
+                        <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-amber-50 border-b border-amber-100">
+                          <FaExclamationTriangle className="text-amber-500 flex-shrink-0 mt-0.5" size={12} />
+                          <p className="text-[11.5px] text-amber-700 leading-relaxed">
+                            <span className="font-bold">Deletion blocked.</span> Disable all active agents (green) before deleting this target system.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Scrollable agent rows — max 200 px */}
+                      <div className="divide-y divide-gray-100 max-h-[200px] overflow-y-auto">
+                        {connectedAgents.map((agent, idx) => {
+                          /*
+                           * isActive = true  → agent is running       → GREEN filled circle + white tick
+                           * isActive = false → agent is disabled/dead → RED   filled circle + white X
+                           */
+                          const isActive = !agent.killswitch_activated && !agent.soft_deleted;
+                          return (
+                            <div
+                              key={agent.id || idx}
+                              className="del-agent-row flex items-center gap-3 px-3.5 py-2.5"
+                              style={{
+                                animationDelay: `${idx * 40}ms`,
+                                background: isActive ? '#ffffff' : '#fafafa',
+                                opacity: isActive ? 1 : 0.65,
+                              }}
+                            >
+                              {/* Status icon */}
+                              {isActive ? (
+                                /* GREEN solid circle + white checkmark */
+                                <div
+                                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                                  style={{ background: '#22c55e' }}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                    <path d="M2 5l2.2 2.2 3.8-4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </div>
+                              ) : (
+                                /* RED solid circle + white X */
+                                <div
+                                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                                  style={{ background: '#ef4444' }}
+                                >
+                                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                                    <path d="M2.5 2.5l4 4M6.5 2.5l-4 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+                                  </svg>
+                                </div>
+                              )}
+
+                              {/* Agent name + type */}
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-[12px] font-semibold truncate leading-tight ${isActive ? 'text-gray-900' : 'text-gray-400'
+                                  }`}>
+                                  {agent.name}
+                                </p>
+                                <p className="text-[10.5px] text-gray-400 truncate leading-tight mt-0.5 capitalize">
+                                  {agent.type}
+                                </p>
+                              </div>
+
+                              {/* Status pill */}
+                              <span
+                                className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                style={isActive
+                                  ? { background: '#f0fdf4', color: '#15803d' }  /* green tint */
+                                  : { background: '#fef2f2', color: '#b91c1c' }  /* red tint   */
+                                }
+                              >
+                                {isActive ? 'Active' : 'Disabled'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Warning */}
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 mb-4">
                   <p className="text-[12px] text-red-600 leading-relaxed">
                     <span className="font-bold">Warning:</span> Permanently removes this system along with all associated agents and monitoring data.
                   </p>
                 </div>
 
-                {/* Confirm input */}
-                <div className="mb-4">
-                  <label className="block text-[12px] font-bold text-red-500 mb-1.5">
-                    Type <span className="font-black">"{delTarget?.name}"</span> to confirm
-                  </label>
-                  <input
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
-                    placeholder={`Type "${delTarget?.name}" to confirm`}
-                    value={delText}
-                    onChange={e => setDelText(e.target.value)}
-                  />
-                  {delText && delText !== delTarget?.name && (
-                    <p className="text-red-400 text-[11px] mt-1">System name does not match</p>
-                  )}
-                </div>
+                {/* Name confirmation — hidden when blocked by active agents */}
+                {!hasActiveAgents && (
+                  <div className="mb-4">
+                    <label className="block text-[12px] font-bold text-red-500 mb-1.5">
+                      Type <span className="font-black">"{delTarget?.name}"</span> to confirm
+                    </label>
+                    <input
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
+                      placeholder={`Type "${delTarget?.name}" to confirm`}
+                      value={delText}
+                      onChange={e => setDelText(e.target.value)}
+                    />
+                    {delText && delText !== delTarget?.name && (
+                      <p className="text-red-400 text-[11px] mt-1">System name does not match</p>
+                    )}
+                  </div>
+                )}
 
-                {/* Buttons */}
+                {/* Action buttons */}
                 <div className="flex gap-2.5">
                   <button onClick={closeDelete}
                     className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition-colors">
                     Cancel
                   </button>
-                  <button onClick={confirmDelete} disabled={delText !== delTarget?.name}
-                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                    Yes, Delete
-                  </button>
+
+                  {hasActiveAgents ? (
+                    /* Blocked — active agents prevent deletion */
+                    <button
+                      disabled
+                      title="Disable all active agents first"
+                      className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-400 cursor-not-allowed flex items-center justify-center gap-1.5"
+                    >
+                      <FaLock size={10} />
+                      Disable Agents First
+                    </button>
+                  ) : (
+                    /* All agents disabled (or none) — allow deletion after name confirmation */
+                    <button
+                      onClick={confirmDelete}
+                      disabled={delText !== delTarget?.name || loadingAgents}
+                      className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Yes, Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1333,8 +1568,8 @@ export default function TargetSystemShow() {
               <div className="flex flex-col items-center py-28 text-center">
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-5">
                   <svg width="22" height="22" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24">
-                    <rect x="2" y="6" width="20" height="14" rx="2"/>
-                    <path d="M2 10h20M8 2v4M16 2v4"/>
+                    <rect x="2" y="6" width="20" height="14" rx="2" />
+                    <path d="M2 10h20M8 2v4M16 2v4" />
                   </svg>
                 </div>
                 <p className="text-[15px] font-semibold text-gray-500">No systems found</p>
@@ -1365,7 +1600,7 @@ export default function TargetSystemShow() {
                               className="ts-status-badge inline-flex items-center gap-1.5 rounded-full font-semibold"
                               style={{
                                 background: isManualTesting ? '#f0fdf4' : (STATUS_CFG[sys.status]?.bg ?? '#f9fafb'),
-                                color:      isManualTesting ? '#15803d'  : (STATUS_CFG[sys.status]?.color ?? '#6b7280'),
+                                color: isManualTesting ? '#15803d' : (STATUS_CFG[sys.status]?.color ?? '#6b7280'),
                               }}
                             >
                               <span

@@ -3,12 +3,22 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { FaCheckCircle, FaTimes, FaChevronLeft, FaChevronRight, FaChevronDown, FaCheck } from 'react-icons/fa';
 
+// ─── Load both manifests ──────────────────────────────────────────────────────
 const manifestModules = import.meta.glob<{ default: Record<string, string> }>(
   '../../data/avatarManifest.json',
   { eager: true },
 );
 const avatarManifest: Record<string, string> =
   Object.values(manifestModules)[0]?.default ?? {};
+
+// NEW: UUID map — maps avatar name-id → { uuid, img }
+// This is what we need to pass to LiveAvatar /v1/sessions/token
+const uuidMapModules = import.meta.glob<{ default: Record<string, { uuid: string; img: string }> }>(
+  '../../data/avatarUuidMap.json',
+  { eager: true },
+);
+const avatarUuidMap: Record<string, { uuid: string; img: string }> =
+  Object.values(uuidMapModules)[0]?.default ?? {};
 
 const FORMAL_KEYWORDS = ['professional', 'formal', 'pro', 'suit', 'business', 'front'];
 const CASUAL_KEYWORDS = ['casual', 'lite', 'summer', 'vacation', 'street', 'incasual', 'relaxed'];
@@ -37,7 +47,8 @@ const COLORS = [
 ];
 
 interface AvatarOption {
-  id: string;
+  id: string;       // The name-based ID (e.g. "Pedro_ProfessionalLook_public")
+  uuid: string;     // NEW: The actual LiveAvatar UUID for session creation
   name: string;
   img: string;
   color: string;
@@ -75,7 +86,11 @@ function buildAvatarListFromManifest(): AvatarOption[] {
     .sort(([, a], [, b]) => rank(b.img) - rank(a.img))
     .slice(0, 20)
     .map(([, { id, img }], i) => ({
-      id, img,
+      id,
+      img,
+      // NEW: resolve the real UUID from uuidMap; fall back to the name-id itself
+      // so existing agents without a UUID map still work.
+      uuid: avatarUuidMap[id]?.uuid ?? id,
       name: friendlyName(id),
       color: COLORS[i % COLORS.length],
     }));
@@ -83,47 +98,34 @@ function buildAvatarListFromManifest(): AvatarOption[] {
 
 const MANIFEST_AVATARS: AvatarOption[] = buildAvatarListFromManifest();
 
-// ─── Instant preload — runs at module evaluation time ─────────────────────────
-// This fires before React mounts, before any useEffect, before the first render.
-// We inject <link rel="preload"> into <head> for every local avatar image AND
-// simultaneously kick off new Image() fetches. Together these are the two
-// highest-priority fetch mechanisms available in the browser — they bypass
-// lazy-loading, Intersection Observer, and overflow:hidden visibility checks.
-// By the time the carousel component renders, all images are already in cache.
+// Preload images
 if (typeof window !== 'undefined' && MANIFEST_AVATARS.length > 0) {
   MANIFEST_AVATARS.forEach(avatar => {
     if (!avatar.img) return;
-
-    // 1. <link rel="preload"> — highest browser fetch priority, runs in parallel
-    //    with page parsing. Only inject once per URL.
     const existing = document.head.querySelector(`link[rel="preload"][href="${avatar.img}"]`);
     if (!existing) {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = 'image';
       link.href = avatar.img;
-      // fetchpriority attribute on the link element (Chromium 101+)
       (link as any).fetchPriority = 'high';
       document.head.appendChild(link);
     }
-
-    // 2. new Image() — fallback for browsers that don't honour link preload
-    //    for images, and forces cache population for the <img> elements below.
     const img = new window.Image();
     img.src = avatar.img;
   });
 }
 
 const HARDCODED_FALLBACKS: AvatarOption[] = [
-  { id: 'Marianne_ProfessionalLook_public', name: 'Marianne', img: '', color: '#6366f1' },
-  { id: 'Katya_ProfessionalLook_public', name: 'Katya', img: '', color: '#10b981' },
-  { id: 'Alessandra_ProfessionalLook_public', name: 'Alessandra', img: '', color: '#f59e0b' },
-  { id: 'Tyler_ProfessionalLook_public', name: 'Tyler', img: '', color: '#fca5a5' },
-  { id: 'Anna_public_3_20240108', name: 'Anna', img: '', color: '#8b5cf6' },
-  { id: 'Eric_public_pro1_20230608', name: 'Eric', img: '', color: '#06b6d4' },
-  { id: 'Susan_public_2_20240328', name: 'Susan', img: '', color: '#ec4899' },
-  { id: 'Shelly_public_20240408', name: 'Shelly', img: '', color: '#f97316' },
-  { id: 'Wayne_20240711_public', name: 'Wayne', img: '', color: '#14b8a6' },
+  { id: 'Marianne_ProfessionalLook_public', uuid: 'Marianne_ProfessionalLook_public', name: 'Marianne', img: '', color: '#6366f1' },
+  { id: 'Katya_ProfessionalLook_public', uuid: 'Katya_ProfessionalLook_public', name: 'Katya', img: '', color: '#10b981' },
+  { id: 'Alessandra_ProfessionalLook_public', uuid: 'Alessandra_ProfessionalLook_public', name: 'Alessandra', img: '', color: '#f59e0b' },
+  { id: 'Tyler_ProfessionalLook_public', uuid: 'Tyler_ProfessionalLook_public', name: 'Tyler', img: '', color: '#fca5a5' },
+  { id: 'Anna_public_3_20240108', uuid: 'Anna_public_3_20240108', name: 'Anna', img: '', color: '#8b5cf6' },
+  { id: 'Eric_public_pro1_20230608', uuid: 'Eric_public_pro1_20230608', name: 'Eric', img: '', color: '#06b6d4' },
+  { id: 'Susan_public_2_20240328', uuid: 'Susan_public_2_20240328', name: 'Susan', img: '', color: '#ec4899' },
+  { id: 'Shelly_public_20240408', uuid: 'Shelly_public_20240408', name: 'Shelly', img: '', color: '#f97316' },
+  { id: 'Wayne_20240711_public', uuid: 'Wayne_20240711_public', name: 'Wayne', img: '', color: '#14b8a6' },
 ];
 
 interface TargetSystem {
@@ -140,7 +142,8 @@ interface TargetSystem {
 
 interface FormData {
   agentName: string;
-  selectedAvatarId: string;
+  selectedAvatarId: string;       // name-based ID (e.g. Pedro_ProfessionalLook_public)
+  selectedAvatarUuid: string;     // NEW: real LiveAvatar UUID for session creation
   selectedAvatarImg: string;
   selectedAvatarName: string;
   environment: string;
@@ -168,7 +171,8 @@ interface AgentCreationPayload {
     targetSystemName: string;
     agentTypeId?: string;
     integrationType?: string;
-    selectedAvatarId?: string;
+    selectedAvatarId?: string;     // name-based id (kept for backwards compat)
+    selectedAvatarUuid?: string;   // NEW: real UUID — this is what AgentChat uses
     selectedAvatarImg?: string;
     selectedAvatarName?: string;
   };
@@ -178,8 +182,6 @@ interface TargetSystemsResponse { systems?: TargetSystem[]; }
 
 type ImgState = 'loaded' | 'error' | 'loading';
 
-// ── Checks whether a URL is already in the browser image cache synchronously ──
-// An <img> with .complete===true and .naturalWidth>0 is fully decoded in cache.
 function isImgCached(src: string): boolean {
   if (!src || typeof window === 'undefined') return false;
   const probe = new window.Image();
@@ -187,11 +189,6 @@ function isImgCached(src: string): boolean {
   return probe.complete && probe.naturalWidth > 0;
 }
 
-// ── Image state hook that handles the cached-image race condition ─────────────
-// Problem: if an image is already cached, the browser fires the `load` event
-// synchronously (before React attaches onLoad). The old hook always started
-// in 'loading', so cached images never transitioned to 'loaded'.
-// Fix: check isImgCached() at init time so cached images start in 'loaded'.
 function useImgState(src: string): [ImgState, () => void, () => void] {
   const [state, setState] = React.useState<ImgState>(() => {
     if (!src) return 'error';
@@ -209,9 +206,6 @@ function useImgState(src: string): [ImgState, () => void, () => void] {
 }
 
 // ─── Custom Dropdown ──────────────────────────────────────────────────────────
-// Matches the visual style of the TargetSystemShow DropdownFilter (Image 1):
-// white bg, rounded-2xl panel, subtle shadow, checkmark for selected item,
-// smooth fade-up animation, hover states. Replaces native <select>.
 interface DropdownOption { value: string; label: string; }
 
 interface CustomDropdownProps {
@@ -229,7 +223,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   React.useEffect(() => {
     const fn = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -238,7 +231,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  // Close on Escape
   React.useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('keydown', fn);
@@ -250,7 +242,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
   return (
     <div ref={ref} className="relative w-full">
-      {/* Trigger — same height/padding/radius as .acf-input */}
       <button
         type="button"
         disabled={disabled}
@@ -270,7 +261,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         />
       </button>
 
-      {/* Panel — rounded-2xl, soft shadow, fade-up animation */}
       {open && (
         <div className="acf-dropdown-panel absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50">
           <div className="py-1.5">
@@ -299,8 +289,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   );
 };
 
-// ─── Custom Target System Dropdown ────────────────────────────────────────────
-// Same panel style but with two-line rows (name + URL) for richer display.
+// ─── Target System Dropdown ───────────────────────────────────────────────────
 interface TargetSystemDropdownProps {
   value: string;
   systems: TargetSystem[];
@@ -384,15 +373,14 @@ const TargetSystemDropdown: React.FC<TargetSystemDropdownProps> = ({ value, syst
   );
 };
 
+// ─── Avatar Circle Image ──────────────────────────────────────────────────────
 const AvatarCircleImage: React.FC<{
   avatar: AvatarOption;
   textSize?: string;
-  eager?: boolean; // kept for API compatibility
+  eager?: boolean;
 }> = ({ avatar, textSize = 'text-2xl' }) => {
   const [state, onLoad, onError] = useImgState(avatar.img);
 
-  // Extra safety: if img ref reports complete after mount, flip to loaded.
-  // Handles edge cases where isImgCached returns false but image is actually ready.
   const imgRef = React.useRef<HTMLImageElement>(null);
   React.useEffect(() => {
     if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
@@ -402,7 +390,6 @@ const AvatarCircleImage: React.FC<{
 
   return (
     <>
-      {/* Initials — always visible as background fallback */}
       <div
         className={`absolute inset-0 flex items-center justify-center text-white font-bold ${textSize}`}
         style={{ background: `linear-gradient(135deg, ${avatar.color}cc, ${avatar.color})` }}
@@ -416,7 +403,7 @@ const AvatarCircleImage: React.FC<{
           src={avatar.img}
           alt={avatar.name}
           loading="eager"
-          // @ts-ignore — fetchPriority is valid HTML but TS types lag
+          // @ts-ignore
           fetchPriority="high"
           decoding="sync"
           className={`absolute inset-0 w-full h-full object-cover object-top z-20 transition-opacity duration-150 ${state === 'loaded' ? 'opacity-100' : 'opacity-0'
@@ -429,6 +416,7 @@ const AvatarCircleImage: React.FC<{
   );
 };
 
+// ─── Avatar Large Preview ─────────────────────────────────────────────────────
 const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar }) => {
   const [state, onLoad, onError] = useImgState(avatar?.img ?? '');
   if (!avatar) {
@@ -473,34 +461,22 @@ const AvatarLargePreview: React.FC<{ avatar: AvatarOption | null }> = ({ avatar 
       <div className="absolute bottom-0 left-0 right-0 z-30 p-5"
         style={{ background: `linear-gradient(to top, ${avatar.color}f0 0%, ${avatar.color}88 60%, transparent 100%)` }}>
         <p className="text-white font-bold text-xl leading-tight drop-shadow-sm">{avatar.name}</p>
-        {/* 👔 emoji removed per user's modification */}
-        {/* <p className="text-white/80 text-sm mt-0.5"> Formal look</p> */}
       </div>
-      {/* <div className="absolute top-3 right-3 z-30 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg"
-        style={{ background: '#6366f1dd', backdropFilter: 'blur(8px)' }}>
-        Formal
-      </div> */}
-      {/* Cached/CDN badge removed per user's modification */}
     </div>
   );
 };
 
+// ─── Avatar Carousel ──────────────────────────────────────────────────────────
 const AvatarCarousel: React.FC<{
   avatars: AvatarOption[];
   selectedId: string;
-  onSelect: (id: string, name: string, img: string) => void;
+  onSelect: (id: string, uuid: string, name: string, img: string) => void;
 }> = ({ avatars, selectedId, onSelect }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const rafRef = React.useRef<number>(0);
   const [canLeft, setCanLeft] = React.useState(false);
   const [canRight, setCanRight] = React.useState(true);
 
-  // ── Force-preload every avatar image via JS Image() objects ──────────────
-  // Browser lazy-load / Intersection Observer won't fetch images inside
-  // overflow:hidden ancestors even with loading="eager". Constructing
-  // Image() objects in JS bypasses that entirely — the browser fetches
-  // and caches every URL immediately, so <img> elements hit the cache
-  // and render instantly without waiting for any scroll/reflow event.
   React.useEffect(() => {
     avatars.forEach(avatar => {
       if (!avatar.img) return;
@@ -540,7 +516,6 @@ const AvatarCarousel: React.FC<{
         <label className="block text-sm font-semibold text-gray-900">
           Choose Your Avatar <span className="text-red-500">*</span>
         </label>
-        {/* 🖱️ emoji removed per user's modification */}
         <div className="hidden sm:flex items-center gap-1 text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full select-none">
           <span>scroll or use arrows</span>
         </div>
@@ -565,7 +540,8 @@ const AvatarCarousel: React.FC<{
               const isSelected = selectedId === avatar.id;
               return (
                 <button key={avatar.id} type="button"
-                  onClick={() => onSelect(avatar.id, avatar.name, avatar.img)}
+                  // NEW: pass uuid as second arg so FormData can store it
+                  onClick={() => onSelect(avatar.id, avatar.uuid, avatar.name, avatar.img)}
                   className="flex flex-col items-center gap-1.5 flex-shrink-0 group transition-all duration-200"
                   style={{ minWidth: 84 }}>
                   <div
@@ -610,7 +586,6 @@ const AgentCreationForm: React.FC = () => {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
-  // CHANGED: track the newly created agent's ID so we can navigate to its chat
   const [createdAgentId, setCreatedAgentId] = React.useState<string>('');
   const [availableTargetSystems, setAvailableTargetSystems] = React.useState<TargetSystem[]>([]);
   const [loadingTargetSystems, setLoadingTargetSystems] = React.useState(false);
@@ -627,26 +602,36 @@ const AgentCreationForm: React.FC = () => {
   });
 
   const [formData, setFormData] = React.useState<FormData>({
-    agentName: '', selectedAvatarId: '', selectedAvatarImg: '',
-    selectedAvatarName: '', environment: '', notificationWindow: 30,
-    slackChannel: '#alerts', selectedTargetSystem: null,
+    agentName: '',
+    selectedAvatarId: '',
+    selectedAvatarUuid: '',   // NEW
+    selectedAvatarImg: '',
+    selectedAvatarName: '',
+    environment: '',
+    notificationWindow: 30,
+    slackChannel: '#alerts',
+    selectedTargetSystem: null,
   });
 
   React.useEffect(() => {
     if (hasManifest) return;
     const go = async () => {
-      const apiKey = import.meta.env.VITE_HEYGEN_API_KEY;
+      const apiKey = import.meta.env.VITE_LIVEAVATAR_API_KEY;
       if (!apiKey) {
         setAvatars(HARDCODED_FALLBACKS); setAvatarSource('fallback'); setLoadingAvatars(false); return;
       }
       try {
-        const res = await fetch('/heygen-api/v1/streaming/avatar.list', { headers: { 'x-api-key': apiKey } });
-        if (!res.ok) throw new Error(`HeyGen ${res.status}`);
+        const res = await fetch('/liveavatar-api/v1/avatars/public', {
+          headers: { 'X-API-KEY': apiKey },
+        });
+        if (!res.ok) throw new Error(`LiveAvatar ${res.status}`);
         const data = await res.json();
         const raw: any[] =
-          Array.isArray(data?.data) ? data.data :
-            Array.isArray(data?.data?.avatars) ? data.data.avatars :
-              Array.isArray(data?.avatars) ? data.avatars : [];
+          Array.isArray(data?.data?.results)  ? data.data.results :
+          Array.isArray(data?.data?.avatars)   ? data.data.avatars :
+          Array.isArray(data?.data)            ? data.data :
+          Array.isArray(data?.avatars)         ? data.avatars :
+          Array.isArray(data?.results)         ? data.results : [];
         if (!raw.length) throw new Error('empty');
         const byName = new Map<string, AvatarOption>();
         raw.forEach((a: any, i: number) => {
@@ -657,7 +642,9 @@ const AgentCreationForm: React.FC = () => {
           const cdnUrl = a.normal_preview ?? a.preview_image_url ?? a.thumbnail_image_url ??
             a.headshot_image_url ?? a.image_url ?? a.thumbnail ?? a.preview ?? '';
           const img = cdnUrl && !String(cdnUrl).match(/\.(mp4|webm|mov)(\?|$)/i) ? String(cdnUrl) : '';
-          byName.set(first, { id, img, name: friendlyName(id), color: COLORS[i % COLORS.length] });
+          // NEW: resolve UUID from live API response
+          const uuid = String(a.uuid ?? a.id_uuid ?? id).trim();
+          byName.set(first, { id, uuid, img, name: friendlyName(id), color: COLORS[i % COLORS.length] });
         });
         setAvatars(Array.from(byName.values()).slice(0, 20));
         setAvatarSource('cdn');
@@ -688,20 +675,22 @@ const AgentCreationForm: React.FC = () => {
     }));
   };
 
-  // Separate handler for environment dropdown — also clears target system
   const handleEnvironmentChange = (value: string) => {
     setFormData(prev => ({ ...prev, environment: value, selectedTargetSystem: null }));
   };
 
-  // Handler for target system dropdown
   const handleTargetSystemChange = (system: TargetSystem | null) => {
     setFormData(prev => ({ ...prev, selectedTargetSystem: system }));
   };
 
-  const handleAvatarSelect = (id: string, name: string, img: string) => {
+  // NEW: now receives uuid as second argument
+  const handleAvatarSelect = (id: string, uuid: string, name: string, img: string) => {
     setFormData(prev => ({
       ...prev,
-      selectedAvatarId: id, selectedAvatarImg: img, selectedAvatarName: name,
+      selectedAvatarId: id,
+      selectedAvatarUuid: uuid,   // store the real UUID
+      selectedAvatarImg: img,
+      selectedAvatarName: name,
       agentName:
         prev.agentName === '' || avatars.some(a => prev.agentName === `${a.name} Agent`) || avatars.some(a => prev.agentName === a.name)
           ? name : prev.agentName,
@@ -727,11 +716,11 @@ const AgentCreationForm: React.FC = () => {
           targetSystemName: formData.selectedTargetSystem.name,
           agentTypeId, integrationType: resolvedIntegrationType,
           selectedAvatarId: formData.selectedAvatarId,
+          selectedAvatarUuid: formData.selectedAvatarUuid,  // NEW: saved to DB
           selectedAvatarImg: formData.selectedAvatarImg,
           selectedAvatarName: formData.selectedAvatarName,
         },
       };
-      // CHANGED: capture the created agent's ID from the API response
       const created = await api.llmRuntime.createAgent(payload);
       setCreatedAgentId(created?.id ?? created?._id ?? '');
       setShowSuccess(true);
@@ -743,7 +732,6 @@ const AgentCreationForm: React.FC = () => {
   const selectedAvatarObj = avatars.find(a => a.id === formData.selectedAvatarId) ?? null;
   const agentLabel = agentTypeId ? agentTypeId.charAt(0).toUpperCase() + agentTypeId.slice(1) : 'License';
 
-  // Environment options for CustomDropdown
   const ENV_OPTIONS: DropdownOption[] = [
     { value: 'production', label: 'Production' },
     { value: 'staging', label: 'Staging' },
@@ -755,313 +743,99 @@ const AgentCreationForm: React.FC = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
         .acf-font { font-family: 'DM Sans', sans-serif; }
-
-        @keyframes acf-rise {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes acf-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .acf-card { animation: acf-rise 0.35s ease both; }
-
         @keyframes acf-fade { from { opacity:0 } to { opacity:1 } }
         .acf-modal-in { animation: acf-fade 0.2s ease-out; }
-
-        .acf-accent-bar {
-          height: 3px; transform: scaleX(0);
-          transform-origin: left; transition: transform 0.3s ease;
-        }
+        .acf-accent-bar { height: 3px; transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease; }
         .acf-card:hover .acf-accent-bar { transform: scaleX(1); }
-
-        /* ── Standard text inputs ── */
-        .acf-input {
-          width: 100%; padding: 10px 14px; font-size: 13.5px; font-family: inherit;
-          border: 1px solid #E5E7EB; border-radius: 10px; background: #fff;
-          color: #111; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-        }
+        .acf-input { width: 100%; padding: 10px 14px; font-size: 13.5px; font-family: inherit; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; color: #111; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
         .acf-input:hover  { border-color: #D1D5DB; }
         .acf-input:focus  { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
         .acf-input:disabled, .acf-input[readonly] { background: #F9FAFB; color: #9CA3AF; cursor: not-allowed; }
-
-        /* ── Custom dropdown trigger — same height/padding/radius as .acf-input ── */
-        .acf-dropdown-trigger {
-          padding: 10px 14px;
-          border: 1px solid #E5E7EB;
-          border-radius: 10px;
-          background: #fff;
-          outline: none;
-          font-family: inherit;
-          transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .acf-dropdown-trigger:hover:not(:disabled) {
-          border-color: #D1D5DB;
-        }
-        .acf-dropdown-trigger:focus,
-        .acf-dropdown-open {
-          border-color: #6366F1;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
-        }
-        .acf-dropdown-active {
-          border-color: #D1D5DB;
-        }
-
-        /* ── Dropdown panel — rounded-2xl, soft shadow, fade-up ── */
-        .acf-dropdown-panel {
-          box-shadow: 0 8px 30px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
-          animation: acf-dd-in 0.15s cubic-bezier(0.22,1,0.36,1);
-        }
-        @keyframes acf-dd-in {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .acf-label {
-          display: block; font-size: 12.5px; font-weight: 600;
-          color: #374151; margin-bottom: 6px; letter-spacing: 0.01em;
-        }
-
+        .acf-dropdown-trigger { padding: 10px 14px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; outline: none; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+        .acf-dropdown-trigger:hover:not(:disabled) { border-color: #D1D5DB; }
+        .acf-dropdown-trigger:focus, .acf-dropdown-open { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .acf-dropdown-active { border-color: #D1D5DB; }
+        .acf-dropdown-panel { box-shadow: 0 8px 30px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06); animation: acf-dd-in 0.15s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes acf-dd-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .acf-label { display: block; font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 6px; letter-spacing: 0.01em; }
         @keyframes int-pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .acf-pulse { animation: int-pulse-green 2s ease infinite; }
-
         .avatar-scroll::-webkit-scrollbar { display: none; }
         .avatar-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* ═══════════════════════════════════════════════════════════════
-           RESPONSIVE RULES — AgentCreationForm
-           Baseline 1920×1080 → exact current design (no changes)
-           All breakpoints scale proportionally from baseline.
-        ═══════════════════════════════════════════════════════════════ */
-
-        /* ── Global safety ── */
-        .acf-font {
-          overflow-x: hidden;
-          box-sizing: border-box;
-        }
+        .acf-font { overflow-x: hidden; box-sizing: border-box; }
         *, *::before, *::after { box-sizing: inherit; }
-
-        /* ── Z-index scale ── */
-        :root {
-          --z-dropdown: 50;
-          --z-modal:    100;
-        }
-
-        /* ── Success modal: scales at all breakpoints ── */
-        .acf-modal-in > div {
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-
-        /* ── Header band inner wrapper ──────────────────────────────── */
-        .acf-header-wrapper {
-          max-width: 1400px;
-          margin-left: auto;
-          margin-right: auto;
-          padding-left: 48px;
-          padding-right: 48px;
-          padding-top: 40px;
-          padding-bottom: 32px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px;
-          box-sizing: border-box;
-          width: 100%;
-        }
-
-        /* ── Page content wrapper ────────────────────────────────────── */
-        .acf-page-wrapper {
-          max-width: 1400px;
-          margin-left: auto;
-          margin-right: auto;
-          padding-left: 48px;
-          padding-right: 48px;
-          padding-top: 40px;
-          padding-bottom: 80px;
-          box-sizing: border-box;
-          width: 100%;
-        }
-
-        /* ── H1 size ─────────────────────────────────────────────────── */
-        .acf-h1 {
-          font-size: clamp(1.5rem, 2vw, 2.25rem);
-          -webkit-font-smoothing: antialiased;
-          text-rendering: optimizeLegibility;
-          overflow-wrap: break-word;
-          word-break: break-word;
-        }
-
-        /* ── Preview column width ────────────────────────────────────── */
-        .acf-preview-col {
-          width: clamp(200px, 18vw, 272px);
-          flex-shrink: 0;
-        }
-
-        /* ── Layout row gap ──────────────────────────────────────────── */
-        .acf-form-row {
-          display: flex;
-          gap: clamp(14px, 1.5vw, 24px);
-          align-items: flex-start;
-        }
-
-        /* ── Form card inner padding ─────────────────────────────────── */
-        .acf-card form {
-          padding-left: clamp(16px, 2.5vw, 32px);
-          padding-right: clamp(16px, 2.5vw, 32px);
-        }
-
-        /* ── Input/dropdown font scales smoothly ─────────────────────── */
-        .acf-input,
-        .acf-dropdown-trigger {
-          font-size: clamp(12px, 0.85vw, 13.5px);
-        }
-
-        /* ── Label scales smoothly ───────────────────────────────────── */
-        .acf-label {
-          font-size: clamp(11px, 0.75vw, 12.5px);
-        }
-
-        /* ── Tablet: 768–1023px ──────────────────────────────────────── */
+        .acf-modal-in > div { max-height: 90vh; overflow-y: auto; }
+        .acf-header-wrapper { max-width: 1400px; margin-left: auto; margin-right: auto; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; box-sizing: border-box; width: 100%; }
+        .acf-page-wrapper { max-width: 1400px; margin-left: auto; margin-right: auto; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; box-sizing: border-box; width: 100%; }
+        .acf-h1 { font-size: clamp(1.5rem, 2vw, 2.25rem); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-wrap: break-word; word-break: break-word; }
+        .acf-preview-col { width: clamp(200px, 18vw, 272px); flex-shrink: 0; }
+        .acf-form-row { display: flex; gap: clamp(14px, 1.5vw, 24px); align-items: flex-start; }
+        .acf-card form { padding-left: clamp(16px, 2.5vw, 32px); padding-right: clamp(16px, 2.5vw, 32px); }
+        .acf-input, .acf-dropdown-trigger { font-size: clamp(12px, 0.85vw, 13.5px); }
+        .acf-label { font-size: clamp(11px, 0.75vw, 12.5px); }
         @media (min-width: 768px) and (max-width: 1023px) {
-          .acf-header-wrapper {
-            max-width: 100%;
-            padding-left: 16px; padding-right: 16px;
-            padding-top: 18px; padding-bottom: 14px;
-          }
-          .acf-page-wrapper {
-            max-width: 100%;
-            padding-left: 16px; padding-right: 16px;
-            padding-top: 20px; padding-bottom: 40px;
-          }
-          .acf-h1         { font-size: 1.5rem; }
-          /* Stack preview below form on tablet — hidden lg:flex handles this via Tailwind */
+          .acf-header-wrapper { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 18px; padding-bottom: 14px; }
+          .acf-page-wrapper { max-width: 100%; padding-left: 16px; padding-right: 16px; padding-top: 20px; padding-bottom: 40px; }
+          .acf-h1 { font-size: 1.5rem; }
           .acf-preview-col { width: 180px; }
-          .acf-form-row   { gap: 12px; }
-
-          /* Touch targets */
-          .acf-dropdown-trigger,
-          .acf-input { min-height: 44px; }
-
-          /* Success modal full-width on tablet */
-          .acf-modal-in > div {
-            width: calc(100vw - 32px);
-            max-width: 100%;
-          }
+          .acf-form-row { gap: 12px; }
+          .acf-dropdown-trigger, .acf-input { min-height: 44px; }
+          .acf-modal-in > div { width: calc(100vw - 32px); max-width: 100%; }
         }
-
-        /* ── Small laptop: 1024–1279px ───────────────────────────────── */
         @media (min-width: 1024px) and (max-width: 1279px) {
-          .acf-header-wrapper {
-            max-width: 100%;
-            padding-left: 24px; padding-right: 24px;
-            padding-top: 24px; padding-bottom: 20px;
-          }
-          .acf-page-wrapper {
-            max-width: 100%;
-            padding-left: 24px; padding-right: 24px;
-            padding-top: 28px; padding-bottom: 56px;
-          }
-          .acf-h1          { font-size: 1.75rem; }
+          .acf-header-wrapper { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 24px; padding-bottom: 20px; }
+          .acf-page-wrapper { max-width: 100%; padding-left: 24px; padding-right: 24px; padding-top: 28px; padding-bottom: 56px; }
+          .acf-h1 { font-size: 1.75rem; }
           .acf-preview-col { width: 210px; }
-          .acf-form-row    { gap: 16px; }
+          .acf-form-row { gap: 16px; }
         }
-
-        /* ── Medium laptop: 1280–1439px ──────────────────────────────── */
         @media (min-width: 1280px) and (max-width: 1439px) {
-          .acf-header-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 30px; padding-bottom: 24px;
-          }
-          .acf-page-wrapper {
-            max-width: 1100px;
-            padding-left: 28px; padding-right: 28px;
-            padding-top: 32px; padding-bottom: 64px;
-          }
-          .acf-h1          { font-size: 1.875rem; }
+          .acf-header-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 30px; padding-bottom: 24px; }
+          .acf-page-wrapper { max-width: 1100px; padding-left: 28px; padding-right: 28px; padding-top: 32px; padding-bottom: 64px; }
+          .acf-h1 { font-size: 1.875rem; }
           .acf-preview-col { width: 232px; }
-          .acf-form-row    { gap: 18px; }
+          .acf-form-row { gap: 18px; }
         }
-
-        /* ── Large laptop: 1440–1919px ───────────────────────────────── */
         @media (min-width: 1440px) and (max-width: 1919px) {
-          .acf-header-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 36px; padding-bottom: 28px;
-          }
-          .acf-page-wrapper {
-            max-width: 1280px;
-            padding-left: 36px; padding-right: 36px;
-            padding-top: 36px; padding-bottom: 72px;
-          }
-          .acf-h1          { font-size: 2rem; }
+          .acf-header-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 28px; }
+          .acf-page-wrapper { max-width: 1280px; padding-left: 36px; padding-right: 36px; padding-top: 36px; padding-bottom: 72px; }
+          .acf-h1 { font-size: 2rem; }
           .acf-preview-col { width: 252px; }
-          .acf-form-row    { gap: 22px; }
+          .acf-form-row { gap: 22px; }
         }
-
-        /* ── 1920px BASELINE LOCK ─────────────────────────────────────── */
         @media (min-width: 1920px) and (max-width: 2559px) {
-          .acf-header-wrapper {
-            max-width: 1400px;
-            padding-left: 48px; padding-right: 48px;
-            padding-top: 40px; padding-bottom: 32px;
-          }
-          .acf-page-wrapper {
-            max-width: 1400px;
-            padding-left: 48px; padding-right: 48px;
-            padding-top: 40px; padding-bottom: 80px;
-          }
-          .acf-h1          { font-size: 2.25rem; }
+          .acf-header-wrapper { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 32px; }
+          .acf-page-wrapper { max-width: 1400px; padding-left: 48px; padding-right: 48px; padding-top: 40px; padding-bottom: 80px; }
+          .acf-h1 { font-size: 2.25rem; }
           .acf-preview-col { width: 272px; }
-          .acf-form-row    { gap: 24px; }
+          .acf-form-row { gap: 24px; }
         }
-
-        /* ── QHD: 2560–3839px ────────────────────────────────────────── */
         @media (min-width: 2560px) and (max-width: 3839px) {
-          .acf-header-wrapper {
-            max-width: 1600px;
-            padding-left: 48px; padding-right: 48px;
-            padding-top: 52px; padding-bottom: 42px;
-          }
-          .acf-page-wrapper {
-            max-width: 1600px;
-            padding-left: 48px; padding-right: 48px;
-            padding-top: 52px; padding-bottom: 100px;
-          }
-          .acf-h1          { font-size: 2.75rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-header-wrapper { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 42px; }
+          .acf-page-wrapper { max-width: 1600px; padding-left: 48px; padding-right: 48px; padding-top: 52px; padding-bottom: 100px; }
+          .acf-h1 { font-size: 2.75rem; }
           .acf-preview-col { width: 320px; }
-          .acf-form-row    { gap: 32px; }
-          .acf-input,
-          .acf-dropdown-trigger { font-size: 15px; padding: 12px 16px; }
-          .acf-label       { font-size: 13.5px; }
+          .acf-form-row { gap: 32px; }
+          .acf-input, .acf-dropdown-trigger { font-size: 15px; padding: 12px 16px; }
+          .acf-label { font-size: 13.5px; }
         }
-
-        /* ── 4K+: 3840px+ ────────────────────────────────────────────── */
         @media (min-width: 3840px) {
-          .acf-header-wrapper {
-            max-width: 2200px;
-            padding-left: 64px; padding-right: 64px;
-            padding-top: 72px; padding-bottom: 56px;
-          }
-          .acf-page-wrapper {
-            max-width: 2200px;
-            padding-left: 64px; padding-right: 64px;
-            padding-top: 72px; padding-bottom: 140px;
-          }
-          .acf-h1          { font-size: 3.5rem; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+          .acf-header-wrapper { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 56px; }
+          .acf-page-wrapper { max-width: 2200px; padding-left: 64px; padding-right: 64px; padding-top: 72px; padding-bottom: 140px; }
+          .acf-h1 { font-size: 3.5rem; }
           .acf-preview-col { width: 420px; }
-          .acf-form-row    { gap: 48px; }
-          .acf-input,
-          .acf-dropdown-trigger { font-size: 18px; padding: 14px 20px; border-radius: 14px; }
-          .acf-label       { font-size: 16px; margin-bottom: 10px; }
-          .acf-card form   { padding-left: 48px; padding-right: 48px; }
-
-          /* Success modal: scale up at 4K */
+          .acf-form-row { gap: 48px; }
+          .acf-input, .acf-dropdown-trigger { font-size: 18px; padding: 14px 20px; border-radius: 14px; }
+          .acf-label { font-size: 16px; margin-bottom: 10px; }
+          .acf-card form { padding-left: 48px; padding-right: 48px; }
           .acf-modal-in > div { max-width: 680px; }
         }
       `}</style>
 
       <div className="acf-font min-h-screen bg-[#FAFAFA] text-[#111]">
 
-        {/* ── Success Modal ── */}
         {showSuccess && (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 acf-modal-in">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-gray-200">
@@ -1084,8 +858,6 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 ))}
               </div>
-              {/* CHANGED: go to /agents list; newAgentId is stored in nav state so
-                  Agents.tsx can pass isNewAgent:true when user clicks that agent */}
               <button
                 onClick={() => {
                   setShowSuccess(false);
@@ -1099,7 +871,6 @@ const AgentCreationForm: React.FC = () => {
           </div>
         )}
 
-        {/* ── Page Header ── */}
         <div className="bg-white border-b border-gray-200">
           <div className="acf-header-wrapper">
             <div>
@@ -1126,11 +897,9 @@ const AgentCreationForm: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Content ── */}
         <div className="acf-page-wrapper">
           <div className="acf-form-row">
 
-            {/* ── Left: Form Card ── */}
             <div className="flex-1 min-w-0 acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden">
               <div className="acf-accent-bar" style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6)' }} />
 
@@ -1139,7 +908,6 @@ const AgentCreationForm: React.FC = () => {
                   <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-[13px]">{error}</div>
                 )}
 
-                {/* 1. Avatar carousel */}
                 {loadingAvatars ? (
                   <div>
                     <label className="acf-label">Choose Your Avatar <span className="text-red-500">*</span></label>
@@ -1153,14 +921,17 @@ const AgentCreationForm: React.FC = () => {
                     </div>
                     <p className="text-[11.5px] text-gray-400 flex items-center gap-2 mt-1">
                       <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin inline-block" />
-                      Fetching avatars from HeyGen…
+                      Fetching avatars from LiveAvatar…
                     </p>
                   </div>
                 ) : (
-                  <AvatarCarousel avatars={avatars} selectedId={formData.selectedAvatarId} onSelect={handleAvatarSelect} />
+                  <AvatarCarousel
+                    avatars={avatars}
+                    selectedId={formData.selectedAvatarId}
+                    onSelect={handleAvatarSelect}
+                  />
                 )}
 
-                {/* 2. Agent Name */}
                 <div>
                   <label className="acf-label">
                     <span className="inline-flex items-center gap-1">
@@ -1182,7 +953,6 @@ const AgentCreationForm: React.FC = () => {
                   />
                 </div>
 
-                {/* 3. Environment — custom dropdown (replaces native <select>) */}
                 <div>
                   <label className="acf-label">Environment <span className="text-red-500">*</span></label>
                   <CustomDropdown
@@ -1194,7 +964,6 @@ const AgentCreationForm: React.FC = () => {
                   />
                 </div>
 
-                {/* 4. Target System — custom dropdown (replaces native <select>) */}
                 {formData.environment && (
                   <div>
                     <label className="acf-label">Target System <span className="text-red-500">*</span></label>
@@ -1214,7 +983,6 @@ const AgentCreationForm: React.FC = () => {
                         onChange={handleTargetSystemChange}
                       />
                     )}
-                    {/* Selected system confirmation card */}
                     {formData.selectedTargetSystem && (
                       <div className="mt-2 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2.5">
                         <FaCheckCircle className="text-green-500 flex-shrink-0" size={14} />
@@ -1232,7 +1000,6 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 )}
 
-                {/* 5. Notification Window */}
                 {agentTypeId !== 'connection' && (
                   <div>
                     <label className="acf-label">
@@ -1254,34 +1021,21 @@ const AgentCreationForm: React.FC = () => {
                   </div>
                 )}
 
-                {/* 6. Notification Channel */}
                 <div>
-                  <label className="acf-label">
-                    <span className="inline-flex items-center gap-1">
-                      Notification Channel
-                      <span className="relative group/hint ml-1 inline-flex items-center">
-                        <button type="button" className="w-4 h-4 rounded-full border border-gray-400 text-gray-400 hover:border-blue-500 hover:text-blue-500 text-[10px] font-bold leading-none flex items-center justify-center focus:outline-none transition-colors" tabIndex={-1} aria-label={`Alerts go to: ${formData.slackChannel}`}>i</button>
-                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 rounded-md bg-gray-800 px-3 py-2 text-xs text-white font-normal shadow-lg opacity-0 group-hover/hint:opacity-100 transition-opacity whitespace-normal">
-                          Alerts go to: {formData.slackChannel}
-                          <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-800" />
-                        </span>
-                      </span>
-                    </span>
-                  </label>
+                  <label className="acf-label">Notification Channel</label>
                   <div className="relative">
                     <input type="text" value="Slack" readOnly className="acf-input pr-10" />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-lg">💬</div>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-3 pt-5 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={() => setFormData({
-                      agentName: '', selectedAvatarId: '', selectedAvatarImg: '',
-                      selectedAvatarName: '', environment: '', notificationWindow: 30,
-                      slackChannel: '#alerts', selectedTargetSystem: null,
+                      agentName: '', selectedAvatarId: '', selectedAvatarUuid: '',
+                      selectedAvatarImg: '', selectedAvatarName: '', environment: '',
+                      notificationWindow: 30, slackChannel: '#alerts', selectedTargetSystem: null,
                     })}
                     className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-[13px] font-medium hover:bg-gray-50 hover:border-gray-300 transition-all font-[inherit]"
                   >
@@ -1298,7 +1052,6 @@ const AgentCreationForm: React.FC = () => {
               </form>
             </div>
 
-            {/* ── Right: Live Preview ── */}
             <div className="acf-preview-col hidden lg:flex flex-col gap-4 sticky top-8">
               <div className="acf-card bg-white border border-gray-200 rounded-2xl overflow-hidden" style={{ animationDelay: '0.1s' }}>
                 <div className="acf-accent-bar" style={{ background: '#6366F1' }} />
@@ -1316,9 +1069,19 @@ const AgentCreationForm: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[11.5px] text-gray-400">Style</span>
-                        {/* 👔 emoji removed per user's modification */}
-                        <span className="text-[12px] font-medium text-gray-600"> Formal</span>
+                        <span className="text-[12px] font-medium text-gray-600">Formal</span>
                       </div>
+                      {/* NEW: show UUID debug info in dev mode */}
+                      {import.meta.env.DEV && (
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[11.5px] text-gray-400 flex-shrink-0">UUID</span>
+                          <span className="text-[10px] font-mono text-indigo-400 truncate text-right" title={selectedAvatarObj.uuid}>
+                            {selectedAvatarObj.uuid.length > 20
+                              ? selectedAvatarObj.uuid.substring(0, 8) + '…'
+                              : selectedAvatarObj.uuid}
+                          </span>
+                        </div>
+                      )}
                       {(formData.selectedTargetSystem?.type || integrationTypeFromNav) && (
                         <div className="flex items-center justify-between">
                           <span className="text-[11.5px] text-gray-400">Category</span>
@@ -1329,7 +1092,6 @@ const AgentCreationForm: React.FC = () => {
                           </span>
                         </div>
                       )}
-                      {/* Source row removed per user's modification */}
                     </div>
                   )}
                 </div>
