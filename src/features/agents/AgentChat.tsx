@@ -60,6 +60,10 @@ interface Message {
   isSuccess?: boolean;
   file_path?: string;
   filename?: string;
+  approval_token?: string;       // set when this message is an approval bubble
+  approval_expired?: boolean;    // patched true when superseded by a newer approval
+  approval_actioned?: 'approved' | 'rejected'; // patched when user clicks approve/reject
+  approval_data?: PendingApproval; // full data for rendering inline buttons
   metadata?: {
     type?: string;
     csr_content?: string;
@@ -1137,46 +1141,116 @@ const AgentChat: React.FC = () => {
     finally { setDownloadingFileId(null); }
   };
 
-  const handleApprovalButtonClick = async (action: string) => {
-    if (!pendingApproval) return;
+  const handleApprovalButtonClick = async (action: string, approvalOverride?: PendingApproval) => {
+    const approval = approvalOverride ?? pendingApproval;
+    if (!approval) return;
     setApprovalClickedAction(action as 'approve' | 'reject');
     setApprovalProcessing(true);
     try {
       const endpoint = action === 'approve' ? '/api/v1/approvals/button-approve' : '/api/v1/approvals/button-reject';
-      const response = await api.fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify({ approval_id: pendingApproval.approval_id }) });
+      const response = await api.fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify({ approval_id: approval.approval_id }) });
       if (!response.ok) throw new Error(`Approval request failed: ${response.statusText}`);
       await response.json();
 
-      const isSSL = pendingApproval.action_type === 'update_ssl_certificate';
-      const isPDReset = pendingApproval.action_type === 'reset_pd_password';
-      const isSPConnection = pendingApproval.action_type === 'create_sp_connection';
-      const isUserUpdate = pendingApproval.action_type === 'update_user_pd_user';
+      // Immediately mark the bubble as actioned — buttons disappear right away
+      setMessages(prev => prev.map(m =>
+        m.approval_token === approval.approval_id
+          ? { ...m, approval_actioned: (action === 'approve' ? 'approved' : 'rejected') as 'approved' | 'rejected' }
+          : m
+      ));
+      setPendingApproval(prev => prev?.approval_id === approval.approval_id ? null : prev);
 
-      const approveText = isSSL ? '✓ SSL certificate update approved.' : isPDReset ? '✓ Password reset approved.' : isSPConnection ? '✓ SP Connection creation approved.' : isUserUpdate ? '✓ User update approved.' : '✓ License approval confirmed.';
-      const rejectText  = isSSL ? '✗ SSL certificate update rejected.' : isPDReset ? '✗ Password reset rejected.' : isSPConnection ? '✗ SP Connection creation rejected.' : isUserUpdate ? '✗ User update rejected.' : '✗ License approval rejected.';
-      const successText = isSSL ? '✓ SSL certificate imported successfully!' : isPDReset ? '✓ Password reset completed!' : isSPConnection ? '✓ SP Connection created!' : isUserUpdate ? '✓ User attributes updated!' : '✓ License installation completed!';
-      const failText    = isSSL ? '✗ SSL certificate update failed' : isPDReset ? '✗ Password reset failed' : isSPConnection ? '✗ SP Connection creation failed' : isUserUpdate ? '✗ User update failed' : '✗ License installation failed';
+      // ── Determine action type for message strings ─────────────────────────
+      const isSSL = approval.action_type === 'update_ssl_certificate';
+      const isPDReset = approval.action_type === 'reset_pd_password';
+      const isSPConnection = approval.action_type === 'create_sp_connection';
+      const isUserUpdate = approval.action_type === 'update_user_pd_user';
+      const isUserDisable = approval.action_type === 'disable_user_pd_user';
+      const isUserEnable = approval.action_type === 'enable_user_pd_user';
+      const isUserMgmt = isUserUpdate || isUserDisable || isUserEnable;
 
-      setMessages(prev => [...prev, { id: Date.now(), text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
-      await speakMessage(action === 'approve' ? approveText : rejectText);
+      const approveText = isSSL
+        ? '✓ SSL certificate update approved. Proceeding with activation...'
+        : isPDReset
+        ? '✓ Password reset approved. Proceeding...'
+        : isSPConnection
+        ? '✓ SP Connection creation approved. Proceeding with setup...'
+        : isUserDisable
+        ? '✓ Account disable approved. Processing...'
+        : isUserEnable
+        ? '✓ Account enable approved. Processing...'
+        : isUserUpdate
+        ? '✓ User update approved. Applying changes...'
+        : '✓ License approval confirmed. Proceeding with installation...';
+
+      const rejectText = isSSL
+        ? '✗ SSL certificate update rejected. Process aborted.'
+        : isPDReset
+        ? '✗ Password reset rejected. Process aborted.'
+        : isSPConnection
+        ? '✗ SP Connection creation rejected. Process aborted.'
+        : isUserDisable
+        ? '✗ Account disable rejected. No changes made.'
+        : isUserEnable
+        ? '✗ Account enable rejected. No changes made.'
+        : isUserUpdate
+        ? '✗ User update rejected. No changes applied.'
+        : '✗ License approval rejected. Process aborted.';
+
+      const successText = isSSL
+        ? '✓ SSL certificate imported and activated successfully!'
+        : isPDReset
+        ? '✓ Password reset completed successfully!'
+        : isSPConnection
+        ? '✓ SP Connection created successfully!'
+        : isUserDisable
+        ? '✓ Account disabled successfully!'
+        : isUserEnable
+        ? '✓ Account enabled successfully!'
+        : isUserUpdate
+        ? '✓ User attributes updated successfully!'
+        : '✓ License installation completed!';
+
+      const failText = isSSL
+        ? '✗ SSL certificate update failed'
+        : isPDReset
+        ? '✗ Password reset failed'
+        : isSPConnection
+        ? '✗ SP Connection creation failed'
+        : isUserMgmt
+        ? '✗ User management action failed'
+        : '✗ License installation failed';
+
+      const processingMsgId = Date.now();
+      setMessages(prev => [...prev, { id: processingMsgId, text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
+      if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
 
       if (action === 'approve') {
         try {
-          const executeResponse = await api.fetchWithAuth(`/api/v1/approvals/${pendingApproval.approval_id}`, { method: 'POST', body: JSON.stringify({ session_id: pendingApproval.session_id }) });
+          const executeResponse = await api.fetchWithAuth(`/api/v1/approvals/${approval.approval_id}`, { method: 'POST', body: JSON.stringify({ session_id: approval.session_id }) });
           if (executeResponse.ok) {
             const executeData = await executeResponse.json();
             const resultText = executeData.message || successText;
-            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success }]);
-            await speakMessage(executeData.speech_text || stripHtmlForSpeech(resultText));
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success, metadata: executeData.metadata }]);
+            if (isAvatarActive) await speakMessage(executeData.speech_text || stripHtmlForSpeech(resultText));
+          } else if (executeResponse.status === 409) {
+            // This approval was superseded by a newer one — mark bubble expired and update the processing message
+            setMessages(prev => prev.map(m =>
+              m.approval_token === approval.approval_id
+                ? { ...m, approval_expired: true }
+                : m.id === processingMsgId
+                ? { ...m, text: '⚠️ This approval was superseded by a newer request — no action was taken.', isError: true }
+                : m
+            ));
           } else {
             const errorData = await executeResponse.json();
             const errText = errorData.message || failText;
             setMessages(prev => [...prev, { id: Date.now() + 1, text: errText, sender: 'ai', timestamp: new Date(), isError: true }]);
-            await speakMessage(errorData.speech_text || stripHtmlForSpeech(errText));
+            if (isAvatarActive) await speakMessage(errorData.speech_text || stripHtmlForSpeech(errText));
           }
         } catch (executeError: any) {
           setMessages(prev => [...prev, { id: Date.now() + 1, text: `Error during update: ${executeError.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
-          await speakMessage(`Error during update: ${executeError.message}`);
+          if (isAvatarActive) await speakMessage(`Error during update: ${executeError.message}`);
         }
       }
       setPendingApproval(null); sessionIdRef.current = null;
@@ -1187,7 +1261,6 @@ const AgentChat: React.FC = () => {
 
   const handleSend = useCallback(async () => {
     if (!inputValue.trim()) return;
-    setPendingApproval(null);
     setShowWelcomeMessage(false);
     setShowGuidedActions(false);
     if (guidedTimerRef.current) { clearTimeout(guidedTimerRef.current); guidedTimerRef.current = null; }
@@ -1236,7 +1309,7 @@ const AgentChat: React.FC = () => {
       if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
 
       if (data.approval_metadata?.approval_id) {
-        setPendingApproval({
+        const _approvalObj: PendingApproval = {
           approval_id: data.approval_metadata.approval_id,
           filename: data.approval_metadata.filename || data.approval_metadata.sp_name || 'file',
           expires_at: data.approval_metadata.expires_at,
@@ -1246,7 +1319,27 @@ const AgentChat: React.FC = () => {
           approval_title: data.approval_metadata.approval_title,
           sp_name: data.approval_metadata.sp_name,
           entity_id: data.approval_metadata.entity_id,
+        };
+        setPendingApproval(_approvalObj);
+        // Embed approval bubble in message history (dedup: skip if already present)
+        setMessages(prev => {
+          if (prev.some(m => m.approval_token === data.approval_metadata!.approval_id)) return prev;
+          return [...prev, {
+            id: Date.now() + 2,
+            text: '',
+            sender: 'ai' as const,
+            timestamp: new Date(),
+            approval_token: data.approval_metadata!.approval_id,
+            approval_data: _approvalObj,
+          }];
         });
+      }
+      // Expire a superseded approval bubble if the backend signals it
+      if (data.expired_token) {
+        setMessages(prev => prev.map(m =>
+          m.approval_token === data.expired_token ? { ...m, approval_expired: true } : m
+        ));
+        setPendingApproval(prev => prev?.approval_id === data.expired_token ? null : prev);
       }
 
       setIsTyping(false);
@@ -1369,6 +1462,8 @@ const AgentChat: React.FC = () => {
         .agc-dot:nth-child(3){animation-delay:.36s;background:#818cf8}
         @keyframes agc-bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
         .agc-approval{background:#fff;border:1.5px solid #d1fae5;border-radius:14px;padding:14px 16px;max-width:68%;box-shadow:0 2px 10px rgba(16,185,129,0.08)}
+        .agc-approval-expired{background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:14px;padding:10px 16px;max-width:68%;color:#9ca3af;font-size:12px}
+        .agc-approval-done{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:10px 16px;max-width:68%;color:#15803d;font-size:13px;font-weight:600}
         .agc-approval-title{font-size:12.5px;font-weight:600;color:#374151;margin-bottom:10px}
         .agc-approval-actions{display:flex;gap:8px}
         .agc-approve{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;font-size:12px;font-weight:500;cursor:pointer;transition:background 0.15s}
@@ -1744,49 +1839,116 @@ const AgentChat: React.FC = () => {
                   <>
                     {messages.map(message => (
                       <div key={message.id}>
-                        <div className={`agc-row ${message.sender}`}>
-                          {(message.sender === 'ai' || message.sender === 'system') && (
+                        {message.approval_token ? (
+                          <div className="agc-row ai">
                             <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
-                          )}
-                          <div className={`agc-bubble ${message.sender}${message.isError ? ' error' : ''}`}>
-                            <div dangerouslySetInnerHTML={{ __html: message.text }} />
-                            {message.files && message.files.length > 0 && (
-                              <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>📎 {message.files.join(', ')}</div>
-                            )}
-                            {message.metadata?.type === 'update_user_form' && (
-                              <div style={{ marginTop: 8 }}>
-                                <button onClick={() => {
-                                  const fd = message.metadata as any;
-                                  setEditUserFormData(fd);
-                                  setEditUserLocalValues({ ...(fd.current_values || {}) });
-                                  setShowEditUserModal(true);
-                                }} style={{ padding: '6px 14px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-                                  ✏️ Edit User Info
-                                </button>
+                            {message.approval_expired ? (
+                              <div className="agc-approval-expired">⚠️ Task superseded — a newer approval has replaced this one.</div>
+                            ) : message.approval_actioned ? (
+                              <div className="agc-approval-done">
+                                {message.approval_actioned === 'approved' ? '✓ Approved' : '✗ Rejected'}
                               </div>
-                            )}
-                            {message.metadata?.type && message.metadata?.filename && (
-                              <div style={{ marginTop: 8 }}>
-                                <button onClick={() => handleDownloadFromMetadata(
-                                  message.metadata?.csr_content || message.metadata?.content || '',
-                                  message.metadata?.filename || 'file.txt',
-                                  message.metadata?.type === 'metadata_xml' ? 'application/xml' : 'application/x-pem-file'
-                                )} style={{ padding: '6px 12px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  📥 Download {message.metadata.filename}
-                                </button>
-                              </div>
-                            )}
-                            {message.file_path && message.sender === 'ai' && (
-                              <div style={{ marginTop: 8 }}>
-                                <button onClick={() => handleDownloadFile(message)} disabled={downloadingFileId === message.id}
-                                  style={{ padding: '6px 12px', fontSize: 12, backgroundColor: downloadingFileId === message.id ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: downloadingFileId === message.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  {downloadingFileId === message.id ? '⏳ Downloading...' : `📥 Download ${message.filename || 'file'}`}
-                                </button>
+                            ) : (
+                              <div className="agc-approval">
+                                <div className="agc-approval-title">
+                                  🔐{' '}
+                                  {message.approval_data?.approval_title
+                                    ? <>{message.approval_data.approval_title}</>
+                                    : message.approval_data?.action_type === 'update_ssl_certificate'
+                                    ? <>Approve SSL certificate update for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.filename}</strong>?</>
+                                    : message.approval_data?.action_type === 'reset_pd_password'
+                                    ? <>Approve password reset for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.user_display || message.approval_data.filename}</strong>?</>
+                                    : message.approval_data?.action_type === 'create_sp_connection'
+                                    ? <>Approve SP Connection creation for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.sp_name || message.approval_data.filename}</strong>?</>
+                                    : message.approval_data?.action_type === 'update_user_pd_user'
+                                    ? <>Approve user attribute update for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.user_display || message.approval_data.filename}</strong>?</>
+                                    : message.approval_data?.action_type === 'disable_user_pd_user'
+                                    ? <>Approve account disable for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.user_display || message.approval_data.filename}</strong>?</>
+                                    : message.approval_data?.action_type === 'enable_user_pd_user'
+                                    ? <>Approve account enable for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data.user_display || message.approval_data.filename}</strong>?</>
+                                    : <>Approve license installation for{' '}<strong style={{ color: '#4f46e5' }}>{message.approval_data?.filename}</strong>?</>
+                                  }
+                                </div>
+                                {message.approval_data?.action_type === 'create_sp_connection' && message.approval_data?.entity_id && (
+                                  <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 10 }}>
+                                    Entity ID: <span style={{ color: '#374151', fontWeight: 500 }}>{message.approval_data.entity_id}</span>
+                                  </div>
+                                )}
+                                <div className="agc-approval-actions">
+                                  <button className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`}
+                                    onClick={() => handleApprovalButtonClick('approve', message.approval_data)}
+                                    disabled={approvalProcessing}>
+                                    {approvalProcessing && approvalClickedAction === 'approve'
+                                      ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} /> : '✓'} Approve
+                                  </button>
+                                  <button className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`}
+                                    onClick={() => handleApprovalButtonClick('reject', message.approval_data)}
+                                    disabled={approvalProcessing}>
+                                    {approvalProcessing && approvalClickedAction === 'reject'
+                                      ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} /> : '✗'} Reject
+                                  </button>
+                                </div>
+                                {approvalProcessing && (
+                                  <div className="agc-approval-processing">
+                                    <div className="agc-spinner" />
+                                    {approvalClickedAction === 'approve' ? 'Approving…' : 'Rejecting…'}
+                                  </div>
+                                )}
+                                {message.approval_data?.expires_at && (
+                                  <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>Expires {new Date(message.approval_data.expires_at).toLocaleString()}</p>
+                                )}
                               </div>
                             )}
                           </div>
-                        </div>
-                        <div className={`agc-ts ${message.sender}`}>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        ) : (
+                          <>
+                            <div className={`agc-row ${message.sender}`}>
+                              {(message.sender === 'ai' || message.sender === 'system') && (
+                                <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
+                              )}
+                              <div className={`agc-bubble ${message.sender}${message.isError ? ' error' : ''}`}>
+                                <div dangerouslySetInnerHTML={{ __html: message.text }} />
+                                {message.files && message.files.length > 0 && (
+                                  <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>📎 {message.files.join(', ')}</div>
+                                )}
+                                {message.metadata?.type === 'update_user_form' && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <button onClick={() => {
+                                      const fd = message.metadata as any;
+                                      setEditUserFormData(fd);
+                                      setEditUserLocalValues({ ...(fd.current_values || {}) });
+                                      setShowEditUserModal(true);
+                                    }} style={{ padding: '6px 14px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                                      ✏️ Edit User Info
+                                    </button>
+                                  </div>
+                                )}
+                                {message.metadata?.type && message.metadata?.filename && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <button onClick={() => handleDownloadFromMetadata(
+                                      message.metadata?.csr_content || message.metadata?.content || '',
+                                      message.metadata?.filename || 'file.txt',
+                                      message.metadata?.type === 'metadata_xml' ? 'application/xml' : 'application/x-pem-file'
+                                    )} style={{ padding: '6px 12px', fontSize: 12, backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      📥 Download {message.metadata.filename}
+                                    </button>
+                                  </div>
+                                )}
+                                {message.file_path && message.sender === 'ai' && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <button onClick={() => handleDownloadFile(message)} disabled={downloadingFileId === message.id}
+                                      style={{ padding: '6px 12px', fontSize: 12, backgroundColor: downloadingFileId === message.id ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: downloadingFileId === message.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      {downloadingFileId === message.id ? '⏳ Downloading...' : `📥 Download ${message.filename || 'file'}`}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className={`agc-ts ${message.sender}`}>
+                              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
 
@@ -1794,44 +1956,6 @@ const AgentChat: React.FC = () => {
                       <div className="agc-row ai">
                         <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
                         <div className="agc-typing"><div className="agc-dot" /><div className="agc-dot" /><div className="agc-dot" /></div>
-                      </div>
-                    )}
-
-                    {pendingApproval && (
-                      <div className="agc-row ai">
-                        <div className="agc-msg-avatar"><AvatarImg src={avatarImg} name={avatarName} size={28} /></div>
-                        <div className="agc-approval">
-                          <div className="agc-approval-title">
-                            🔐{' '}
-                            {pendingApproval.approval_title ? <>{pendingApproval.approval_title}</> :
-                              pendingApproval.action_type === 'update_ssl_certificate' ? <>Approve SSL certificate update for <strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</> :
-                              pendingApproval.action_type === 'reset_pd_password' ? <>Approve password reset for <strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</> :
-                              pendingApproval.action_type === 'create_sp_connection' ? <>Approve SP Connection for <strong style={{ color: '#4f46e5' }}>{pendingApproval.sp_name || pendingApproval.filename}</strong>?</> :
-                              pendingApproval.action_type === 'update_user_pd_user' ? <>Approve user update for <strong style={{ color: '#4f46e5' }}>{pendingApproval.user_display || pendingApproval.filename}</strong>?</> :
-                              <>Approve license for <strong style={{ color: '#4f46e5' }}>{pendingApproval.filename}</strong>?</>
-                            }
-                          </div>
-                          {pendingApproval.action_type === 'create_sp_connection' && pendingApproval.entity_id && (
-                            <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 10 }}>Entity ID: <span style={{ color: '#374151', fontWeight: 500 }}>{pendingApproval.entity_id}</span></div>
-                          )}
-                          <div className="agc-approval-actions">
-                            <button className={`agc-approve${approvalClickedAction === 'approve' ? ' agc-btn-active' : ''}`} onClick={() => handleApprovalButtonClick('approve')} disabled={approvalProcessing}>
-                              {approvalProcessing && approvalClickedAction === 'approve' ? <div className="agc-spinner" style={{ borderTopColor: '#065f46', width: 10, height: 10 }} /> : '✓'} Approve
-                            </button>
-                            <button className={`agc-reject${approvalClickedAction === 'reject' ? ' agc-btn-active' : ''}`} onClick={() => handleApprovalButtonClick('reject')} disabled={approvalProcessing}>
-                              {approvalProcessing && approvalClickedAction === 'reject' ? <div className="agc-spinner" style={{ borderTopColor: '#b91c1c', width: 10, height: 10 }} /> : '✗'} Reject
-                            </button>
-                          </div>
-                          {approvalProcessing && (
-                            <div className="agc-approval-processing">
-                              <div className="agc-spinner" />
-                              {approvalClickedAction === 'approve' ? 'Approving…' : 'Rejecting…'}
-                            </div>
-                          )}
-                          {pendingApproval.expires_at && (
-                            <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>Expires {new Date(pendingApproval.expires_at).toLocaleString()}</p>
-                          )}
-                        </div>
                       </div>
                     )}
 
@@ -1947,7 +2071,7 @@ const AgentChat: React.FC = () => {
                   const data = await resp.json();
                   if (data.session_id && !sessionIdRef.current) sessionIdRef.current = data.session_id;
                   if (data.approval_metadata?.approval_id) {
-                    setPendingApproval({
+                    const _approvalObj2: PendingApproval = {
                       approval_id: data.approval_metadata.approval_id,
                       filename: data.approval_metadata.filename || data.approval_metadata.user_display || 'user',
                       expires_at: data.approval_metadata.expires_at,
@@ -1957,16 +2081,36 @@ const AgentChat: React.FC = () => {
                       approval_title: data.approval_metadata.approval_title,
                       sp_name: data.approval_metadata.sp_name,
                       entity_id: data.approval_metadata.entity_id,
+                    };
+                    setPendingApproval(_approvalObj2);
+                    setMessages(prev => {
+                      if (prev.some(m => m.approval_token === data.approval_metadata!.approval_id)) return prev;
+                      return [...prev, {
+                        id: Date.now() + 3,
+                        text: '',
+                        sender: 'ai' as const,
+                        timestamp: new Date(),
+                        approval_token: data.approval_metadata!.approval_id,
+                        approval_data: _approvalObj2,
+                      }];
                     });
                   }
+                  if (data.expired_token) {
+                    setMessages(prev => prev.map(m =>
+                      m.approval_token === data.expired_token ? { ...m, approval_expired: true } : m
+                    ));
+                    setPendingApproval(prev => prev?.approval_id === data.expired_token ? null : prev);
+                  }
                   setIsTyping(false);
-                  const aiText = data.message || 'Could not generate a response.';
+                  const aiText = data.message || 'I could not generate a response. Please try again.';
                   setMessages(prev => [...prev, { id: Date.now() + 1, text: aiText, sender: 'ai', timestamp: new Date(), metadata: data.metadata, isError: !!data.error_type }]);
-                  await speakMessage(data.speech_text || stripHtmlForSpeech(aiText));
+                  if (isAvatarActive) await speakMessage(data.speech_text || stripHtmlForSpeech(aiText));
                 } catch (err: any) {
                   setIsTyping(false);
                   setMessages(prev => [...prev, { id: Date.now() + 2, text: `Error: ${err.message}`, sender: 'ai', timestamp: new Date(), isError: true }]);
-                } finally { setEditUserSubmitting(false); }
+                } finally {
+                  setEditUserSubmitting(false);
+                }
               }} style={{ padding: '8px 16px', fontSize: 13, backgroundColor: editUserSubmitting ? '#9ca3af' : '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: editUserSubmitting ? 'not-allowed' : 'pointer' }}>
                 {editUserSubmitting ? 'Submitting…' : 'Submit Changes'}
               </button>
