@@ -1123,7 +1123,8 @@ const AgentChat: React.FC = () => {
         : '✗ License installation failed';
 
       const processingMsgId = Date.now();
-      setMessages(prev => [...prev, { id: processingMsgId, text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date() }]);
+      // ─── FIX: processing/status messages are never errors ───────────────────
+      setMessages(prev => [...prev, { id: processingMsgId, text: action === 'approve' ? approveText : rejectText, sender: 'ai', timestamp: new Date(), isError: false }]);
       if (isAvatarActive) await speakMessage(action === 'approve' ? approveText : rejectText);
 
       if (action === 'approve') {
@@ -1132,7 +1133,8 @@ const AgentChat: React.FC = () => {
           if (executeResponse.ok) {
             const executeData = await executeResponse.json();
             const resultText = executeData.message || successText;
-            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success , metadata: executeData.metadata  }]);
+            // ─── FIX: was `isError: executeData.success` (inverted). Correct is `isError: !executeData.success` ───
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: resultText, sender: 'ai', timestamp: new Date(), isSuccess: executeData.success, isError: !executeData.success }]);
             if (isAvatarActive) await speakMessage(executeData.speech_text || stripHtmlForSpeech(resultText));
           } else if (executeResponse.status === 409) {
             // This approval was superseded by a newer one — mark bubble expired and update the processing message
@@ -1255,7 +1257,10 @@ const AgentChat: React.FC = () => {
       setIsTyping(false);
       const agentMessageIndex = Object.keys(updatedHistory).filter(k => k.startsWith('Agent')).length + 1;
       const agentKey = `Agent${agentMessageIndex}`;
-      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date(), file_path: data.file_path, filename: data.filename, metadata: data.metadata, isError: !!data.error_type };
+      // ─── FIX: Only mark as error when error_type is a real non-empty truthy
+      //     string that is not 'none' or 'null'. This prevents normal successful
+      //     responses after approval flows from being incorrectly styled red. ───
+      const aiMessage: Message = { id: Date.now() + 1, text: aiResponseText, sender: 'ai', timestamp: new Date(), file_path: data.file_path, filename: data.filename, metadata: data.metadata, isError: !!data.error_type && data.error_type !== 'none' && data.error_type !== 'null' };
       setMessages(prev => [...prev, aiMessage]);
       setChatHistory({ ...updatedHistory, [agentKey]: aiResponseText });
       latestAIResponseRef.current = aiResponseText;
@@ -1853,8 +1858,22 @@ const AgentChat: React.FC = () => {
                       {audioBlocked && <button className="agc-overlay-btn agc-overlay-btn-amber" onClick={handleUnmuteAudio}>🔇</button>}
                       <button className="agc-overlay-btn agc-overlay-btn-white" onClick={handleMuteToggle} title={muted ? 'Unmute' : 'Mute'}>{muted ? '🔇' : '🔊'}</button>
                       <button className="agc-overlay-btn agc-overlay-btn-white" onClick={handleInterrupt} disabled={!isPlaying} title="Pause">⏸</button>
-                      <button className="agc-overlay-btn agc-overlay-btn-green" onClick={startListening} disabled={isListening || isTyping}>
-                        <FaMicrophone size={10} />{isListening ? 'Listening…' : 'Speak'}
+                      {/* ── FIX: Avatar panel mic now uses the same handleVoiceModeToggle as the textbox mic
+                              so both buttons share identical continuous-conversation behaviour ── */}
+                      <button
+                        className={`agc-overlay-btn ${
+                          isListening
+                            ? 'agc-overlay-btn-red'
+                            : voiceModeActive
+                            ? 'agc-overlay-btn-amber'
+                            : 'agc-overlay-btn-green'
+                        }`}
+                        onClick={handleVoiceModeToggle}
+                        disabled={isTyping}
+                        title={voiceModeActive ? 'Voice mode on — click to turn off' : 'Turn on continuous voice mode'}
+                      >
+                        <FaMicrophone size={10} />
+                        {isListening ? 'Listening…' : voiceModeActive ? 'Voice On' : 'Speak'}
                       </button>
                       <button className="agc-overlay-btn agc-overlay-btn-red" onClick={endSession}>⏹ End</button>
                     </>
@@ -2222,7 +2241,7 @@ const AgentChat: React.FC = () => {
                     }
                     setIsTyping(false);
                     const aiText = data.message || 'I could not generate a response. Please try again.';
-                    setMessages(prev => [...prev, { id: Date.now() + 1, text: aiText, sender: 'ai', timestamp: new Date(), metadata: data.metadata, isError: !!data.error_type }]);
+                    setMessages(prev => [...prev, { id: Date.now() + 1, text: aiText, sender: 'ai', timestamp: new Date(), metadata: data.metadata, isError: !!data.error_type && data.error_type !== 'none' && data.error_type !== 'null' }]);
                     await speakMessage(data.speech_text || stripHtmlForSpeech(aiText));
                   } catch (err: any) {
                     setIsTyping(false);
