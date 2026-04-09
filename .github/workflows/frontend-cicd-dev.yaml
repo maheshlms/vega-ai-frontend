@@ -192,6 +192,7 @@ jobs:
       run_id: ${{ github.run_id }}
       server_url: ${{ github.server_url }}
       issue_title: "🚨 Trivy Vulnerability Alert — vegaai-frontend:${{ needs.docker-scan.outputs.commit_sha }}"
+      issue_label: "security"
       issue_body: |
         ## 🚨 Trivy Vulnerability Alert
 
