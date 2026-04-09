@@ -5,37 +5,223 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+env:
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+permissions:
+  contents: read
+  actions: read
+
 jobs:
-  deploy-to-development:
-    
-    name: Build and Start Services
+
+  gitleaks:
+    name: Secret Scanning
     runs-on: [dev-runner]
-
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
     steps:
-
- 
-      - name: Checkout PR Branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
- 
+          fetch-depth: 0
+          clean: true
+
+      - name: Run Gitleaks
+        id: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  create-issue:
+    needs: gitleaks
+    if: ${{ always() && needs.gitleaks.result == 'failure' }}
+    uses: ./.github/workflows/create-gh-issue.yaml
+    permissions:
+      issues: write
+      contents: read
+    with:
+      sha: ${{ github.sha }}
+      ref: ${{ github.ref }}
+      actor: ${{ github.actor }}
+      repository: ${{ github.repository }}
+      run_id: ${{ github.run_id }}
+      server_url: ${{ github.server_url }}
+      issue_title: "🔐 Secrets detected in commit ${{ github.sha }}"
+      issue_body: |
+        ## 🔐 Secret Scanning Alert
+
+        Gitleaks detected secrets in a recent commit.
+
+        | Field | Details |
+        |---|---|
+        | **Branch** | `${{ github.ref }}` |
+        | **Commit** | `${{ github.sha }}` |
+        | **Triggered by** | @${{ github.actor }} |
+        | **Workflow Run** | [View scan results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+        ### Next Steps
+        - [ ] Rotate the exposed secret immediately
+        - [ ] Review the workflow run logs linked above
+        - [ ] Remove the secret from git history using `git filter-repo` or BFG
+        - [ ] Confirm no downstream systems were compromised
+
+        > ⚠️ Do not close this issue until the secret has been rotated and history scrubbed.
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: [dev-runner]
+    needs: gitleaks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5.3.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >-
+            -Dsonar.projectKey=Vega-project
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/.git/**
+
+      - name: Check SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  docker-build:
+    name: Build Container Images
+    runs-on: [dev-runner]
+    needs: sonarqube
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
       - name: Setup Environment
         run: |
-          echo "Copying .env files to repo"
           sudo cp /home/vegaadmin/secrets/vega-frontend/.env ./.env
           echo "PR #${{ github.event.pull_request.number }}"
           echo "Branch: ${{ github.head_ref }}"
-          echo "Commit: ${{ github.event.pull_request.head.sha || github.sha }}"
-          sudo docker --version
-          sudo docker compose version
+          echo "Commit: ${{ env.COMMIT_SHA }}"
 
-      - name: Rebuild and Restart All Services
+      - name: Build
+        timeout-minutes: 15
         run: |
-          echo "🔄 Rebuilding and restarting all services..."
-          sudo docker compose down
-          sudo docker compose up --build -d
+          export COMMIT_SHA="${{ env.COMMIT_SHA }}"
+          sudo -E docker compose -f docker-compose.yml build 
 
-      - name: Verify Services Running
+  docker-scan:
+    name: Scan ${{ matrix.image }}
+    runs-on: [dev-runner]
+    needs: docker-build
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+   
+          - vega-frontend
+    steps:
+      - name: Scan (table)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: '${{ matrix.image }}:${{ env.COMMIT_SHA }}'
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          output: 'trivy-${{ matrix.image }}-table.txt'
+
+      - name: Publish results to Job Summary
+        if: always()
+        run: |
+          echo "## 🔍 Trivy Scan — ${{ matrix.image }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat trivy-${{ matrix.image }}-table.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup
+        if: failure()
+        run: |
+          sudo docker rmi ${{ matrix.image }}:${{ env.COMMIT_SHA }} || true
+          rm -f trivy-${{ matrix.image }}-table.txt
+
+  create-trivy-issue:
+    needs: docker-scan
+    if: ${{ always() && needs.docker-scan.result == 'failure' }}
+    uses: ./.github/workflows/create-gh-issue.yaml
+    permissions:
+      issues: write
+      contents: read
+    with:
+      sha: ${{ github.sha }}
+      ref: ${{ github.ref }}
+      actor: ${{ github.actor }}
+      repository: ${{ github.repository }}
+      run_id: ${{ github.run_id }}
+      server_url: ${{ github.server_url }}
+      issue_title: "🚨 Trivy Vulnerability Alert in Docker Image ${{ matrix.image }}:${{ env.COMMIT_SHA }}"
+      issue_body: |
+      
+        ## 🚨 Trivy Vulnerability Alert
+
+        The recent scan of the Docker image **${{ matrix.image }}:${{ env.COMMIT_SHA }}** has detected vulnerabilities that require attention.
+
+        ### Summary of Findings:
+        $(cat trivy-${{ matrix.image }}-table.txt)
+
+        ### Next Steps:
+        1. Review the detailed scan results attached to this issue.
+        2. Prioritize fixing the vulnerabilities based on their severity.
+        3. Update the Docker image and ensure it passes all security checks before merging.
+
+        Please address these issues promptly to maintain the security and integrity of our application.
+
+        | **Workflow Run** | [View full scan results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-deploy:
+    name: Deploy Services
+    runs-on: [dev-runner]
+    needs: docker-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Setup Environment
+        run: sudo cp /home/vegaadmin/secrets/vega-frontend/.env ./.env
+
+      - name: Deploy
+        run: |
+          export COMMIT_SHA="${{ env.COMMIT_SHA }}"
+          echo "🚀 Deploying services tagged ${COMMIT_SHA}..."
+          sudo -E docker compose down
+          sudo -E docker compose -f docker-compose.yml up -d --remove-orphans
+
+      - name: Verify Services
         run: sudo docker compose ps
+
+      - name: View Ports
+        run: sudo netstat -tulpn | grep LISTEN
 
   
