@@ -22,6 +22,10 @@ jobs:
       pull-requests: read
       issues: write
     steps:
+
+      - name: Cleanup stale gitleaks temp files
+        run: sudo rm -f /tmp/gitleaks.tmp /tmp/gitleaks-*.tar.gz
+        
       - name: Checkout
         uses: actions/checkout@v4
         with:
