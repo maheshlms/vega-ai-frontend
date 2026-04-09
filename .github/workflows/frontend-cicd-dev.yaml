@@ -22,7 +22,6 @@ jobs:
       pull-requests: read
       issues: write
     steps:
-
       - name: Cleanup stale gitleaks temp files
         run: sudo rm -f /tmp/gitleaks.tmp /tmp/gitleaks-*.tar.gz
 
@@ -87,6 +86,11 @@ jobs:
           fetch-depth: 0
           clean: true
 
+      - name: Setup Node.js          # required by SonarQube JS/TS plugin
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Run SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5.3.1
         env:
@@ -126,7 +130,7 @@ jobs:
         timeout-minutes: 15
         run: |
           export COMMIT_SHA="${{ env.COMMIT_SHA }}"
-          sudo -E docker compose -f docker-compose.yml build 
+          sudo -E docker compose -f docker-compose.yml build
 
   docker-scan:
     name: Scan ${{ matrix.image }}
@@ -135,15 +139,23 @@ jobs:
     permissions:
       contents: read
       actions: read
+    outputs:
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+      image_name: ${{ steps.meta.outputs.image_name }}
     strategy:
       fail-fast: false
       matrix:
         image:
-   
           - vega-frontend
     steps:
+      - name: Set metadata
+        id: meta
+        run: |
+          echo "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+          echo "image_name=${{ matrix.image }}" >> $GITHUB_OUTPUT
+
       - name: Scan (table)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: '${{ matrix.image }}:${{ env.COMMIT_SHA }}'
           format: table
@@ -181,25 +193,26 @@ jobs:
       repository: ${{ github.repository }}
       run_id: ${{ github.run_id }}
       server_url: ${{ github.server_url }}
-      issue_title: "🚨 Trivy Vulnerability Alert in Docker Image ${{ matrix.image }}:${{ github.sha }}"
+      issue_title: "🚨 Trivy Vulnerability Alert — ${{ needs.docker-scan.outputs.image_name }}:${{ needs.docker-scan.outputs.commit_sha }}"
       issue_body: |
-      
         ## 🚨 Trivy Vulnerability Alert
 
-        The recent scan of the Docker image **${{ matrix.image }}:${{ github.sha }}** has detected vulnerabilities that require attention.
+        HIGH/CRITICAL vulnerabilities detected in **${{ needs.docker-scan.outputs.image_name }}:${{ needs.docker-scan.outputs.commit_sha }}**.
 
-        ### Summary of Findings:
-        $(cat trivy-${{ matrix.image }}-table.txt)
+        | Field | Details |
+        |---|---|
+        | **Image** | `${{ needs.docker-scan.outputs.image_name }}` |
+        | **Commit** | `${{ needs.docker-scan.outputs.commit_sha }}` |
+        | **Branch** | `${{ github.ref }}` |
+        | **Triggered by** | @${{ github.actor }} |
+        | **Workflow Run** | [View full Trivy output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
-        ### Next Steps:
-        1. Review the detailed scan results attached to this issue.
-        2. Prioritize fixing the vulnerabilities based on their severity.
-        3. Update the Docker image and ensure it passes all security checks before merging.
+        ### Next Steps
+        - [ ] Review vulnerabilities in the workflow run linked above
+        - [ ] Update base image or patch affected packages
+        - [ ] Re-run scan to confirm resolution
 
-        Please address these issues promptly to maintain the security and integrity of our application.
-
-        | **Workflow Run** | [View full scan results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
-
+        > ⚠️ Do not merge until all HIGH/CRITICAL findings are resolved.
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -228,5 +241,3 @@ jobs:
 
       - name: View Ports
         run: sudo netstat -tulpn | grep LISTEN
-
-  
