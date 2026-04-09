@@ -221,7 +221,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'tour-voice-btn',
-    title: '🎙️ Voice Toggle',
+    title: '🎙️ Continuous Voice Mode',
     description: 'Toggle the microphone on/off. When on, it stays active throughout the conversation — listening whenever the avatar is not speaking.',
     position: 'top',
   },
@@ -305,7 +305,7 @@ const TourTooltip: React.FC<TourTooltipProps> = ({ step, stepIndex, totalSteps, 
         top: pos.top,
         left: pos.left,
         zIndex: 10000,
-        width: 260,
+        width: 280,
         background: '#fff',
         border: '1px solid #e5e7eb',
         borderRadius: 14,
@@ -2139,7 +2139,13 @@ const AgentChat: React.FC = () => {
                   className={`agc-voice-toggle-btn ${isListening ? 'voice-listening' : voiceModeActive ? 'voice-on' : 'voice-off'}`}
                   onClick={handleVoiceModeToggle}
                   disabled={isTyping}
-                  title={voiceModeActive ? 'Voice mode on — click to turn off' : 'Turn on continuous voice mode'}
+                  title={
+                    isListening
+                      ? 'Listening now… click to stop continuous voice mode'
+                      : voiceModeActive
+                      ? 'Continuous voice mode ON — click to turn off'
+                      : 'Click to turn on continuous voice mode'
+                  }
                 >
                   <span className={`agc-voice-dot ${isListening ? 'dot-listening' : voiceModeActive ? 'dot-on' : 'dot-off'}`} />
                   <FaMicrophone size={11} />
