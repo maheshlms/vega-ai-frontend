@@ -21,7 +21,7 @@ on:
       server_url:
         required: true
         type: string
-      issue-title:
+      issue_title:
         required: true
         type: string
       issue_body:
