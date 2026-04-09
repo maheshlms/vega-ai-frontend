@@ -53,6 +53,7 @@ jobs:
       run_id: ${{ github.run_id }}
       server_url: ${{ github.server_url }}
       issue_title: "🔐 Secrets detected in commit ${{ github.sha }}"
+      issue_label: "security"
       issue_body: |
         ## 🔐 Secret Scanning Alert
 
@@ -239,3 +240,6 @@ jobs:
 
       - name: View Ports
         run: sudo netstat -tulpn | grep LISTEN
+
+
+        #test

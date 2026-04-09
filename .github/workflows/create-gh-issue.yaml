@@ -27,6 +27,10 @@ on:
       issue_body:
         required: true
         type: string
+      issue_label:
+        required: true
+        type: string
+
     secrets:
       GH_TOKEN:
         required: true
@@ -61,34 +65,8 @@ jobs:
           gh issue create \
               --title "${{ inputs.issue_title }}" \
               --body "${{ inputs.issue_body }}" \
-              --label "security" \
+              --label "${{ inputs.issue_label }}" \
               --assignee "${{ steps.commit_author.outputs.username }}"
-         
-         
-         
-         
-         
-         
-         
-          # gh issue create \
-          #   --title "Secrets detected in commit ${{ inputs.sha }}" \
-          #   --body "## 🔐 Secret Scanning Alert
 
-          # Gitleaks detected secrets in a recent commit.
 
-          # | Field | Details |
-          # |---|---|
-          # | **Committed by** | @${{ steps.commit_author.outputs.username }} |
-          # | **Branch** | \`${{ inputs.ref }}\` |
-          # | **Commit** | \`${{ inputs.sha }}\` |
-          # | **Workflow Run** | [View full scan results](${{ inputs.server_url }}/${{ inputs.repository }}/actions/runs/${{ inputs.run_id }}) |
-
-          # ### Next Steps
-          # - [ ] Rotate the exposed secret immediately
-          # - [ ] Review the workflow run logs linked above for the full Gitleaks report
-          # - [ ] Remove the secret from git history using \`git filter-repo\` or BFG
-          # - [ ] Confirm no downstream systems were compromised
-
-          # > ⚠️ Do not close this issue until the secret has been rotated and history scrubbed." \
-          #   --label "security" \
-          #   --assignee "${{ steps.commit_author.outputs.username }}"
+              #test
