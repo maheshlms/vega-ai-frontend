@@ -94,7 +94,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >-
-            -Dsonar.projectKey=Vega-project
+            -Dsonar.projectKey=Vega-project-Frontend
             -Dsonar.sources=.
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/.git/**
 
