@@ -176,12 +176,12 @@ jobs:
       repository: ${{ github.repository }}
       run_id: ${{ github.run_id }}
       server_url: ${{ github.server_url }}
-      issue_title: "🚨 Trivy Vulnerability Alert in Docker Image ${{ matrix.image }}:${{ env.COMMIT_SHA }}"
+      issue_title: "🚨 Trivy Vulnerability Alert in Docker Image ${{ matrix.image }}:${{ github.sha }}"
       issue_body: |
       
         ## 🚨 Trivy Vulnerability Alert
 
-        The recent scan of the Docker image **${{ matrix.image }}:${{ env.COMMIT_SHA }}** has detected vulnerabilities that require attention.
+        The recent scan of the Docker image **${{ matrix.image }}:${{ github.sha }}** has detected vulnerabilities that require attention.
 
         ### Summary of Findings:
         $(cat trivy-${{ matrix.image }}-table.txt)
