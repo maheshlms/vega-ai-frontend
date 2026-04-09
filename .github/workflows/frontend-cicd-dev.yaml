@@ -25,7 +25,7 @@ jobs:
 
       - name: Cleanup stale gitleaks temp files
         run: sudo rm -f /tmp/gitleaks.tmp /tmp/gitleaks-*.tar.gz
-        
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -85,6 +85,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          clean: true
 
       - name: Run SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5.3.1
