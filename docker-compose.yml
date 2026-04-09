@@ -11,6 +11,7 @@ services:
   # ── Production ──────────────────────────────────────────────
   frontend:
     container_name: vegaai-frontend
+    image: vegaai-frontend:${COMMIT_SHA}
     build:
       context: .
       dockerfile: Dockerfile
