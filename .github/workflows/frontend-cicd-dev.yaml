@@ -218,7 +218,7 @@ jobs:
   docker-deploy:
     name: Deploy Services
     runs-on: [dev-runner]
-    needs: docker-scan
+    needs: docker-build
     if: ${{ needs.docker-scan.result == 'success' }}
     steps:
       - name: Checkout
