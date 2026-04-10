@@ -219,7 +219,7 @@ jobs:
     name: Deploy Services
     runs-on: [dev-runner]
     needs: docker-build
-    if: ${{ needs.docker-scan.result == 'success' }}
+    if: ${{ needs.docker-build.result == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
