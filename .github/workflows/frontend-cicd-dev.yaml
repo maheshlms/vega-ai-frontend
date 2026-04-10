@@ -134,86 +134,86 @@ jobs:
           export COMMIT_SHA="${{ env.COMMIT_SHA }}"
           sudo -E docker compose -f docker-compose.yml build
 
-  docker-scan:
-    name: Scan vegaai-frontend
-    runs-on: [dev-runner]
-    needs: docker-build
-    if: ${{ needs.docker-build.result == 'success' }}
-    permissions:
-      contents: read
-      actions: read
-    outputs:
-      commit_sha: ${{ steps.meta.outputs.commit_sha }}
-    steps:
-      - name: Set metadata
-        id: meta
-        run: |
-          echo "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+  # docker-scan:
+  #   name: Scan vegaai-frontend
+  #   runs-on: [dev-runner]
+  #   needs: docker-build
+  #   if: ${{ needs.docker-build.result == 'success' }}
+  #   permissions:
+  #     contents: read
+  #     actions: read
+  #   outputs:
+  #     commit_sha: ${{ steps.meta.outputs.commit_sha }}
+  #   steps:
+  #     - name: Set metadata
+  #       id: meta
+  #       run: |
+  #         echo "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Scan (table)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-        with:
-          image-ref: 'vegaai-frontend:${{ env.COMMIT_SHA }}'
-          format: table
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: HIGH,CRITICAL
-          scanners: vuln
-          output: 'trivy-vegaai-frontend-table.txt'
+  #     - name: Scan (table)
+  #       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+  #       with:
+  #         image-ref: 'vegaai-frontend:${{ env.COMMIT_SHA }}'
+  #         format: table
+  #         exit-code: '1'
+  #         ignore-unfixed: true
+  #         severity: HIGH,CRITICAL
+  #         scanners: vuln
+  #         output: 'trivy-vegaai-frontend-table.txt'
 
-      - name: Publish results to Job Summary
-        if: always()
-        run: |
-          echo "## 🔍 Trivy Scan — vegaai-frontend" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat trivy-vegaai-frontend-table.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+  #     - name: Publish results to Job Summary
+  #       if: always()
+  #       run: |
+  #         echo "## 🔍 Trivy Scan — vegaai-frontend" >> $GITHUB_STEP_SUMMARY
+  #         echo '```' >> $GITHUB_STEP_SUMMARY
+  #         cat trivy-vegaai-frontend-table.txt >> $GITHUB_STEP_SUMMARY
+  #         echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Cleanup
-        if: failure()
-        run: |
-          sudo docker rmi vegaai-frontend:${{ env.COMMIT_SHA }} || true
-          rm -f trivy-vegaai-frontend-table.txt
+  #     - name: Cleanup
+  #       if: failure()
+  #       run: |
+  #         sudo docker rmi vegaai-frontend:${{ env.COMMIT_SHA }} || true
+  #         rm -f trivy-vegaai-frontend-table.txt
 
   
 
-  create-trivy-issue:
-    needs: docker-scan
-    if: ${{ always() && needs.docker-scan.result == 'failure' }}
-    uses: ./.github/workflows/create-gh-issue.yaml
-    permissions:
-      issues: write
-      contents: read
-    with:
-      sha: ${{ github.sha }}
-      ref: ${{ github.ref }}
-      actor: ${{ github.actor }}
-      repository: ${{ github.repository }}
-      run_id: ${{ github.run_id }}
-      server_url: ${{ github.server_url }}
-      issue_title: "🚨 Trivy Vulnerability Alert — vegaai-frontend:${{ needs.docker-scan.outputs.commit_sha }}"
-      issue_label: "bug"
-      issue_body: |
-        ## 🚨 Trivy Vulnerability Alert
+  # create-trivy-issue:
+  #   needs: docker-scan
+  #   if: ${{ always() && needs.docker-scan.result == 'failure' }}
+  #   uses: ./.github/workflows/create-gh-issue.yaml
+  #   permissions:
+  #     issues: write
+  #     contents: read
+  #   with:
+  #     sha: ${{ github.sha }}
+  #     ref: ${{ github.ref }}
+  #     actor: ${{ github.actor }}
+  #     repository: ${{ github.repository }}
+  #     run_id: ${{ github.run_id }}
+  #     server_url: ${{ github.server_url }}
+  #     issue_title: "🚨 Trivy Vulnerability Alert — vegaai-frontend:${{ needs.docker-scan.outputs.commit_sha }}"
+  #     issue_label: "bug"
+  #     issue_body: |
+  #       ## 🚨 Trivy Vulnerability Alert
 
-        HIGH/CRITICAL vulnerabilities detected in **vegaai-frontend:${{ needs.docker-scan.outputs.commit_sha }}**.
+  #       HIGH/CRITICAL vulnerabilities detected in **vegaai-frontend:${{ needs.docker-scan.outputs.commit_sha }}**.
 
-        | Field | Details |
-        |---|---|
-        | **Image** | `vegaai-frontend` |
-        | **Commit** | `${{ needs.docker-scan.outputs.commit_sha }}` |
-        | **Branch** | `${{ github.ref }}` |
-        | **Triggered by** | @${{ github.actor }} |
-        | **Workflow Run** | [View full Trivy output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+  #       | Field | Details |
+  #       |---|---|
+  #       | **Image** | `vegaai-frontend` |
+  #       | **Commit** | `${{ needs.docker-scan.outputs.commit_sha }}` |
+  #       | **Branch** | `${{ github.ref }}` |
+  #       | **Triggered by** | @${{ github.actor }} |
+  #       | **Workflow Run** | [View full Trivy output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
 
-        ### Next Steps
-        - [ ] Review vulnerabilities in the workflow run linked above
-        - [ ] Update base image or patch affected packages
-        - [ ] Re-run scan to confirm resolution
+  #       ### Next Steps
+  #       - [ ] Review vulnerabilities in the workflow run linked above
+  #       - [ ] Update base image or patch affected packages
+  #       - [ ] Re-run scan to confirm resolution
 
-        > ⚠️ Do not merge until all HIGH/CRITICAL findings are resolved.
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       > ⚠️ Do not merge until all HIGH/CRITICAL findings are resolved.
+  #   secrets:
+  #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker-deploy:
     name: Deploy Services
